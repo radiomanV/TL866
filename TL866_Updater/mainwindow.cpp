@@ -262,13 +262,13 @@ void MainWindow::on_btnReflash_clicked()
                             QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
         return;
 
-    int index=-1;
+    int index = -1;
     if(ui->radioA->isChecked())
-        index=0;
+        index = FIRMWARE_A;
     if(ui->radioCS->isChecked())
-        index=1;
+        index = FIRMWARE_CS;
     if(ui->radioDump->isChecked())
-        index=2;
+        index = FIRMWARE_CUSTOM;
     if(index == -1)
         return;
     job_list.clear();
