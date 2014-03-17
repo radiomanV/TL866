@@ -27,6 +27,7 @@
 USB::USB()
 {
     device_handle = NULL;
+    devs = NULL;
     libusb_init(&ctx);//initialize a new session
     libusb_set_debug(ctx, 3);//set verbosity level
 }
@@ -35,13 +36,17 @@ USB::~USB()
 {
     if(isOpen())
         close_device();
+
+    if(devs != NULL)
+        libusb_free_device_list(devs, 1);
     libusb_exit(ctx); //close session
 }
 
 
 int USB::get_devices_count()
 {
-    libusb_device **devs;
+   if(devs != NULL)
+       libusb_free_device_list(devs, 1);
     devices.clear();
 
     int count = libusb_get_device_list(ctx, &devs);
@@ -61,9 +66,9 @@ int USB::get_devices_count()
         }
 
     }
-    libusb_free_device_list(devs, 1);
     return devices.size();
 }
+
 
 bool USB::open_device(int index)
 {
@@ -74,16 +79,21 @@ bool USB::open_device(int index)
 
 }
 
+
 bool USB::isOpen()
 {
     return (device_handle !=NULL);
 }
 
+
+
 void  USB::close_device()
 {
-    libusb_close(device_handle);
+    if(isOpen())
+        libusb_close(device_handle);
     device_handle = NULL;
 }
+
 
 size_t  USB::usb_read(unsigned char *data, size_t size)
 {
@@ -96,6 +106,7 @@ size_t  USB::usb_read(unsigned char *data, size_t size)
         return 0;
     return bytes_read;
 }
+
 
 size_t  USB::usb_write(unsigned char *data, size_t size)
 {

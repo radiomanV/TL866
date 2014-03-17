@@ -27,8 +27,8 @@
     <rect>
      <x>518</x>
      <y>288</y>
-     <width>75</width>
-     <height>23</height>
+     <width>80</width>
+     <height>27</height>
     </rect>
    </property>
    <property name="orientation">
@@ -43,7 +43,7 @@
     <rect>
      <x>12</x>
      <y>12</y>
-     <width>581</width>
+     <width>585</width>
      <height>79</height>
     </rect>
    </property>
@@ -94,8 +94,8 @@
      <rect>
       <x>10</x>
       <y>31</y>
-      <width>75</width>
-      <height>25</height>
+      <width>71</width>
+      <height>27</height>
      </rect>
     </property>
     <property name="font">
@@ -167,8 +167,8 @@
      <rect>
       <x>16</x>
       <y>31</y>
-      <width>75</width>
-      <height>25</height>
+      <width>71</width>
+      <height>27</height>
      </rect>
     </property>
     <property name="font">
@@ -311,8 +311,8 @@
      <rect>
       <x>10</x>
       <y>75</y>
-      <width>75</width>
-      <height>25</height>
+      <width>71</width>
+      <height>27</height>
      </rect>
     </property>
     <property name="font">

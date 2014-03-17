@@ -527,7 +527,7 @@
        <rect>
         <x>8</x>
         <y>16</y>
-        <width>731</width>
+        <width>720</width>
         <height>101</height>
        </rect>
       </property>
@@ -638,9 +638,9 @@
       <widget class="QPushButton" name="btnClone">
        <property name="geometry">
         <rect>
-         <x>559</x>
+         <x>550</x>
          <y>50</y>
-         <width>82</width>
+         <width>71</width>
          <height>27</height>
         </rect>
        </property>
@@ -658,7 +658,7 @@
         <rect>
          <x>470</x>
          <y>50</y>
-         <width>83</width>
+         <width>71</width>
          <height>27</height>
         </rect>
        </property>
@@ -674,9 +674,9 @@
       <widget class="QPushButton" name="btnDefault">
        <property name="geometry">
         <rect>
-         <x>647</x>
+         <x>630</x>
          <y>50</y>
-         <width>82</width>
+         <width>71</width>
          <height>27</height>
         </rect>
        </property>
@@ -714,9 +714,9 @@
        <property name="geometry">
         <rect>
          <x>27</x>
-         <y>97</y>
-         <width>75</width>
-         <height>23</height>
+         <y>92</y>
+         <width>71</width>
+         <height>27</height>
         </rect>
        </property>
        <property name="font">
