@@ -6,9 +6,9 @@
 #include <QtConcurrentMap>
 #include <QFutureWatcher>
 #include <QDebug>
-#include "QLineEdit"
+#include <QLineEdit>
 #include <firmware.h>
-#include "notifier.h"
+#include <notifier.h>
 #include "tl866_global.h"
 
 #ifdef Q_OS_WIN32
