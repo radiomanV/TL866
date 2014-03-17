@@ -2,13 +2,13 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include "advdialog.h"
 #include <QtConcurrentMap>
 #include <QFutureWatcher>
 #include <QDebug>
 #include <QLineEdit>
-#include <firmware.h>
-#include <notifier.h>
+#include "advdialog.h"
+#include "firmware.h"
+#include "notifier.h"
 #include "tl866_global.h"
 
 #ifdef Q_OS_WIN32
