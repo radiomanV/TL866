@@ -88,6 +88,7 @@ private:
     bool reflash();
     QString dump();
     void reset();
+    bool wait_for_device();
     void DoWork(WorkerJob job);
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"

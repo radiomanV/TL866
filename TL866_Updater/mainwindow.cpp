@@ -392,6 +392,29 @@ void MainWindow::reset()
     usb_device->usb_write(data, 4);
 }
 
+
+//wait for device to reset
+bool MainWindow::wait_for_device()
+{
+    int cnt = 500;//5 seconds
+    while(usb_device->get_devices_count())//wait for device to leave
+    {
+        wait_ms(100);
+        if(! --cnt)
+            return false;//reset error
+    }
+
+    cnt = 500;//5 seconds
+    while(! usb_device->get_devices_count())//wait for device to arrive
+    {
+        wait_ms(100);
+        if(! --cnt)
+            return false;//reset error
+    }
+    return true;//device reset ok
+}
+
+
 //Reflash function. This routine is executed in a separate thread.
 bool MainWindow::reflash()
 {
@@ -408,8 +431,11 @@ bool MainWindow::reflash()
     if(report.device_status == NORMAL_MODE)//if the device is not in bootloader mode reset it.
     {
         reset();
-        wait_ms(2500);
+        emit update_gui(QString("<resetting...>"), false, false);
+        if(!wait_for_device())
+            return false;//reset failed
     }
+    wait_ms(500);
 
     //read the device again to see the true device version as reported by the bootloader
     memset((uchar*)&report,0, sizeof(TL866_REPORT));
@@ -482,7 +508,18 @@ bool MainWindow::reflash()
     wait_ms(500);
     emit update_gui(QString("<resetting...>"), false, false);
     reset();
-    wait_ms(1500);
+    if (! wait_for_device())
+        return false;//reset failed
+
+    //read the device to determine his satus
+    memset((uchar*)&report,0, sizeof(TL866_REPORT));
+    report.echo = REPORT_COMMAND;//0 anyway
+    usb_device->usb_write((uchar *)&report, 5);
+    usb_device->usb_read((uchar*)&report, sizeof(TL866_REPORT));
+
+    if(report.device_status != NORMAL_MODE)//reflash failed
+        return false;
+
     return true;//reflash ok
 
 }
