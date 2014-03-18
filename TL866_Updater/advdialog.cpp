@@ -68,13 +68,13 @@ void AdvDialog::SetUi(bool cp, int type)
 
 void AdvDialog::on_btnEdit_clicked()
 {
-    EditDialog* dlg=new EditDialog(this);
+    EditDialog dlg(this);
     QString devcode =ui->txtDevcode->text();
     QString serial =ui->txtSerial->text();
-    dlg->SetText(devcode,serial);
-   if(dlg->exec()==QDialog::Accepted)
+    dlg.SetText(devcode,serial);
+   if(dlg.exec()==QDialog::Accepted)
    {
-     dlg->GetResult(&devcode, &serial);
+     dlg.GetResult(&devcode, &serial);
      ui->txtDevcode->setText(devcode);
      ui->txtSerial->setText(serial);
    }

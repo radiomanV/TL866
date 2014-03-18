@@ -178,13 +178,13 @@ void MainWindow::on_btnAdvanced_clicked()
 //show edit device code and serial number dialog
 void MainWindow::on_btnEdit_clicked()
 {
-    EditDialog* dlg=new EditDialog(this);
+    EditDialog dlg(this);
     QString devcode =ui->txtDevcode->text();
     QString serial =ui->txtSerial->text();
-    dlg->SetText(devcode,serial);
-    if(dlg->exec()==QDialog::Accepted)
+    dlg.SetText(devcode,serial);
+    if(dlg.exec()==QDialog::Accepted)
     {
-        dlg->GetResult(&devcode, &serial);
+        dlg.GetResult(&devcode, &serial);
         ui->txtDevcode->setText(devcode);
         ui->txtSerial->setText(serial);
     }
@@ -396,7 +396,7 @@ void MainWindow::reset()
 //wait for device to reset
 bool MainWindow::wait_for_device()
 {
-    int cnt = 500;//5 seconds
+    int cnt = 50;//5 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
         wait_ms(100);
@@ -404,7 +404,7 @@ bool MainWindow::wait_for_device()
             return false;//reset error
     }
 
-    cnt = 500;//5 seconds
+    cnt = 50;//5 seconds
     while(! usb_device->get_devices_count())//wait for device to arrive
     {
         wait_ms(100);
