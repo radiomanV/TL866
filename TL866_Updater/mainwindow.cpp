@@ -396,7 +396,7 @@ void MainWindow::reset()
 //wait for device to reset
 bool MainWindow::wait_for_device()
 {
-    int cnt = 50;//5 seconds
+    int cnt = 50;//8 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
         wait_ms(100);
@@ -564,6 +564,7 @@ QString MainWindow::dump()
 //Reflash finished SLOT
 void MainWindow::reflash_finished(bool success)
 {
+    Refresh();
     if(success)
         QMessageBox::information(this, "TL866", "Reflash OK!");
     else
@@ -575,6 +576,7 @@ void MainWindow::reflash_finished(bool success)
 //Dump finished SLOT
 void MainWindow::dump_finished(QString result)
 {
+    Refresh();
     if(result.isEmpty())
         QMessageBox::information(this, "TL866", "Firmware dump complete!");
     else
