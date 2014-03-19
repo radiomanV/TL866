@@ -341,8 +341,8 @@ void MainWindow::on_btnSave_clicked()
         HexWriter *hexwriter = new HexWriter;
         hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);//write temp array to fileStream in Intel hex format
         delete hexwriter;
-        delete key;
-        delete temp;
+        delete[] key;
+        delete[] temp;
         file.close();//done!
     }
 }

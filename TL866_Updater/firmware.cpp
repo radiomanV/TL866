@@ -33,13 +33,13 @@ Firmware::Firmware()
     m_eraseA=0;
     m_eraseCS=0;
     const unsigned int poly=0xEDB88320;
-    unsigned int tmp,i,j;
-    for(i=0;i<sizeof(crc32Table);i++)
+    unsigned int tmp, i, j;
+    for(i = 0; i < 256; i++)
     {
-        tmp=i;
-        for(j=0;j<8;j++)
+        tmp = i;
+        for(j = 0; j < 8 ; j++)
         {
-            tmp=(tmp&1 ? (tmp>>1)^poly:tmp>>1);
+            tmp = (tmp & 1 ? (tmp >> 1) ^ poly : tmp >> 1);
         }
         crc32Table[i]=tmp;
     }
