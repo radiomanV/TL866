@@ -41,7 +41,6 @@ RESOURCES += \
 unix:!macx{
 HEADERS += usb_linux.h
 SOURCES += usb_linux.cpp
-QMAKE_CXXFLAGS += -Wno-aggressive-loop-optimizations
 LIBS += -ludev \
         -lusb-1.0
 }
