@@ -1,0 +1,14 @@
+Simple low level winelib usb wrapper for Minipro V6.0
+
+How to install:
+1. Install wine
+2. Copy the setupapi.dll file in the minipro folder
+3. Run the Minipro.exe
+
+How to compile:
+1. Install wine an wine-dev packages
+2. Run make
+3. Rename usb.dll.so as setupapi.dll and copy this file in the minipro folder
+4. Run the Minipro.exe
+
+
