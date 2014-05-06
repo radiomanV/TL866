@@ -1,5 +1,10 @@
 Simple low level winelib usb wrapper for Minipro V6.0
 
+Add the following rule to the udev subsystem:
+open terminal and as root type:
+#echo 'SUBSYSTEMS=="usb", ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="e11c", GROUP="users", MODE="0666"' > /etc/udev/rules.d/50-minipro.rules
+#udevadm trigger
+
 How to install:
 1. Install wine
 2. Copy the setupapi.dll file in the minipro folder
