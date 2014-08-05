@@ -92,7 +92,7 @@ int USB::get_devices_count()
 
 bool USB::open_device(int index)
 {
-    hDriver = CreateFileA(devices.at(index).toAscii().data(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    hDriver = CreateFileA(devices.at(index).toLatin1().data(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     return (hDriver != INVALID_HANDLE_VALUE);
 }
 

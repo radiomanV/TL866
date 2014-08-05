@@ -2,7 +2,12 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QtConcurrentMap>
+
+#if QT_VERSION >= 0x050000
+    #include <QtConcurrent/QtConcurrentMap>
+#else
+     #include <QtConcurrentMap>
+#endif
 #include <QFutureWatcher>
 #include <QDebug>
 #include <QLineEdit>

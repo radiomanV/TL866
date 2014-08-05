@@ -68,6 +68,30 @@ void Notifier::RegisterUsbNotifications()
     qDebug() << "Register device notification O.K.";
 }
 
+#if QT_VERSION >= 0x050000
+bool Notifier::nativeEvent(const QByteArray& eventType, void* message, long* result)
+{
+    Q_UNUSED( result );
+    Q_UNUSED( eventType );
+
+    MSG* msg = reinterpret_cast<MSG*>(message);
+    if(msg->message == WM_DEVICECHANGE)
+    {
+        switch(msg->wParam)
+        {
+        case DBT_DEVICEARRIVAL:
+              emit deviceChange(true);
+            break;
+
+        case DBT_DEVICEREMOVECOMPLETE:
+              emit deviceChange(false);
+            break;
+        }
+    }
+
+    return false;
+}
+#else
 bool Notifier::winEvent(MSG *message, long *result)
 {
     Q_UNUSED(result);
@@ -80,6 +104,7 @@ bool Notifier::winEvent(MSG *message, long *result)
     }
     return false;
 }
+#endif
 
 void Notifier::udev_event()
 {

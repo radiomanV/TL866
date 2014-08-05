@@ -204,8 +204,8 @@ void MainWindow::set_default(QLineEdit *devcode, QLineEdit *serial)
     QByteArray res = get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
     memcpy(key,res.data()+SERIAL_OFFSET,BLOCK_SIZE);
     firmware.decrypt_serial(key, (uchar*)res.data());
-    devcode->setText(QString::fromAscii((const char*)&key[0],8));
-    serial->setText(QString::fromAscii((const char*)&key[8],24));
+    devcode->setText(QString::fromLatin1((const char*)&key[0],8));
+    serial->setText(QString::fromLatin1((const char*)&key[8],24));
 }
 
 
@@ -332,8 +332,8 @@ void MainWindow::on_btnSave_clicked()
         firmware.decrypt_serial(key, temp);//decrypt the serial key from temp array to key array
         memset(key,' ',32);//add trailing spaces
 
-        memcpy(key, ui->txtDevcode->text().toAscii().data(), ui->txtDevcode->text().size());//copy devcode to key array
-        memcpy(key+8, ui->txtSerial->text().toAscii().data(), ui->txtSerial->text().size());//copy serial to key array
+        memcpy(key, ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size());//copy devcode to key array
+        memcpy(key+8, ui->txtSerial->text().toLatin1().data(), ui->txtSerial->text().size());//copy serial to key array
 
         firmware.encrypt_serial(key, temp);//encrypt the devcode and serial
         memcpy(temp + SERIAL_OFFSET ,key,BLOCK_SIZE);//copy the new devcode and serial to temp array
@@ -653,8 +653,8 @@ void MainWindow::DeviceChanged(bool arrived)
                 setBled(false);
                 ui->txtInfo->append("Device status: Unknown.");
             }
-            QString s_devcode = (QString::fromAscii((const char*)&report.device_code,8));
-            QString s_serial = (QString::fromAscii((const char*)&report.serial_number,24));
+            QString s_devcode = (QString::fromLatin1((const char*)&report.device_code,8));
+            QString s_serial = (QString::fromLatin1((const char*)&report.serial_number,24));
             bool isDumperActive = (s_devcode.toLower() == "codedump" && s_serial == "000000000000000000000000");
 
             if(isDumperActive)
@@ -666,8 +666,8 @@ void MainWindow::DeviceChanged(bool arrived)
                 usb_device->usb_read((uchar*)&dumper_report, sizeof(DUMPER_REPORT));
                 devtype = dumper_report.bootloader_version;
 
-                s_devcode = (QString::fromAscii((const char*)&dumper_report.device_code,8));
-                s_serial = (QString::fromAscii((const char*)&dumper_report.serial_number,24));
+                s_devcode = (QString::fromLatin1((const char*)&dumper_report.device_code,8));
+                s_serial = (QString::fromLatin1((const char*)&dumper_report.serial_number,24));
 
                 advdlg->SetSerial(s_devcode, s_serial);
 
@@ -820,8 +820,8 @@ void MainWindow::WriteInfo(QString device_code, QString serial_number)
         uchar b[34];
         memset(b,' ',34);//add trailing spaces
         b[0] = DUMPER_WRITE_INFO;
-        memcpy(b+1, device_code.toAscii().data(), device_code.size());//copy devcode to b array
-        memcpy(b+9, serial_number.toAscii().data(), serial_number.size());//copy serial to key array
+        memcpy(b+1, device_code.toLatin1().data(), device_code.size());//copy devcode to b array
+        memcpy(b+9, serial_number.toLatin1().data(), serial_number.size());//copy serial to key array
         usb_device->usb_write(b, 34);
         b[0] = 0;
         usb_device->usb_read(b, 1);
