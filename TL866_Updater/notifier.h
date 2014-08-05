@@ -23,13 +23,13 @@ private:
     QSocketNotifier *socket_notifier;
     void RegisterUsbNotifications();
 
-#if QT_VERSION >= 0x050000
-    bool nativeEvent(const QByteArray& eventType, void* message, long* result);
-#endif
 
 #ifdef Q_OS_WIN32
 private:
     bool winEvent(MSG *message, long *result);
+#if QT_VERSION >= 0x050000
+    bool nativeEvent(const QByteArray& eventType, void* message, long* result);
+#endif
 #endif
 
 };
