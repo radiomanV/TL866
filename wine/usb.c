@@ -16,7 +16,31 @@
 #include <dbt.h>
 
 
-//Low level function addresses in minipro.exe ver. 6.00
+//Low level function addresses in minipro.exe
+
+#define MINIPRO_VERSION					613
+
+#if MINIPRO_VERSION == 613
+
+//Minipro v6.13
+#define MINIPRO_USB_OPEN_DEVICES_ADDRESS                0x4A400
+#define MINIPRO_CLOSE_DEVICES_ADDRESS                   0x61120
+#define MINIPRO_USB_WRITE_ADDRESS                       0x60F90
+#define MINIPRO_USB_READ_ADDRESS                        0x61030
+#define MINIPRO_USB_WRITE2_ADDRESS                      0x60FE0
+#define MINIPRO_USB_READ2_ADDRESS                       0x610E0
+#define MINIPRO_REGISTER_DEVICE_NOTIFICATIONS_ADDRESS   0xA26D4
+#define MINIPRO_USB_HANDLE_ADDRESS                      0xE52CC
+
+
+//Extracted from minipro PE header
+#define MINIPRO_CODE_SECTION_SIZE                       0xA1000
+#define MINIPRO_RDATA_SECTION_OFFSET                    0xA2000
+#define MINIPRO_RDATA_SECTION_SIZE                      0x32000
+
+#else
+//Minipro V6.00/6.10
+
 #define MINIPRO_USB_OPEN_DEVICES_ADDRESS                0x4A3D0
 #define MINIPRO_CLOSE_DEVICES_ADDRESS                   0x610F0
 #define MINIPRO_USB_WRITE_ADDRESS                       0x60F60
@@ -29,8 +53,10 @@
 
 //Extracted from minipro PE header
 #define MINIPRO_CODE_SECTION_SIZE                       0xA1000
-#define MINIPRO_RDATA_SECTION_OFFEST                    0xA2000
+#define MINIPRO_RDATA_SECTION_OFFSET                    0xA2000
 #define MINIPRO_RDATA_SECTION_SIZE                      0x32000
+
+#endif
 
 #define TL866_VID 0x04d8
 #define TL866_PID 0xe11c
@@ -100,10 +126,10 @@ void patch_minipro()
     VirtualProtect(baseAddress, MINIPRO_CODE_SECTION_SIZE, dwOldProtection, &dwOldProtection);//restore the old protection
 
     //patch RegisterDeviceNotifications function
-    VirtualProtect(baseAddress + MINIPRO_RDATA_SECTION_OFFEST, MINIPRO_RDATA_SECTION_SIZE, PAGE_EXECUTE_READWRITE, &dwOldProtection);//unprotect the .rdata memory section
+    VirtualProtect(baseAddress + MINIPRO_RDATA_SECTION_OFFSET, MINIPRO_RDATA_SECTION_SIZE, PAGE_EXECUTE_READWRITE, &dwOldProtection);//unprotect the .rdata memory section
     *((DWORD *) &t[1]) = (DWORD)&RegisterDeviceNotifications;
     memcpy(baseAddress + MINIPRO_REGISTER_DEVICE_NOTIFICATIONS_ADDRESS, &t[1], 4);
-    VirtualProtect(baseAddress + MINIPRO_RDATA_SECTION_OFFEST, MINIPRO_RDATA_SECTION_SIZE, dwOldProtection, &dwOldProtection);//restore the old protection
+    VirtualProtect(baseAddress + MINIPRO_RDATA_SECTION_OFFSET, MINIPRO_RDATA_SECTION_SIZE, dwOldProtection, &dwOldProtection);//restore the old protection
 }
 
 
