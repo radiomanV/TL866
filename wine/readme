@@ -1,4 +1,4 @@
-Simple low level winelib usb wrapper for Minipro V6.0/V6.1
+Simple low level winelib usb wrapper for Minipro V6.0/V6.1/6.13
 
 Add the following rule to the udev subsystem:
 open terminal and as root type:
