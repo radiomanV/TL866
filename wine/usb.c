@@ -22,7 +22,7 @@
 
 #if MINIPRO_VERSION == 613
 
-//Minipro v6.13
+//Minipro v6.13/6.16
 #define MINIPRO_USB_OPEN_DEVICES_ADDRESS                0x4A400
 #define MINIPRO_CLOSE_DEVICES_ADDRESS                   0x61120
 #define MINIPRO_USB_WRITE_ADDRESS                       0x60F90
