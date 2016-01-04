@@ -112,7 +112,7 @@ BOOL cancel;
 //Patcher function. Called from DllMain
 void patch_minipro()
 {
-    BYTE t[] = {0x68, 0, 0, 0, 0, 0xc3};// call xxxx, ret
+    BYTE t[] = {0x68, 0, 0, 0, 0, 0xc3};// push xxxx, ret
     DWORD dwOldProtection;
     LPVOID baseAddress = GetModuleHandleA(NULL);
     usb_handle = baseAddress + MINIPRO_USB_HANDLE_ADDRESS;
