@@ -35,7 +35,7 @@ const unsigned char xortable[] PROGMEM =
 
 /*Constant response packet. This packet structure is simple:
 1.Xor bytes from offset 4 to 35(0x74 to 0xBA) with byte at offset 0 (0x57)
-2.Compute a checksum of first 35 bytes; the result must match the last byte (0x7D). If this checksum doesn't match then the TL866 report "V0 is illegal"
+2.Compute a checksum of first 36 bytes; the result must match the last byte (0x7D). If this checksum doesn't match then the TL866 report "V0 is illegal"
 
 Actually the TL866 firmware will check if the first 8 bytes are: 51 33 51 00 c8 9d d4 3e ; if yes then return FAKE!
 Now what happen if we put 37 bytes of '0'? well xor zero by zero equal zero and checksum of an infinite number of zeros is zero! and this will pass the genuine check. Very weak algorithm.
@@ -62,8 +62,8 @@ const unsigned char response[] PROGMEM =
 #define CLOCK_LINE_PIN		3
 
 //helper macros
-#define data_line			(DATA_LINE_IN_PORT &(1<<DATA_LINE_PIN))
-#define clock_line			(CLOCK_LINE_PORT &(1<<CLOCK_LINE_PIN))
+#define data_line		(DATA_LINE_IN_PORT &(1<<DATA_LINE_PIN))
+#define clock_line		(CLOCK_LINE_PORT &(1<<CLOCK_LINE_PIN))
 #define data_line_high		(DATA_LINE_OUT_PORT |= (1<<DATA_LINE_PIN))
 #define data_line_low		(DATA_LINE_OUT_PORT &= ~(1<<DATA_LINE_PIN))
 #define set_data_line_out	(DATA_LINE_DDR |=(1<<DATA_LINE_PIN))
