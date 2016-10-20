@@ -86,16 +86,16 @@ HANDLE *usb_handle;
 //replacement functions for minipro. Function prototypes and calling convention must be the same as in minipro.exe, otherwise the application will crash.
 int  open_devices(GUID guid, int *devices);
 void close_devices();
-int  usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize);
-int  usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize);
-int  usb_write2(HANDLE hDevice, unsigned char *lpInBuffer, unsigned int nInBufferSize);
-int  usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize);
+BOOL  usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize);
+unsigned int  usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize);
+BOOL  usb_write2(HANDLE hDevice, unsigned char *lpInBuffer, unsigned int nInBufferSize);
+unsigned int  usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize);
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,LPVOID NotificationFilter,DWORD Flags);
 
 
 //helper functions
-int  uread(HANDLE hDevice, unsigned char *data, size_t size);
-int  uwrite(HANDLE hDevice, unsigned char *data, size_t size);
+unsigned int  uread(HANDLE hDevice, unsigned char *data, size_t size);
+BOOL  uwrite(HANDLE hDevice, unsigned char *data, size_t size);
 void  notifier_function();
 int get_device_count();
 
@@ -112,7 +112,7 @@ BOOL cancel;
 //Patcher function. Called from DllMain
 void patch_minipro()
 {
-    BYTE t[] = {0x68, 0, 0, 0, 0, 0xc3};// call xxxx, ret
+    BYTE t[] = {0x68, 0, 0, 0, 0, 0xc3};// push xxxx, ret
     DWORD dwOldProtection;
     LPVOID baseAddress = GetModuleHandleA(NULL);
     usb_handle = baseAddress + MINIPRO_USB_HANDLE_ADDRESS;
@@ -228,40 +228,39 @@ void close_devices()
 }
 
 
-
-int usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize)
+BOOL usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize)
 {
     pthread_mutex_lock(&lock);
-    int ret = uwrite(0, lpInBuffer, nInBufferSize);
+    BOOL ret = uwrite(0, lpInBuffer, nInBufferSize);
     pthread_mutex_unlock(&lock);
     return ret;
 }
 
 
-int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
+unsigned int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
 {
     pthread_mutex_lock(&lock);
-    int ret = uread(0, lpOutBuffer, nBytesToRead);
+    unsigned int ret = uread(0, lpOutBuffer, nBytesToRead);
     pthread_mutex_unlock(&lock);
-    if(ret == -1)
+    if(ret == 0xFFFFFFFF)
         MessageBoxA(GetForegroundWindow(), "Read error!", "TL866", MB_ICONWARNING);
     return ret;
 }
 
 
-int usb_write2(HANDLE hDevice, unsigned char *lpInBuffer, unsigned int nInBufferSize)
+BOOL usb_write2(HANDLE hDevice, unsigned char *lpInBuffer, unsigned int nInBufferSize)
 {
     pthread_mutex_lock(&lock);
-    int ret = uwrite(hDevice, lpInBuffer, nInBufferSize);
+    BOOL ret = uwrite(hDevice, lpInBuffer, nInBufferSize);
     pthread_mutex_unlock(&lock);
     return ret;
 }
 
 
-int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
+unsigned int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
 {
     pthread_mutex_lock(&lock);
-    int ret = uread(hDevice, lpOutBuffer, nBytesToRead);
+    unsigned int ret = uread(hDevice, lpOutBuffer, nBytesToRead);
     pthread_mutex_unlock(&lock);
     return ret;
 }
@@ -269,6 +268,7 @@ int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToR
 
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,LPVOID NotificationFilter,DWORD Flags)
 {
+
     printf("RegisterDeviceNotifications hWnd=%X4\n", (unsigned int)hRecipient);
     hWnd = hRecipient;
     int tr = pthread_create(&notifier_id, NULL, (void*)notifier_function, NULL);
@@ -279,12 +279,9 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,LPVOID Notificati
 }
 
 
-
-
-
 //Libusb functions
 
-int  uread(HANDLE hDevice, unsigned char *data, size_t size)
+unsigned int  uread(HANDLE hDevice, unsigned char *data, size_t size)
 {
     if(hDevice == INVALID_HANDLE_VALUE)
         return 0;
@@ -295,11 +292,11 @@ int  uread(HANDLE hDevice, unsigned char *data, size_t size)
         return 0;
     int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1, data, size, &bytes_read, 3000);
     libusb_release_interface(device_handle[(int)hDevice], 0);
-    return (ret == LIBUSB_SUCCESS ? 1 : -1);
+    return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
 }
 
 
-int  uwrite(HANDLE hDevice, unsigned char *data, size_t size)
+BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size)
 {
     if(hDevice == INVALID_HANDLE_VALUE)
         return 0;
@@ -310,7 +307,7 @@ int  uwrite(HANDLE hDevice, unsigned char *data, size_t size)
         return 0;
     int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1, data, size, &bytes_writen, 3000);
     libusb_release_interface(device_handle[(int)hDevice], 0);
-    return (ret == LIBUSB_SUCCESS ? 1 : -1);
+    return (ret == LIBUSB_SUCCESS);
 }
 
 
