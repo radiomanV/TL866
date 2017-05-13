@@ -19,9 +19,28 @@
 
 //Low level function addresses in minipro.exe
 
-#define MINIPRO_VERSION					650
+#define MINIPRO_VERSION					660
 
-#if MINIPRO_VERSION == 650
+#if MINIPRO_VERSION == 660
+
+//Minipro v6.60
+#define MINIPRO_USB_OPEN_DEVICES_ADDRESS                0x4A850
+#define MINIPRO_CLOSE_DEVICES_ADDRESS                   0x61AB0
+#define MINIPRO_USB_WRITE_ADDRESS                       0x61920
+#define MINIPRO_USB_READ_ADDRESS                        0x619C0
+#define MINIPRO_USB_WRITE2_ADDRESS                      0x61970
+#define MINIPRO_USB_READ2_ADDRESS                       0x61A70
+#define MINIPRO_REGISTER_DEVICE_NOTIFICATIONS_ADDRESS   0xA36D4
+#define MINIPRO_USB_HANDLE_ADDRESS                      0xE78EC
+
+
+//Extracted from minipro PE header
+#define MINIPRO_CODE_SECTION_SIZE                       0xA2000
+#define MINIPRO_RDATA_SECTION_OFFSET                    0xA3000
+#define MINIPRO_RDATA_SECTION_SIZE                      0x33000
+
+
+#elif MINIPRO_VERSION == 650
 
 //Minipro v6.50
 #define MINIPRO_USB_OPEN_DEVICES_ADDRESS                0x4A850
@@ -460,4 +479,3 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 
     return TRUE;
 }
-
