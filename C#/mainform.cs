@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
@@ -153,7 +153,8 @@ namespace TL866
         private void btnReflash_Click(object sender, EventArgs e)
         {
             if (worker.IsBusy) return;
-            CheckDevices(this);
+            if (!CheckDevices(this))
+                return;
             if (!firmware.IsValid())
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
