@@ -10,17 +10,7 @@ namespace TL866
 
 	public class UsbDevice
 	{
-		private const int DIGCF_PRESENT = 0x2;
-		private const int DIGCF_DEVICEINTERFACE = 0x10;
 		private const int INVALID_HANDLE_VALUE = -1;
-		private const UInt64 GENERIC_READ = 0x80000000;
-		private const UInt64 GENERIC_WRITE = 0x40000000;
-		private const UInt64 GENERIC_EXECUTE = 0x20000000;
-		private const UInt64 GENERIC_ALL = 0x10000000;
-		private const uint FILE_SHARE_READ = 0x1;
-		private const uint FILE_SHARE_WRITE = 0x2;
-		private const uint OPEN_EXISTING = 0x3;
-		private const uint FILE_FLAG_DELETE_ON_CLOSE = 0x4000000;
         public const int WM_DEVICECHANGE = 0x219;
 		private const string MINIPRO_GUID = "{85980D83-32B9-4ba1-8FDF-12A711B99CA2}";
         
@@ -28,6 +18,16 @@ namespace TL866
         {
             IOCTL_READ = 0x222004,
             IOCTL_WRITE = 0x222000
+        }
+
+
+        public enum DiGetClassFlags
+        {
+            DIGCF_DEFAULT = 0x1,
+            DIGCF_PRESENT = 0x2,
+            DIGCF_ALLCLASSES = 0x4,
+            DIGCF_PROFILE = 0x8,
+            DIGCF_DEVICEINTERFACE = 0x10
         }
 
 
@@ -69,6 +69,7 @@ namespace TL866
             TRUNCATE_EXISTING = 5
         }
 
+        
         private enum EFileAttributes : uint
         {
             FILE_ATTRIBUTE_READONLY = 0x1,
@@ -97,7 +98,6 @@ namespace TL866
             FILE_FLAG_SEQUENTIAL_SCAN = 0x8000000,
             FILE_FLAG_WRITE_THROUGH = 0x80000000
         }
-
 
         private enum DEVICE_NOTIFY
         {
@@ -155,29 +155,15 @@ namespace TL866
 			public byte[] DevicePath;
 		}
 
-		[DllImport("Kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern uint GetLastError();
 
 		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
 		private static extern IntPtr SetupDiGetClassDevs(ref Guid ClassGuid, int Enumerator, IntPtr hwndParent, UInt32 Flags);
 
 		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
 		private static extern Boolean SetupDiEnumDeviceInterfaces(IntPtr hDevInfo, IntPtr devInfo, ref Guid interfaceClassGuid, UInt32 memberIndex, ref SP_DEVICE_INTERFACE_DATA deviceInterfaceData);
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern Boolean SetupDiGetDeviceInterfaceDetail(IntPtr nSetupDiGetClassDevs, ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData, ref SP_DEVICE_INTERFACE_DETAIL_DATA DeviceInterfaceDetailData, uint DeviceInterfaceDetailDataSize, ref int RequiredSize, ref SP_DEVINFO_DATA DeviceInfoData);
-
+		
 		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
 		private static extern Boolean SetupDiGetDeviceInterfaceDetail(IntPtr nSetupDiGetClassDevs, ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData, IntPtr Ptr, uint DeviceInterfaceDetailDataSize, ref int RequiredSize, IntPtr PtrInfo);
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern uint CM_Get_Parent(ref UInt32 pdnDevInst, uint dnDevInst, ulong ulFlags);
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto)]
-		private static extern int CM_Get_Device_ID(UInt32 dnDevInst, IntPtr Buffer, int BufferLen, int ulFlags);
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern bool SetupDiDestroyDeviceInfoList(IntPtr hDevInfo);
 
 		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
 		private static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string lpFileName, EFileAccess dwDesiredAccess, EFileShare dwShareMode, IntPtr lpSecurityAttributes, ECreationDisposition dwCreationDisposition, EFileAttributes dwFlagsAndAttributes, IntPtr hTemplateFile);
@@ -185,19 +171,9 @@ namespace TL866
 		[DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Auto)]
 		private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
 
-		[DllImport("Kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, ref long InBuffer, int nInBufferSize, ref long OutBuffer, int nOutBufferSize, ref int pBytesReturned, [In()]ref NativeOverlapped lpOverlapped);
-
 		[DllImport("kernel32.dll", SetLastError = true)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		private static extern bool CloseHandle(IntPtr hObject);
-
-		[DllImport("kernel32.dll")]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		private static extern bool CancelIo(IntPtr hFile);
-
-		[DllImport("kernel32.dll", SetLastError = true)]
-		private static extern bool GetOverlappedResult(IntPtr hFile, [In()]ref System.Threading.NativeOverlapped lpOverlapped, ref uint lpNumberOfBytesTransferred, bool bWait);
 
 		[DllImport("user32.dll", SetLastError = true)]
 		private static extern IntPtr RegisterDeviceNotification(IntPtr hRecipient, IntPtr NotificationFilter, Int32 Flags);
@@ -217,9 +193,10 @@ namespace TL866
 		}
 
 
-		public event UsbDeviceChangedEventHandler UsbDeviceChanged;
-		public delegate void UsbDeviceChangedEventHandler(int message);
 
+        public delegate void UsbDeviceChangedEventHandler();
+		public event UsbDeviceChangedEventHandler UsbDeviceChanged;
+		
 		private SafeFileHandle hDrv;
 		private IntPtr deviceEventHandle;
 		private object SyncObject = new object();
@@ -228,6 +205,56 @@ namespace TL866
 		{
 			hDrv = null;
 		}
+
+
+
+        public bool OpenDevice(string DevicePath)
+        {
+            hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE, EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero, ECreationDisposition.OPEN_EXISTING, EFileAttributes.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+            return !(hDrv.IsClosed || hDrv.IsInvalid);
+        }
+
+        public void CloseDevice()
+        {
+            if (hDrv != null)
+                hDrv.Close();
+        }
+
+
+        public bool Write(byte[] buffer)
+        {
+            uint btr = 0;
+            byte[] obuff = new byte[4096];
+            bool r = false;
+            lock (SyncObject)
+            {
+                if (hDrv.IsClosed || hDrv.IsInvalid)
+                    return false;
+                r = DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_WRITE, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, Marshal.UnsafeAddrOfPinnedArrayElement(obuff, 0), (uint)obuff.Length, ref btr, IntPtr.Zero);
+            }
+            return r;
+        }
+
+        public uint Read(byte[] buffer)
+        {
+            uint btr = 0;
+            byte[] o = new byte[4];
+            lock (SyncObject)
+            {
+                if (hDrv.IsClosed || hDrv.IsInvalid)
+                    return 0;
+                DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_READ, Marshal.UnsafeAddrOfPinnedArrayElement(o, 0), (uint)o.Length, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, ref btr, IntPtr.Zero);
+            }
+            return btr;
+        }
+
+
+        public List<string> Get_Devices()
+        {
+            List<string> DevicesPathName = new List<string>();
+            GetDevicesByClass(MINIPRO_GUID, DevicesPathName);
+            return DevicesPathName;
+        }
 
 
 		public bool RegisterForDeviceChange(bool Register, System.Windows.Forms.Form f)
@@ -270,9 +297,8 @@ namespace TL866
 						// New device has just arrived
 						devType = Marshal.ReadInt32(m.LParam, 4);
 						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							USBDeviceEventArgs e = new USBDeviceEventArgs();
 							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged(1);
+								UsbDeviceChanged();
 							}
 						}
 						break;
@@ -280,9 +306,8 @@ namespace TL866
 						// Device is about to be removed, any application can cancel the removal
 						devType = Marshal.ReadInt32(m.LParam, 4);
 						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							USBDeviceEventArgs e = new USBDeviceEventArgs();
 							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged(2);
+								UsbDeviceChanged();
 							}
 						}
 						break;
@@ -291,9 +316,8 @@ namespace TL866
 						// Device has been removed
 						devType = Marshal.ReadInt32(m.LParam, 4);
 						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							USBDeviceEventArgs e = new USBDeviceEventArgs();
 							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged(0);
+								UsbDeviceChanged();
 							}
 						}
 						break;
@@ -303,51 +327,11 @@ namespace TL866
 		}
 
 
-
-		public bool OpenDevice(string DevicePath)
-		{
-			hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE, EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero, ECreationDisposition.OPEN_EXISTING, 0, IntPtr.Zero);
-			return !(hDrv.IsClosed | hDrv.IsInvalid);
-		}
-
-		public void CloseDevice()
-		{
-			if (hDrv != null)
-				hDrv.Close();
-		}
-
-
-		public bool Write(byte[] buffer)
-		{
-			uint btr = 0;
-			byte[] obuff = new byte[4096];
-			bool r = false;
-			lock (SyncObject) {
-				if (hDrv.IsClosed | hDrv.IsInvalid)
-					return false;
-				r = DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_WRITE, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, Marshal.UnsafeAddrOfPinnedArrayElement(obuff, 0), (uint)obuff.Length, ref btr, IntPtr.Zero);
-			}
-			return r;
-		}
-
-		public uint Read(byte[] buffer)
-		{
-			uint btr = 0;
-			byte[] o = new byte[4];
-			lock (SyncObject) {
-				if (hDrv.IsClosed | hDrv.IsInvalid)
-					return 0;
-				DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_READ, Marshal.UnsafeAddrOfPinnedArrayElement(o, 0), (uint)o.Length, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, ref btr, IntPtr.Zero);
-			}
-			return btr;
-		}
-
-
 		private uint GetDevicesByClass(string guid, List<string> devicePathName)
 		{
 			Guid g = new Guid(guid);
 			uint i = 0;
-			IntPtr h = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+            IntPtr h = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero, (int)(DiGetClassFlags.DIGCF_PRESENT | DiGetClassFlags.DIGCF_DEVICEINTERFACE));
 			lock (SyncObject) {
 				if (h.ToInt32() != INVALID_HANDLE_VALUE) {
 					bool Success = true;
@@ -381,36 +365,6 @@ namespace TL866
 			}
 			return i;
 		}
-
-		public List<string> Get_Devices()
-		{
-			List<string> DevicesPathName = new List<string>();
-			GetDevicesByClass(MINIPRO_GUID, DevicesPathName);
-			return DevicesPathName;
-		}
 	}
 }
-namespace TL866
-{
 
-	public class USBDeviceEventArgs : EventArgs
-	{
-		/// <summary>
-		/// Get/Set the value indicating that the event should be cancelled 
-		/// Only in QueryRemove handler.
-		/// </summary>
-
-		public bool Cancel;
-		/// <summary>
-		/// Set to true in your DeviceArrived event handler if you wish to receive the 
-		/// QueryRemove event for this device. 
-		/// </summary>
-
-		public bool HookQueryRemove;
-		public USBDeviceEventArgs()
-		{
-			Cancel = false;
-			HookQueryRemove = false;
-		}
-	}
-}
