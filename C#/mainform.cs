@@ -79,7 +79,6 @@ namespace TL866
                 catch (Exception ex)
                 {
                     MessageBox.Show(ex.Message, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                    firmware = null;
                     lblVersion.Text = "";
                     return;
                 }
