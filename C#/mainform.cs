@@ -36,7 +36,6 @@ namespace TL866
             reset_flag = false;
             firmware = new Firmware();
             usb = new UsbDevice();
-            //AdvancedWindow = new AdvancedDialog();
             devcode = "";
             serial = "";
             usb.UsbDeviceChanged += new UsbDevice.UsbDeviceChangedEventHandler(UsbDeviceChanged);
