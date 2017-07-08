@@ -81,9 +81,8 @@ namespace TL866
 
         private void BtnDefault_Click(object sender, EventArgs e)
         {
-            string[] s = firmware.GetSerialFromBin(RadiofA.Checked ? Resources.firmwareA : Resources.firmwareCS);
-            TxtDevcode.Text = s[0];
-            TxtSerial.Text = s[1];
+            TxtDevcode.Text = "00000000";
+            TxtSerial.Text = "000000000000000000000000";
         }
 
 
