@@ -1,24 +1,14 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Windows.Forms;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using Microsoft.Win32.SafeHandles;
-using System.Threading;
+
 namespace TL866
 {
-
-	public class UsbDevice
-	{
-		private const int INVALID_HANDLE_VALUE = -1;
-        public const int WM_DEVICECHANGE = 0x219;
-		private const string MINIPRO_GUID = "{85980D83-32B9-4ba1-8FDF-12A711B99CA2}";
-        
-        private enum IOCTL
-        {
-            IOCTL_READ = 0x222004,
-            IOCTL_WRITE = 0x222000
-        }
+    public class UsbDevice
+    {
+        public delegate void UsbDeviceChangedEventHandler();
 
 
         public enum DiGetClassFlags
@@ -30,10 +20,229 @@ namespace TL866
             DIGCF_DEVICEINTERFACE = 0x10
         }
 
+        private const int INVALID_HANDLE_VALUE = -1;
+        public const int WM_DEVICECHANGE = 0x219;
+        private const string MINIPRO_GUID = "{85980D83-32B9-4ba1-8FDF-12A711B99CA2}";
+        private readonly object SyncObject = new object();
+        private IntPtr deviceEventHandle;
+
+        private SafeFileHandle hDrv;
+
+        public UsbDevice()
+        {
+            hDrv = null;
+        }
+
+
+        [DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetupDiGetClassDevs(ref Guid ClassGuid, int Enumerator, IntPtr hwndParent,
+            uint Flags);
+
+        [DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool SetupDiEnumDeviceInterfaces(IntPtr hDevInfo, IntPtr devInfo,
+            ref Guid interfaceClassGuid, uint memberIndex, ref SP_DEVICE_INTERFACE_DATA deviceInterfaceData);
+
+        [DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern bool SetupDiGetDeviceInterfaceDetail(IntPtr nSetupDiGetClassDevs,
+            ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData, IntPtr Ptr, uint DeviceInterfaceDetailDataSize,
+            ref int RequiredSize, IntPtr PtrInfo);
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern SafeFileHandle CreateFile(string lpFileName, EFileAccess dwDesiredAccess,
+            EFileShare dwShareMode, IntPtr lpSecurityAttributes, ECreationDisposition dwCreationDisposition,
+            EFileAttributes dwFlagsAndAttributes, IntPtr hTemplateFile);
+
+        [DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, IntPtr lpInBuffer,
+            uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr
+            RegisterDeviceNotification(IntPtr hRecipient, IntPtr NotificationFilter, int Flags);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterDeviceNotification(IntPtr hHandle);
+
+        public event UsbDeviceChangedEventHandler UsbDeviceChanged;
+
+
+        public bool OpenDevice(string DevicePath)
+        {
+            hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE,
+                EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero,
+                ECreationDisposition.OPEN_EXISTING, EFileAttributes.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+            return !(hDrv.IsClosed || hDrv.IsInvalid);
+        }
+
+        public void CloseDevice()
+        {
+            if (hDrv != null)
+                hDrv.Close();
+        }
+
+
+        public bool Write(byte[] buffer)
+        {
+            uint btr = 0;
+            byte[] obuff = new byte[4096];
+            bool r = false;
+            lock (SyncObject)
+            {
+                if (hDrv.IsClosed || hDrv.IsInvalid)
+                    return false;
+                r = DeviceIoControl(hDrv.DangerousGetHandle(), (uint) IOCTL.IOCTL_WRITE,
+                    Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint) buffer.Length,
+                    Marshal.UnsafeAddrOfPinnedArrayElement(obuff, 0), (uint) obuff.Length, ref btr, IntPtr.Zero);
+            }
+            return r;
+        }
+
+        public uint Read(byte[] buffer)
+        {
+            uint btr = 0;
+            byte[] o = new byte[4];
+            lock (SyncObject)
+            {
+                if (hDrv.IsClosed || hDrv.IsInvalid)
+                    return 0;
+                DeviceIoControl(hDrv.DangerousGetHandle(), (uint) IOCTL.IOCTL_READ,
+                    Marshal.UnsafeAddrOfPinnedArrayElement(o, 0), (uint) o.Length,
+                    Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint) buffer.Length, ref btr, IntPtr.Zero);
+            }
+            return btr;
+        }
+
+
+        public List<string> Get_Devices()
+        {
+            List<string> DevicesPathName = new List<string>();
+            GetDevicesByClass(MINIPRO_GUID, DevicesPathName);
+            return DevicesPathName;
+        }
+
+
+        public bool RegisterForDeviceChange(bool Register, Form f)
+        {
+            bool Status = false;
+            long LastError = 0;
+
+            if (Register)
+            {
+                DEV_BROADCAST_DEVICEINTERFACE deviceInterface = new DEV_BROADCAST_DEVICEINTERFACE();
+                int size = Marshal.SizeOf(deviceInterface);
+                deviceInterface.dbcc_size = size;
+                deviceInterface.dbcc_devicetype = (int) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE;
+                IntPtr buffer = IntPtr.Zero;
+                buffer = Marshal.AllocHGlobal(size);
+                Marshal.StructureToPtr(deviceInterface, buffer, true);
+                deviceEventHandle = RegisterDeviceNotification(f.Handle, buffer,
+                    Convert.ToInt32(DEVICE_NOTIFY.DEVICE_NOTIFY_WINDOW_HANDLE |
+                                    DEVICE_NOTIFY.DEVICE_NOTIFY_ALL_INTERFACE_CLASSES));
+                Status = deviceEventHandle != IntPtr.Zero;
+                if (!Status) LastError = Marshal.GetLastWin32Error();
+                Marshal.FreeHGlobal(buffer);
+            }
+            else
+            {
+                if (deviceEventHandle != IntPtr.Zero) Status = UnregisterDeviceNotification(deviceEventHandle);
+                deviceEventHandle = IntPtr.Zero;
+            }
+
+            return Status;
+        }
+
+
+        public void ProcessWindowsMessage(ref Message m)
+        {
+            int devType;
+
+            if (m.Msg == WM_DEVICECHANGE)
+                switch (m.WParam.ToInt32())
+                {
+                    case (int) DBTDEVICE.DBT_DEVICEARRIVAL:
+                        // New device has just arrived
+                        devType = Marshal.ReadInt32(m.LParam, 4);
+                        if (devType == (int) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE)
+                            if (UsbDeviceChanged != null) UsbDeviceChanged();
+                        break;
+                    case (int) DBTDEVICE.DBT_DEVICEQUERYREMOVE:
+                        // Device is about to be removed, any application can cancel the removal
+                        devType = Marshal.ReadInt32(m.LParam, 4);
+                        if (devType == (int) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE)
+                            if (UsbDeviceChanged != null) UsbDeviceChanged();
+                        break;
+
+                    case (int) DBTDEVICE.DBT_DEVICEREMOVECOMPLETE:
+                        // Device has been removed
+                        devType = Marshal.ReadInt32(m.LParam, 4);
+                        if (devType == (int) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE)
+                            if (UsbDeviceChanged != null) UsbDeviceChanged();
+                        break;
+                }
+        }
+
+
+        private uint GetDevicesByClass(string guid, List<string> devicePathName)
+        {
+            Guid g = new Guid(guid);
+            uint i = 0;
+            IntPtr h = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero,
+                (int) (DiGetClassFlags.DIGCF_PRESENT | DiGetClassFlags.DIGCF_DEVICEINTERFACE));
+            lock (SyncObject)
+            {
+                if (h.ToInt32() != INVALID_HANDLE_VALUE)
+                {
+                    bool Success = true;
+                    while (Success)
+                    {
+                        SP_DEVICE_INTERFACE_DATA dia = new SP_DEVICE_INTERFACE_DATA();
+                        dia.cbSize = Marshal.SizeOf(dia);
+                        Success = SetupDiEnumDeviceInterfaces(h, IntPtr.Zero, ref g, i, ref dia);
+                        if (Success)
+                        {
+                            IntPtr detailDataBuffer = IntPtr.Zero;
+                            int bufferSize = 0;
+                            SP_DEVINFO_DATA da = new SP_DEVINFO_DATA();
+                            da.cbSize = Marshal.SizeOf(da);
+                            SP_DEVICE_INTERFACE_DETAIL_DATA didd = new SP_DEVICE_INTERFACE_DETAIL_DATA();
+                            didd.DevicePath = new byte[1001];
+                            didd.cbSize = 4 + Marshal.SystemDefaultCharSize;
+                            int nBytes = didd.cbSize;
+                            Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, IntPtr.Zero, 0, ref bufferSize,
+                                IntPtr.Zero);
+                            detailDataBuffer = Marshal.AllocHGlobal(bufferSize);
+                            Marshal.WriteInt32(detailDataBuffer,
+                                IntPtr.Size == 4 ? 4 + Marshal.SystemDefaultCharSize : 8);
+                            nBytes = bufferSize;
+                            Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, detailDataBuffer, (uint) nBytes,
+                                ref bufferSize, IntPtr.Zero);
+                            if (Success)
+                            {
+                                IntPtr pDevicePathName = new IntPtr(detailDataBuffer.ToInt32() + 4);
+                                devicePathName.Add(Marshal.PtrToStringAuto(pDevicePathName));
+                                Marshal.FreeHGlobal(detailDataBuffer);
+                            }
+                        }
+                        i += 1;
+                    }
+                }
+            }
+            return i;
+        }
+
+        private enum IOCTL
+        {
+            IOCTL_READ = 0x222004,
+            IOCTL_WRITE = 0x222000
+        }
+
 
         private enum EFileAccess : uint
         {
-
             DELETE = 0x10000,
             READ_CONTROL = 0x20000,
             WRITE_DAC = 0x40000,
@@ -69,7 +278,7 @@ namespace TL866
             TRUNCATE_EXISTING = 5
         }
 
-        
+
         private enum EFileAttributes : uint
         {
             FILE_ATTRIBUTE_READONLY = 0x1,
@@ -106,7 +315,7 @@ namespace TL866
             DEVICE_NOTIFY_ALL_INTERFACE_CLASSES = 0x4
         }
 
-        private enum DBTDEVICE 
+        private enum DBTDEVICE
         {
             DBT_DEVICEARRIVAL = 0x8000,
             DBT_DEVICEQUERYREMOVE = 0x8001,
@@ -117,7 +326,7 @@ namespace TL866
             DBT_CUSTOMEVENT = 0x8006
         }
 
-        private enum DBTDEVTYP 
+        private enum DBTDEVTYP
         {
             DBT_DEVTYP_OEM = 0x0,
             DBT_DEVTYP_DEVNODE = 0x1,
@@ -129,242 +338,41 @@ namespace TL866
         }
 
 
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct SP_DEVINFO_DATA
-		{
-			public int cbSize;
-			public Guid ClassGuid;
-			public uint DevInst;
-			public IntPtr Reserved;
-		}
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct SP_DEVICE_INTERFACE_DATA
-		{
-			public int cbSize;
-			public Guid InterfaceClassGuid;
-			public uint Flags;
-			public IntPtr Reserved;
-		}
-
-		[StructLayout(LayoutKind.Sequential)]
-		public struct SP_DEVICE_INTERFACE_DETAIL_DATA
-		{
-			public int cbSize;
-			public byte[] DevicePath;
-		}
-
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern IntPtr SetupDiGetClassDevs(ref Guid ClassGuid, int Enumerator, IntPtr hwndParent, UInt32 Flags);
-
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern Boolean SetupDiEnumDeviceInterfaces(IntPtr hDevInfo, IntPtr devInfo, ref Guid interfaceClassGuid, UInt32 memberIndex, ref SP_DEVICE_INTERFACE_DATA deviceInterfaceData);
-		
-		[DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
-		private static extern Boolean SetupDiGetDeviceInterfaceDetail(IntPtr nSetupDiGetClassDevs, ref SP_DEVICE_INTERFACE_DATA DeviceInterfaceData, IntPtr Ptr, uint DeviceInterfaceDetailDataSize, ref int RequiredSize, IntPtr PtrInfo);
-
-		[DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-		private static extern Microsoft.Win32.SafeHandles.SafeFileHandle CreateFile(string lpFileName, EFileAccess dwDesiredAccess, EFileShare dwShareMode, IntPtr lpSecurityAttributes, ECreationDisposition dwCreationDisposition, EFileAttributes dwFlagsAndAttributes, IntPtr hTemplateFile);
-
-		[DllImport("kernel32.dll", ExactSpelling = true, SetLastError = true, CharSet = CharSet.Auto)]
-		private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode, IntPtr lpInBuffer, uint nInBufferSize, IntPtr lpOutBuffer, uint nOutBufferSize, ref uint lpBytesReturned, IntPtr lpOverlapped);
-
-		[DllImport("kernel32.dll", SetLastError = true)]
-		[return: MarshalAs(UnmanagedType.Bool)]
-		private static extern bool CloseHandle(IntPtr hObject);
-
-		[DllImport("user32.dll", SetLastError = true)]
-		private static extern IntPtr RegisterDeviceNotification(IntPtr hRecipient, IntPtr NotificationFilter, Int32 Flags);
-
-		[DllImport("user32.dll", SetLastError = true)]
-		private static extern bool UnregisterDeviceNotification(IntPtr hHandle);
-
-		public struct DEV_BROADCAST_DEVICEINTERFACE
-		{
-			public Int32 dbcc_size;
-			public Int32 dbcc_devicetype;
-			public Int32 dbcc_reserved;
-			[MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 16)]
-			public byte[] dbcc_classguid;
-			[MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
-			public char[] dbcc_name;
-		}
-
-
-
-        public delegate void UsbDeviceChangedEventHandler();
-		public event UsbDeviceChangedEventHandler UsbDeviceChanged;
-		
-		private SafeFileHandle hDrv;
-		private IntPtr deviceEventHandle;
-		private object SyncObject = new object();
-
-		public UsbDevice()
-		{
-			hDrv = null;
-		}
-
-
-
-        public bool OpenDevice(string DevicePath)
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SP_DEVINFO_DATA
         {
-            hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE, EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero, ECreationDisposition.OPEN_EXISTING, EFileAttributes.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
-            return !(hDrv.IsClosed || hDrv.IsInvalid);
+            public int cbSize;
+            public Guid ClassGuid;
+            public uint DevInst;
+            public IntPtr Reserved;
         }
 
-        public void CloseDevice()
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SP_DEVICE_INTERFACE_DATA
         {
-            if (hDrv != null)
-                hDrv.Close();
+            public int cbSize;
+            public Guid InterfaceClassGuid;
+            public uint Flags;
+            public IntPtr Reserved;
         }
 
-
-        public bool Write(byte[] buffer)
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SP_DEVICE_INTERFACE_DETAIL_DATA
         {
-            uint btr = 0;
-            byte[] obuff = new byte[4096];
-            bool r = false;
-            lock (SyncObject)
-            {
-                if (hDrv.IsClosed || hDrv.IsInvalid)
-                    return false;
-                r = DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_WRITE, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, Marshal.UnsafeAddrOfPinnedArrayElement(obuff, 0), (uint)obuff.Length, ref btr, IntPtr.Zero);
-            }
-            return r;
+            public int cbSize;
+            public byte[] DevicePath;
         }
 
-        public uint Read(byte[] buffer)
+        public struct DEV_BROADCAST_DEVICEINTERFACE
         {
-            uint btr = 0;
-            byte[] o = new byte[4];
-            lock (SyncObject)
-            {
-                if (hDrv.IsClosed || hDrv.IsInvalid)
-                    return 0;
-                DeviceIoControl(hDrv.DangerousGetHandle(), (uint)IOCTL.IOCTL_READ, Marshal.UnsafeAddrOfPinnedArrayElement(o, 0), (uint)o.Length, Marshal.UnsafeAddrOfPinnedArrayElement(buffer, 0), (uint)buffer.Length, ref btr, IntPtr.Zero);
-            }
-            return btr;
+            public int dbcc_size;
+            public int dbcc_devicetype;
+            public int dbcc_reserved;
+
+            [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.U1, SizeConst = 16)]
+            public byte[] dbcc_classguid;
+
+            [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)] public char[] dbcc_name;
         }
-
-
-        public List<string> Get_Devices()
-        {
-            List<string> DevicesPathName = new List<string>();
-            GetDevicesByClass(MINIPRO_GUID, DevicesPathName);
-            return DevicesPathName;
-        }
-
-
-		public bool RegisterForDeviceChange(bool Register, System.Windows.Forms.Form f)
-		{
-			bool Status = false;
-			long LastError = 0;
-
-			if (Register) {
-				DEV_BROADCAST_DEVICEINTERFACE deviceInterface = new DEV_BROADCAST_DEVICEINTERFACE();
-				int size = Marshal.SizeOf(deviceInterface);
-				deviceInterface.dbcc_size = size;
-				deviceInterface.dbcc_devicetype = (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE;
-				IntPtr buffer = IntPtr.Zero;
-				buffer = Marshal.AllocHGlobal(size);
-				Marshal.StructureToPtr(deviceInterface, buffer, true);
-				deviceEventHandle = RegisterDeviceNotification(f.Handle, buffer, Convert.ToInt32(DEVICE_NOTIFY.DEVICE_NOTIFY_WINDOW_HANDLE | DEVICE_NOTIFY.DEVICE_NOTIFY_ALL_INTERFACE_CLASSES));
-				Status = (deviceEventHandle != IntPtr.Zero);
-				if (!Status) {
-					LastError = Marshal.GetLastWin32Error();
-				}
-				Marshal.FreeHGlobal(buffer);
-			} else {
-				if (deviceEventHandle != IntPtr.Zero) {
-					Status = UnregisterDeviceNotification(deviceEventHandle);
-				}
-				deviceEventHandle = IntPtr.Zero;
-			}
-
-			return Status;
-		}
-
-
-		public void ProcessWindowsMessage(ref Message m)
-		{
-			Int32 devType;
-
-			if (m.Msg == WM_DEVICECHANGE) {
-				switch (m.WParam.ToInt32()) {
-					case (Int32) DBTDEVICE.DBT_DEVICEARRIVAL:
-						// New device has just arrived
-						devType = Marshal.ReadInt32(m.LParam, 4);
-						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged();
-							}
-						}
-						break;
-					case (Int32)DBTDEVICE.DBT_DEVICEQUERYREMOVE:
-						// Device is about to be removed, any application can cancel the removal
-						devType = Marshal.ReadInt32(m.LParam, 4);
-						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged();
-							}
-						}
-						break;
-
-					case (Int32)DBTDEVICE.DBT_DEVICEREMOVECOMPLETE:
-						// Device has been removed
-						devType = Marshal.ReadInt32(m.LParam, 4);
-						if (devType == (Int32) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE) {
-							if (UsbDeviceChanged != null) {
-								UsbDeviceChanged();
-							}
-						}
-						break;
-
-				}
-			}
-		}
-
-
-		private uint GetDevicesByClass(string guid, List<string> devicePathName)
-		{
-			Guid g = new Guid(guid);
-			uint i = 0;
-            IntPtr h = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero, (int)(DiGetClassFlags.DIGCF_PRESENT | DiGetClassFlags.DIGCF_DEVICEINTERFACE));
-			lock (SyncObject) {
-				if (h.ToInt32() != INVALID_HANDLE_VALUE) {
-					bool Success = true;
-					while (Success) {
-						SP_DEVICE_INTERFACE_DATA dia = new SP_DEVICE_INTERFACE_DATA();
-						dia.cbSize = Marshal.SizeOf(dia);
-						Success = SetupDiEnumDeviceInterfaces(h, IntPtr.Zero, ref g, i, ref dia);
-						if (Success) {
-							IntPtr detailDataBuffer = IntPtr.Zero;
-							Int32 bufferSize = 0;
-							SP_DEVINFO_DATA da = new SP_DEVINFO_DATA();
-							da.cbSize = Marshal.SizeOf(da);
-							SP_DEVICE_INTERFACE_DETAIL_DATA didd = new SP_DEVICE_INTERFACE_DETAIL_DATA();
-							didd.DevicePath = new byte[1001];
-							didd.cbSize = 4 + Marshal.SystemDefaultCharSize;
-							int nBytes = didd.cbSize;
-							Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, IntPtr.Zero, 0, ref bufferSize, IntPtr.Zero);
-							detailDataBuffer = Marshal.AllocHGlobal(bufferSize);
-							Marshal.WriteInt32(detailDataBuffer, (IntPtr.Size == 4) ? (4 + Marshal.SystemDefaultCharSize) : 8);
-							nBytes = bufferSize;
-							Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, detailDataBuffer, (uint)nBytes, ref bufferSize, IntPtr.Zero);
-							if (Success) {
-								IntPtr pDevicePathName = new IntPtr(detailDataBuffer.ToInt32() + 4);
-								devicePathName.Add(Marshal.PtrToStringAuto(pDevicePathName));
-								Marshal.FreeHGlobal(detailDataBuffer);
-							}
-						}
-						i += 1;
-					}
-				}
-			}
-			return i;
-		}
-	}
+    }
 }
-
