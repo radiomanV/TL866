@@ -4,6 +4,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
 using System.Threading;
+using System.Reflection;
+using System.Diagnostics;
 
 namespace TL866
 {
@@ -238,7 +240,9 @@ namespace TL866
            
             reset_flag = false;
             int count = usb.Get_Devices().Count;
-            this.Text = String.Format("TL866 firmware updater ({0} {1} connected)", count, count == 1 ? "device" : "devices");
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            FileVersionInfo version = FileVersionInfo.GetVersionInfo(assembly.Location);
+            this.Text = String.Format("TL866 firmware updater  V{0}   ({1} {2} connected)",version.FileVersion, count, count == 1 ? "device" : "devices");
             if (usb.Get_Devices().Count > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
             {
 
