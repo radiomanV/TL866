@@ -65,15 +65,18 @@ namespace TL866
             }
             catch
             {
+                fsin.Close();
                 throw new Exception("Error opening file " + UpdateDat_Path);
             }
             if (fsin.Length != UPDATE_DAT_SIZE)
             {
+                fsin.Close();
                 throw new Exception(UpdateDat_Path + "\nFile size error!");
             }
             byte[] inbuffer = new byte[fsin.Length + 1];
             byte[] outbuffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
             fsin.Read(inbuffer, 0, (int)fsin.Length);
+            fsin.Close();
 
             m_eraseA = inbuffer[9];
             m_eraseCS = inbuffer[17];
@@ -117,7 +120,6 @@ namespace TL866
             }
             m_firmwareCS = new byte[outbuffer.Length];
             Array.Copy(outbuffer, m_firmwareCS, outbuffer.Length);
-            fsin.Close();
             byte[] b = new byte[123904];
             uint c1 = 0;
             uint c2 = 0;
