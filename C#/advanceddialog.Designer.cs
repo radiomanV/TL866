@@ -28,56 +28,56 @@
         /// </summary>
         private void InitializeComponent()
         {
-            this.btnDefault = new System.Windows.Forms.Button();
-            this.btnClone = new System.Windows.Forms.Button();
+            this.BtnDefault = new System.Windows.Forms.Button();
+            this.BtnClone = new System.Windows.Forms.Button();
             this.GroupBox2 = new System.Windows.Forms.GroupBox();
-            this.chkCP = new System.Windows.Forms.CheckBox();
-            this.btnWriteConfig = new System.Windows.Forms.Button();
-            this.btnWriteInfo = new System.Windows.Forms.Button();
+            this.ChkCP = new System.Windows.Forms.CheckBox();
+            this.BtnWriteConfig = new System.Windows.Forms.Button();
+            this.BtnWriteInfo = new System.Windows.Forms.Button();
             this.OK_Button = new System.Windows.Forms.Button();
-            this.btnEdit = new System.Windows.Forms.Button();
+            this.BtnEdit = new System.Windows.Forms.Button();
             this.Label5 = new System.Windows.Forms.Label();
             this.GroupBox3 = new System.Windows.Forms.GroupBox();
             this.Label4 = new System.Windows.Forms.Label();
-            this.txtSerial = new System.Windows.Forms.TextBox();
-            this.txtDevcode = new System.Windows.Forms.TextBox();
-            this.txtInfo = new System.Windows.Forms.TextBox();
-            this.radioCS = new System.Windows.Forms.RadioButton();
+            this.TxtSerial = new System.Windows.Forms.TextBox();
+            this.TxtDevcode = new System.Windows.Forms.TextBox();
+            this.TxtInfo = new System.Windows.Forms.TextBox();
+            this.RadioCS = new System.Windows.Forms.RadioButton();
             this.GroupBox1 = new System.Windows.Forms.GroupBox();
-            this.radioA = new System.Windows.Forms.RadioButton();
-            this.btnWriteBootloader = new System.Windows.Forms.Button();
+            this.RadioA = new System.Windows.Forms.RadioButton();
+            this.BtnWriteBootloader = new System.Windows.Forms.Button();
             this.Label1 = new System.Windows.Forms.Label();
             this.GroupBox2.SuspendLayout();
             this.GroupBox3.SuspendLayout();
             this.GroupBox1.SuspendLayout();
             this.SuspendLayout();
             // 
-            // btnDefault
+            // BtnDefault
             // 
-            this.btnDefault.BackColor = System.Drawing.Color.Transparent;
-            this.btnDefault.Location = new System.Drawing.Point(482, 45);
-            this.btnDefault.Name = "btnDefault";
-            this.btnDefault.Size = new System.Drawing.Size(77, 23);
-            this.btnDefault.TabIndex = 61;
-            this.btnDefault.Text = "Default";
-            this.btnDefault.UseVisualStyleBackColor = false;
-            this.btnDefault.Click += new System.EventHandler(this.btnDefault_Click);
+            this.BtnDefault.BackColor = System.Drawing.Color.Transparent;
+            this.BtnDefault.Location = new System.Drawing.Point(482, 45);
+            this.BtnDefault.Name = "BtnDefault";
+            this.BtnDefault.Size = new System.Drawing.Size(77, 23);
+            this.BtnDefault.TabIndex = 61;
+            this.BtnDefault.Text = "Default";
+            this.BtnDefault.UseVisualStyleBackColor = false;
+            this.BtnDefault.Click += new System.EventHandler(this.BtnDefault_Click);
             // 
-            // btnClone
+            // BtnClone
             // 
-            this.btnClone.BackColor = System.Drawing.Color.Transparent;
-            this.btnClone.Location = new System.Drawing.Point(399, 45);
-            this.btnClone.Name = "btnClone";
-            this.btnClone.Size = new System.Drawing.Size(77, 23);
-            this.btnClone.TabIndex = 63;
-            this.btnClone.Text = "Clone";
-            this.btnClone.UseVisualStyleBackColor = false;
-            this.btnClone.Click += new System.EventHandler(this.btnClone_Click);
+            this.BtnClone.BackColor = System.Drawing.Color.Transparent;
+            this.BtnClone.Location = new System.Drawing.Point(399, 45);
+            this.BtnClone.Name = "BtnClone";
+            this.BtnClone.Size = new System.Drawing.Size(77, 23);
+            this.BtnClone.TabIndex = 63;
+            this.BtnClone.Text = "Clone";
+            this.BtnClone.UseVisualStyleBackColor = false;
+            this.BtnClone.Click += new System.EventHandler(this.BtnClone_Click);
             // 
             // GroupBox2
             // 
-            this.GroupBox2.Controls.Add(this.chkCP);
-            this.GroupBox2.Controls.Add(this.btnWriteConfig);
+            this.GroupBox2.Controls.Add(this.ChkCP);
+            this.GroupBox2.Controls.Add(this.BtnWriteConfig);
             this.GroupBox2.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.GroupBox2.Location = new System.Drawing.Point(341, 97);
             this.GroupBox2.Name = "GroupBox2";
@@ -86,37 +86,37 @@
             this.GroupBox2.TabStop = false;
             this.GroupBox2.Text = "Copy protection";
             // 
-            // chkCP
+            // ChkCP
             // 
-            this.chkCP.AutoSize = true;
-            this.chkCP.Location = new System.Drawing.Point(107, 26);
-            this.chkCP.Name = "chkCP";
-            this.chkCP.Size = new System.Drawing.Size(139, 20);
-            this.chkCP.TabIndex = 6;
-            this.chkCP.Text = "Code protection bit";
-            this.chkCP.UseVisualStyleBackColor = true;
+            this.ChkCP.AutoSize = true;
+            this.ChkCP.Location = new System.Drawing.Point(107, 26);
+            this.ChkCP.Name = "ChkCP";
+            this.ChkCP.Size = new System.Drawing.Size(139, 20);
+            this.ChkCP.TabIndex = 6;
+            this.ChkCP.Text = "Code protection bit";
+            this.ChkCP.UseVisualStyleBackColor = true;
             // 
-            // btnWriteConfig
+            // BtnWriteConfig
             // 
-            this.btnWriteConfig.BackColor = System.Drawing.Color.Transparent;
-            this.btnWriteConfig.Location = new System.Drawing.Point(16, 23);
-            this.btnWriteConfig.Name = "btnWriteConfig";
-            this.btnWriteConfig.Size = new System.Drawing.Size(75, 25);
-            this.btnWriteConfig.TabIndex = 5;
-            this.btnWriteConfig.Text = "Write";
-            this.btnWriteConfig.UseVisualStyleBackColor = false;
-            this.btnWriteConfig.Click += new System.EventHandler(this.btnWriteConfig_Click);
+            this.BtnWriteConfig.BackColor = System.Drawing.Color.Transparent;
+            this.BtnWriteConfig.Location = new System.Drawing.Point(16, 23);
+            this.BtnWriteConfig.Name = "BtnWriteConfig";
+            this.BtnWriteConfig.Size = new System.Drawing.Size(75, 25);
+            this.BtnWriteConfig.TabIndex = 5;
+            this.BtnWriteConfig.Text = "Write";
+            this.BtnWriteConfig.UseVisualStyleBackColor = false;
+            this.BtnWriteConfig.Click += new System.EventHandler(this.BtnWriteConfig_Click);
             // 
-            // btnWriteInfo
+            // BtnWriteInfo
             // 
-            this.btnWriteInfo.BackColor = System.Drawing.Color.Transparent;
-            this.btnWriteInfo.Location = new System.Drawing.Point(16, 74);
-            this.btnWriteInfo.Name = "btnWriteInfo";
-            this.btnWriteInfo.Size = new System.Drawing.Size(75, 23);
-            this.btnWriteInfo.TabIndex = 65;
-            this.btnWriteInfo.Text = "Write";
-            this.btnWriteInfo.UseVisualStyleBackColor = false;
-            this.btnWriteInfo.Click += new System.EventHandler(this.btnWriteInfo_Click);
+            this.BtnWriteInfo.BackColor = System.Drawing.Color.Transparent;
+            this.BtnWriteInfo.Location = new System.Drawing.Point(16, 74);
+            this.BtnWriteInfo.Name = "BtnWriteInfo";
+            this.BtnWriteInfo.Size = new System.Drawing.Size(75, 23);
+            this.BtnWriteInfo.TabIndex = 65;
+            this.BtnWriteInfo.Text = "Write";
+            this.BtnWriteInfo.UseVisualStyleBackColor = false;
+            this.BtnWriteInfo.Click += new System.EventHandler(this.BtnWriteInfo_Click);
             // 
             // OK_Button
             // 
@@ -130,16 +130,16 @@
             this.OK_Button.UseVisualStyleBackColor = false;
             this.OK_Button.Click += new System.EventHandler(this.OK_Button_Click);
             // 
-            // btnEdit
+            // BtnEdit
             // 
-            this.btnEdit.BackColor = System.Drawing.Color.Transparent;
-            this.btnEdit.Location = new System.Drawing.Point(316, 45);
-            this.btnEdit.Name = "btnEdit";
-            this.btnEdit.Size = new System.Drawing.Size(77, 23);
-            this.btnEdit.TabIndex = 64;
-            this.btnEdit.Text = "Edit";
-            this.btnEdit.UseVisualStyleBackColor = false;
-            this.btnEdit.Click += new System.EventHandler(this.btnEdit_Click);
+            this.BtnEdit.BackColor = System.Drawing.Color.Transparent;
+            this.BtnEdit.Location = new System.Drawing.Point(316, 45);
+            this.BtnEdit.Name = "BtnEdit";
+            this.BtnEdit.Size = new System.Drawing.Size(77, 23);
+            this.BtnEdit.TabIndex = 64;
+            this.BtnEdit.Text = "Edit";
+            this.BtnEdit.UseVisualStyleBackColor = false;
+            this.BtnEdit.Click += new System.EventHandler(this.BtnEdit_Click);
             // 
             // Label5
             // 
@@ -153,14 +153,14 @@
             // 
             // GroupBox3
             // 
-            this.GroupBox3.Controls.Add(this.btnWriteInfo);
-            this.GroupBox3.Controls.Add(this.btnDefault);
-            this.GroupBox3.Controls.Add(this.btnClone);
-            this.GroupBox3.Controls.Add(this.btnEdit);
+            this.GroupBox3.Controls.Add(this.BtnWriteInfo);
+            this.GroupBox3.Controls.Add(this.BtnDefault);
+            this.GroupBox3.Controls.Add(this.BtnClone);
+            this.GroupBox3.Controls.Add(this.BtnEdit);
             this.GroupBox3.Controls.Add(this.Label5);
             this.GroupBox3.Controls.Add(this.Label4);
-            this.GroupBox3.Controls.Add(this.txtSerial);
-            this.GroupBox3.Controls.Add(this.txtDevcode);
+            this.GroupBox3.Controls.Add(this.TxtSerial);
+            this.GroupBox3.Controls.Add(this.TxtDevcode);
             this.GroupBox3.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.GroupBox3.Location = new System.Drawing.Point(12, 170);
             this.GroupBox3.Name = "GroupBox3";
@@ -179,58 +179,58 @@
             this.Label4.TabIndex = 59;
             this.Label4.Text = "Device code";
             // 
-            // txtSerial
+            // TxtSerial
             // 
-            this.txtSerial.BackColor = System.Drawing.SystemColors.Info;
-            this.txtSerial.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.txtSerial.Location = new System.Drawing.Point(97, 46);
-            this.txtSerial.MaxLength = 24;
-            this.txtSerial.Name = "txtSerial";
-            this.txtSerial.ReadOnly = true;
-            this.txtSerial.Size = new System.Drawing.Size(202, 22);
-            this.txtSerial.TabIndex = 58;
-            this.txtSerial.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            this.txtSerial.WordWrap = false;
+            this.TxtSerial.BackColor = System.Drawing.SystemColors.Info;
+            this.TxtSerial.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.TxtSerial.Location = new System.Drawing.Point(97, 46);
+            this.TxtSerial.MaxLength = 24;
+            this.TxtSerial.Name = "TxtSerial";
+            this.TxtSerial.ReadOnly = true;
+            this.TxtSerial.Size = new System.Drawing.Size(202, 22);
+            this.TxtSerial.TabIndex = 58;
+            this.TxtSerial.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.TxtSerial.WordWrap = false;
             // 
-            // txtDevcode
+            // TxtDevcode
             // 
-            this.txtDevcode.BackColor = System.Drawing.SystemColors.Info;
-            this.txtDevcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.txtDevcode.Location = new System.Drawing.Point(10, 46);
-            this.txtDevcode.MaxLength = 8;
-            this.txtDevcode.Name = "txtDevcode";
-            this.txtDevcode.ReadOnly = true;
-            this.txtDevcode.Size = new System.Drawing.Size(81, 22);
-            this.txtDevcode.TabIndex = 57;
-            this.txtDevcode.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.TxtDevcode.BackColor = System.Drawing.SystemColors.Info;
+            this.TxtDevcode.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.TxtDevcode.Location = new System.Drawing.Point(10, 46);
+            this.TxtDevcode.MaxLength = 8;
+            this.TxtDevcode.Name = "TxtDevcode";
+            this.TxtDevcode.ReadOnly = true;
+            this.TxtDevcode.Size = new System.Drawing.Size(81, 22);
+            this.TxtDevcode.TabIndex = 57;
+            this.TxtDevcode.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
             // 
-            // txtInfo
+            // TxtInfo
             // 
-            this.txtInfo.BackColor = System.Drawing.SystemColors.Info;
-            this.txtInfo.Font = new System.Drawing.Font("Courier New", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.txtInfo.Location = new System.Drawing.Point(12, 12);
-            this.txtInfo.Multiline = true;
-            this.txtInfo.Name = "txtInfo";
-            this.txtInfo.ReadOnly = true;
-            this.txtInfo.Size = new System.Drawing.Size(581, 79);
-            this.txtInfo.TabIndex = 63;
+            this.TxtInfo.BackColor = System.Drawing.SystemColors.Info;
+            this.TxtInfo.Font = new System.Drawing.Font("Courier New", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.TxtInfo.Location = new System.Drawing.Point(12, 12);
+            this.TxtInfo.Multiline = true;
+            this.TxtInfo.Name = "TxtInfo";
+            this.TxtInfo.ReadOnly = true;
+            this.TxtInfo.Size = new System.Drawing.Size(581, 79);
+            this.TxtInfo.TabIndex = 63;
             // 
-            // radioCS
+            // RadioCS
             // 
-            this.radioCS.AutoSize = true;
-            this.radioCS.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.radioCS.Location = new System.Drawing.Point(207, 26);
-            this.radioCS.Name = "radioCS";
-            this.radioCS.Size = new System.Drawing.Size(114, 20);
-            this.radioCS.TabIndex = 6;
-            this.radioCS.Text = "CS Bootloader";
-            this.radioCS.UseVisualStyleBackColor = true;
+            this.RadioCS.AutoSize = true;
+            this.RadioCS.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.RadioCS.Location = new System.Drawing.Point(207, 26);
+            this.RadioCS.Name = "RadioCS";
+            this.RadioCS.Size = new System.Drawing.Size(114, 20);
+            this.RadioCS.TabIndex = 6;
+            this.RadioCS.Text = "CS Bootloader";
+            this.RadioCS.UseVisualStyleBackColor = true;
             // 
             // GroupBox1
             // 
-            this.GroupBox1.Controls.Add(this.radioCS);
-            this.GroupBox1.Controls.Add(this.radioA);
-            this.GroupBox1.Controls.Add(this.btnWriteBootloader);
+            this.GroupBox1.Controls.Add(this.RadioCS);
+            this.GroupBox1.Controls.Add(this.RadioA);
+            this.GroupBox1.Controls.Add(this.BtnWriteBootloader);
             this.GroupBox1.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
             this.GroupBox1.Location = new System.Drawing.Point(12, 97);
             this.GroupBox1.Name = "GroupBox1";
@@ -239,29 +239,29 @@
             this.GroupBox1.TabStop = false;
             this.GroupBox1.Text = "Bootloader";
             // 
-            // radioA
+            // RadioA
             // 
-            this.radioA.AutoSize = true;
-            this.radioA.Checked = true;
-            this.radioA.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
-            this.radioA.Location = new System.Drawing.Point(97, 26);
-            this.radioA.Name = "radioA";
-            this.radioA.Size = new System.Drawing.Size(105, 20);
-            this.radioA.TabIndex = 7;
-            this.radioA.TabStop = true;
-            this.radioA.Text = "A Bootloader";
-            this.radioA.UseVisualStyleBackColor = true;
+            this.RadioA.AutoSize = true;
+            this.RadioA.Checked = true;
+            this.RadioA.Font = new System.Drawing.Font("Microsoft Sans Serif", 9.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(238)));
+            this.RadioA.Location = new System.Drawing.Point(97, 26);
+            this.RadioA.Name = "RadioA";
+            this.RadioA.Size = new System.Drawing.Size(105, 20);
+            this.RadioA.TabIndex = 7;
+            this.RadioA.TabStop = true;
+            this.RadioA.Text = "A Bootloader";
+            this.RadioA.UseVisualStyleBackColor = true;
             // 
-            // btnWriteBootloader
+            // BtnWriteBootloader
             // 
-            this.btnWriteBootloader.BackColor = System.Drawing.Color.Transparent;
-            this.btnWriteBootloader.Location = new System.Drawing.Point(16, 23);
-            this.btnWriteBootloader.Name = "btnWriteBootloader";
-            this.btnWriteBootloader.Size = new System.Drawing.Size(75, 25);
-            this.btnWriteBootloader.TabIndex = 5;
-            this.btnWriteBootloader.Text = "Write";
-            this.btnWriteBootloader.UseVisualStyleBackColor = false;
-            this.btnWriteBootloader.Click += new System.EventHandler(this.btnWriteBootloader_Click);
+            this.BtnWriteBootloader.BackColor = System.Drawing.Color.Transparent;
+            this.BtnWriteBootloader.Location = new System.Drawing.Point(16, 23);
+            this.BtnWriteBootloader.Name = "BtnWriteBootloader";
+            this.BtnWriteBootloader.Size = new System.Drawing.Size(75, 25);
+            this.BtnWriteBootloader.TabIndex = 5;
+            this.BtnWriteBootloader.Text = "Write";
+            this.BtnWriteBootloader.UseVisualStyleBackColor = false;
+            this.BtnWriteBootloader.Click += new System.EventHandler(this.BtnWriteBootloader_Click);
             // 
             // Label1
             // 
@@ -282,7 +282,7 @@
             this.Controls.Add(this.GroupBox2);
             this.Controls.Add(this.OK_Button);
             this.Controls.Add(this.GroupBox3);
-            this.Controls.Add(this.txtInfo);
+            this.Controls.Add(this.TxtInfo);
             this.Controls.Add(this.GroupBox1);
             this.Controls.Add(this.Label1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -292,7 +292,6 @@
             this.ShowInTaskbar = false;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Advanced";
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Dialog2_FormClosing);
             this.GroupBox2.ResumeLayout(false);
             this.GroupBox2.PerformLayout();
             this.GroupBox3.ResumeLayout(false);
@@ -306,24 +305,24 @@
 
         #endregion
 
-        internal System.Windows.Forms.Button btnDefault;
-        internal System.Windows.Forms.Button btnClone;
+        internal System.Windows.Forms.Button BtnDefault;
+        internal System.Windows.Forms.Button BtnClone;
         internal System.Windows.Forms.GroupBox GroupBox2;
-        internal System.Windows.Forms.CheckBox chkCP;
-        internal System.Windows.Forms.Button btnWriteConfig;
-        internal System.Windows.Forms.Button btnWriteInfo;
+        internal System.Windows.Forms.CheckBox ChkCP;
+        internal System.Windows.Forms.Button BtnWriteConfig;
+        internal System.Windows.Forms.Button BtnWriteInfo;
         internal System.Windows.Forms.Button OK_Button;
-        internal System.Windows.Forms.Button btnEdit;
+        internal System.Windows.Forms.Button BtnEdit;
         internal System.Windows.Forms.Label Label5;
         internal System.Windows.Forms.GroupBox GroupBox3;
         internal System.Windows.Forms.Label Label4;
-        internal System.Windows.Forms.TextBox txtSerial;
-        internal System.Windows.Forms.TextBox txtDevcode;
-        internal System.Windows.Forms.TextBox txtInfo;
-        internal System.Windows.Forms.RadioButton radioCS;
+        internal System.Windows.Forms.TextBox TxtSerial;
+        internal System.Windows.Forms.TextBox TxtDevcode;
+        internal System.Windows.Forms.TextBox TxtInfo;
+        internal System.Windows.Forms.RadioButton RadioCS;
         internal System.Windows.Forms.GroupBox GroupBox1;
-        internal System.Windows.Forms.RadioButton radioA;
-        internal System.Windows.Forms.Button btnWriteBootloader;
+        internal System.Windows.Forms.RadioButton RadioA;
+        internal System.Windows.Forms.Button BtnWriteBootloader;
         internal System.Windows.Forms.Label Label1;
     }
 }

@@ -20,6 +20,7 @@ namespace TL866
 
         public const uint A_BOOTLOADER_CRC = 0x95AB;
         public const uint CS_BOOTLOADER_CRC = 0x20D2;
+        public const uint BAD_CRC = 0xc8C2F013;
 
 
 
@@ -197,10 +198,10 @@ namespace TL866
             msout.Close();
         }
 
-        public byte[] Encrypt_Firmware(byte[] firmware, int key)
+        public byte[] Encrypt_Firmware(byte[] firmware, int type)
         {
             byte[] outbuffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
-            Array.Copy(key == (int)ENCRYPTION_KEY.A_KEY ? m_firmwareA : m_firmwareCS, outbuffer, outbuffer.Length);
+            Array.Copy(type == (int)ENCRYPTION_KEY.A_KEY ? m_firmwareA : m_firmwareCS, outbuffer, outbuffer.Length);
             byte[] xortable = new byte[256];
             byte[] buffer = new byte[80];
             //extract encryption xor table
@@ -283,53 +284,53 @@ namespace TL866
 
 
 
-        public string[] GetSerialFromBin(byte[] FirmwareType)
+        public string[] GetSerialFromBin(byte[] firmware)
         {
-            byte[] key = new byte[80];
-            Array.Copy(FirmwareType, 0x1fd00, key, 0, key.Length);
-            DecryptSerial(key, FirmwareType);
-            return (new string[] { System.Text.Encoding.UTF8.GetString(key, 0, 8), System.Text.Encoding.UTF8.GetString(key, 8, 24) });
+            byte[] info = new byte[80];
+            Array.Copy(firmware, 0x1fd00, info, 0, info.Length);
+            DecryptSerial(info, firmware);
+            return (new string[] { System.Text.Encoding.UTF8.GetString(info, 0, 8), System.Text.Encoding.UTF8.GetString(info, 8, 24) });
         }
 
-        public void DecryptSerial(byte[] key, byte[] firmware)
+        public void DecryptSerial(byte[] info, byte[] firmware)
         {
             //step1
             uint index = 0xA;
-            for (uint i = 0; i <= key.Length - 1; i++)
+            for (uint i = 0; i <= info.Length - 1; i++)
             {
-                key[i] = (byte)(key[i] ^ firmware[0x1fc00 + index]);
+                info[i] = (byte)(info[i] ^ firmware[0x1fc00 + index]);
                 index += 1;
                 index = index & 0xff;
             }
             //step2
-            for (int i = key.Length - 1; i >= 1; i += -1)
+            for (int i = info.Length - 1; i >= 1; i += -1)
             {
-                key[i] = (byte)(((key[i] >> 3) & 0x1f) | (key[i - 1] << 5));
+                info[i] = (byte)(((info[i] >> 3) & 0x1f) | (info[i - 1] << 5));
             }
-            key[0] = (byte)((key[0] >> 3) & 0x1f);
+            info[0] = (byte)((info[0] >> 3) & 0x1f);
             //step3
             byte t = 0;
-            for (int i = 0; i <= key.Length / 2 - 1; i += 4)
+            for (int i = 0; i <= info.Length / 2 - 1; i += 4)
             {
-                t = key[i];
-                key[i] = key[key.Length - i - 1];
-                key[key.Length - i - 1] = t;
+                t = info[i];
+                info[i] = info[info.Length - i - 1];
+                info[info.Length - i - 1] = t;
             }
         }
 
 
-        public ushort GetKeyCRC(byte[] key)
+        public ushort GetKeyCRC(byte[] data)
         {
             Crc16 crcc = new Crc16();
-            return crcc.GetCRC16(key, 0);
+            return crcc.GetCRC16(data, 0);
         }
 
 
-        private void Make_CRC(byte[] key)
+        private void Make_CRC(byte[] data)
         {
-            byte[] b = new byte[key.Length - 2];
+            byte[] b = new byte[data.Length - 2];
             ushort crc = 0;
-            Array.Copy(key, 0, b, 0, b.Length);
+            Array.Copy(data, 0, b, 0, b.Length);
             do
             {
                 for (int i = 32; i <= b.Length - 1; i++)
@@ -338,37 +339,47 @@ namespace TL866
                 }
                 crc = GetKeyCRC(b);
             } while (!((crc < 0x2000)));
-            Array.Copy(b, 0, key, 0, b.Length);
-            key[key.Length - 1] = Convert.ToByte((crc >> 8));
-            key[key.Length - 2] = Convert.ToByte(crc & 0xff);
+            Array.Copy(b, 0, data, 0, b.Length);
+            data[data.Length - 1] = Convert.ToByte((crc >> 8));
+            data[data.Length - 2] = Convert.ToByte(crc & 0xff);
         }
 
-        public void EncryptSerial(byte[] key, byte[] firmware)
+        public void EncryptSerial(byte[] info, byte[] firmware)
         {
             uint index = 0xa;
             byte t = 0;
-            if (GetKeyCRC(key) != 0)
-                Make_CRC(key);
+            if (GetKeyCRC(info) != 0)
+                Make_CRC(info);
             //step1
-            for (int i = 0; i <= key.Length / 2 - 1; i += 4)
+            for (int i = 0; i <= info.Length / 2 - 1; i += 4)
             {
-                t = key[i];
-                key[i] = key[key.Length - i - 1];
-                key[key.Length - i - 1] = t;
+                t = info[i];
+                info[i] = info[info.Length - i - 1];
+                info[info.Length - i - 1] = t;
             }
             //step2
-            for (int i = 0; i <= key.Length - 2; i++)
+            for (int i = 0; i <= info.Length - 2; i++)
             {
-                key[i] = (byte)(((key[i] << 3) & 0xf8) | (key[i + 1] >> 5));
+                info[i] = (byte)(((info[i] << 3) & 0xf8) | (info[i + 1] >> 5));
             }
-            key[key.Length - 1] = (byte)((key[key.Length - 1] << 3) & 0xf8);
+            info[info.Length - 1] = (byte)((info[info.Length - 1] << 3) & 0xf8);
             //step3
-            for (int i = 0; i <= key.Length - 1; i++)
+            for (int i = 0; i <= info.Length - 1; i++)
             {
-                key[i] = (byte)(key[i] ^ firmware[0x1fc00 + index]);
+                info[i] = (byte)(info[i] ^ firmware[0x1FC00 + index]);
                 index += 1;
                 index = index & 0xff;
             }
+        }
+
+
+        public bool Calc_CRC(string DevCode, string Serial)
+        {
+            byte[] k = new byte[32];
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes(DevCode + new string(' ', 8 - DevCode.Length)), 0, k, 0, 8);
+            Array.Copy(System.Text.Encoding.ASCII.GetBytes(Serial + new string(' ', 24 - Serial.Length)), 0, k, 8, 24);
+            crc32 crc = new crc32();
+            return crc.GetCRC32(k, 0xffffffffu) == BAD_CRC;
         }
 
     }

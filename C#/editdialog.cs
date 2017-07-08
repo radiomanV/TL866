@@ -7,8 +7,6 @@ namespace TL866
     {
 
 
-        private const uint BAD_CRC = 0xc8C2F013;
-
         public EditDialog()
         {
             InitializeComponent();
@@ -16,37 +14,37 @@ namespace TL866
 
         private void OK_Button_Click(System.Object sender, System.EventArgs e)
         {
-            if ((txtDevcode.Text.Trim().ToLower()) == "codedump" && (txtSerial.Text.Trim()) == "000000000000000000000000")
+            if ((TxtDevcode.Text.Trim().ToLower()) == "codedump" && (TxtSerial.Text.Trim()) == "000000000000000000000000")
             {
                 MessageBox.Show( "Please enter another device and serial code!\nThese are reserved.", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
-            if (Calc_CRC(txtDevcode.Text, txtSerial.Text))
+            if (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
             {
                 MessageBox.Show( "Bad Device and serial code!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
             this.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this.Hide();
+            this.Close();
         }
 
         private void Cancel_Button_Click(System.Object sender, System.EventArgs e)
         {
             this.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.Hide();
+            this.Close();
         }
 
-        private void btnRndDev_Click(System.Object sender, System.EventArgs e)
+        private void BtnRndDev_Click(System.Object sender, System.EventArgs e)
         {
             string s = "";
             do
             {
                 s = Utils.Generator.Next(0, 99999999).ToString("00000000");
-            } while (Calc_CRC(s, txtSerial.Text));
-            txtDevcode.Text = s;
+            } while (GetMainForm().firmware.Calc_CRC(s, TxtSerial.Text));
+            TxtDevcode.Text = s;
         }
 
-        private void btnRndSer_Click(System.Object sender, System.EventArgs e)
+        private void BtnRndSer_Click(System.Object sender, System.EventArgs e)
         {
             string s = null;
             do
@@ -56,29 +54,24 @@ namespace TL866
                 {
                     s += (Utils.Generator.Next(0, 15).ToString("X"));
                 }
-            } while (Calc_CRC(txtDevcode.Text, s));
-            txtSerial.Text = s;
+            } while (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, s));
+            TxtSerial.Text = s;
         }
 
-        public bool Calc_CRC(string DevCode, string Serial)
-        {
-            byte[] k = new byte[32];
-            Array.Copy(System.Text.Encoding.ASCII.GetBytes(DevCode + new string(' ', 8 - DevCode.Length)), 0, k, 0, 8);
-            Array.Copy(System.Text.Encoding.ASCII.GetBytes(Serial + new string(' ', 24 - Serial.Length)), 0, k, 8, 24);
-            crc32 crc = new crc32();
-            return crc.GetCRC32(k, 0xffffffffu) == BAD_CRC;
-        }
 
-        private void txtDevcode_TextChanged(System.Object sender, System.EventArgs e)
+        private void TxtDevcode_TextChanged(System.Object sender, System.EventArgs e)
         {
-            if (Calc_CRC(txtDevcode.Text, txtSerial.Text))
+            if (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
             {
                 MessageBox.Show( "Bad Device and serial code!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
             }
         }
 
 
-
+        private MainForm GetMainForm()
+        {
+            return Application.OpenForms["MainForm"] as MainForm;
+        }
 
     }
 }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
@@ -9,6 +9,16 @@ namespace TL866
 {
     public partial class MainForm : Form
     {
+        public Firmware firmware;
+        private BackgroundWorker worker;
+        public UsbDevice usb;
+
+        private bool reset_flag;
+        private string devcode;
+        private string serial;
+        private int devtype;
+
+        private AdvancedDialog AdvancedWindow;
 
         private enum LED_ACTION
         {
@@ -18,16 +28,6 @@ namespace TL866
             LED_WRITE_OFF
         }
 
-        private Firmware firmware;
-        private BackgroundWorker worker;
-        public UsbDevice usb;
-
-        private bool reset_flag;
-        private string devcode;
-        private string serial;
-        private AdvancedDialog AdvancedWindow;
-        public EditDialog EditWindow;
-        private int devtype;
 
         public MainForm()
         {
@@ -36,8 +36,7 @@ namespace TL866
             reset_flag = false;
             firmware = new Firmware();
             usb = new UsbDevice();
-            AdvancedWindow = new AdvancedDialog();
-            EditWindow = new EditDialog();
+            //AdvancedWindow = new AdvancedDialog();
             devcode = "";
             serial = "";
             usb.UsbDeviceChanged += new UsbDevice.UsbDeviceChangedEventHandler(UsbDeviceChanged);
@@ -48,7 +47,7 @@ namespace TL866
             worker.WorkerReportsProgress = true;
             worker.WorkerSupportsCancellation = true;
             Leds_Off();
-            UsbDeviceChanged(1);
+            UsbDeviceChanged();
         }
 
 
@@ -57,24 +56,23 @@ namespace TL866
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             worker.CancelAsync();
-            e.Cancel = false;
             usb.CloseDevice();
             usb.RegisterForDeviceChange(false, this);
         }
 
 
-        private void btnInput_Click(object sender, EventArgs e)
+        private void BtnInput_Click(object sender, EventArgs e)
         {
-            OpenFileDialog odialog = new OpenFileDialog();
-            odialog.Title = "Update.dat";
-            odialog.Filter = "dat files (*.dat)|*.dat|All files (*.*)|*.*";
-            odialog.CheckFileExists = true;
-            if (odialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            OpenFileDialog dlg = new OpenFileDialog();
+            dlg.Title = "Update.dat";
+            dlg.Filter = "dat files (*.dat)|*.dat|All files (*.*)|*.*";
+            dlg.CheckFileExists = true;
+            if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                txtInput.Text = "";
+                TxtInput.Text = "";
                 try
                 {
-                    firmware.Open(odialog.FileName);
+                    firmware.Open(dlg.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -84,41 +82,42 @@ namespace TL866
                 }
                 lblVersion.Text = String.Format("[V:{0}]", firmware.GetVersion());
             }
-            txtInput.Text = odialog.FileName;
+            TxtInput.Text = dlg.FileName;
         }
 
-        private void btnDefault_Click(object sender, EventArgs e)
+        private void BtnDefault_Click(object sender, EventArgs e)
         {
-            string[] s = firmware.GetSerialFromBin(radiofA.Checked ? Properties.Resources.firmwareA : Properties.Resources.firmwareCS);
-            txtDevcode.Text = s[0];
-            txtSerial.Text = s[1];
+            string[] s = firmware.GetSerialFromBin(RadiofA.Checked ? Properties.Resources.firmwareA : Properties.Resources.firmwareCS);
+            TxtDevcode.Text = s[0];
+            TxtSerial.Text = s[1];
         }
 
 
-        private void btnEdit_Click(object sender, EventArgs e)
+        private void BtnEdit_Click(object sender, EventArgs e)
         {
-            EditWindow.txtDevcode.Text = txtDevcode.Text;
-            EditWindow.txtSerial.Text = txtSerial.Text;
-            if (EditWindow.ShowDialog(this) == DialogResult.OK)
+            EditDialog dlg = new EditDialog();
+            dlg.TxtDevcode.Text = TxtDevcode.Text;
+            dlg.TxtSerial.Text = TxtSerial.Text;
+            if (dlg.ShowDialog(this) == DialogResult.OK)
             {
-                txtDevcode.Text = EditWindow.txtDevcode.Text;
-                txtSerial.Text = EditWindow.txtSerial.Text;
+                TxtDevcode.Text = dlg.TxtDevcode.Text;
+                TxtSerial.Text = dlg.TxtSerial.Text;
             }
         }
 
 
-        private void btnClone_Click(System.Object sender, System.EventArgs e)
+        private void BtnClone_Click(System.Object sender, System.EventArgs e)
         {
-            UsbDeviceChanged(0);
+            UsbDeviceChanged();
             if (!String.IsNullOrEmpty(devcode) || !String.IsNullOrEmpty(serial))
             {
-                txtDevcode.Text = devcode;
-                txtSerial.Text = serial;
+                TxtDevcode.Text = devcode;
+                TxtSerial.Text = serial;
             }
         }
 
 
-        private void btnDump_Click(System.Object sender, System.EventArgs e)
+        private void BtnDump_Click(System.Object sender, System.EventArgs e)
         {
             if (!CheckDevices(this))
                 return;
@@ -134,22 +133,20 @@ namespace TL866
             sdialog.OverwritePrompt = true;
             if (sdialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                UsbDeviceChanged(0);
+                UsbDeviceChanged();
                 ProgressBar1.Maximum = (int)Firmware.FLASH_SIZE;//128Kbytes
                 worker.RunWorkerAsync(new object[] { 2, sdialog.FileName });
             }
         }
 
 
-        private void btnAdvanced_Click(object sender, EventArgs e)
+        private void BtnAdvanced_Click(object sender, EventArgs e)
         {
-            UsbDeviceChanged(0);
-            AdvancedWindow.txtDevcode.Text = devcode;
-            AdvancedWindow.txtSerial.Text = serial;
+            AdvancedWindow = new AdvancedDialog();
             AdvancedWindow.Show(this);
         }
 
-        private void btnReflash_Click(object sender, EventArgs e)
+        private void BtnReflash_Click(object sender, EventArgs e)
         {
             if (worker.IsBusy) return;
             if (!CheckDevices(this))
@@ -164,11 +161,11 @@ namespace TL866
             if (MessageBox.Show(Utils.WARNING_REFLASH, "TL866", MessageBoxButtons.YesNo, MessageBoxIcon.Exclamation) == DialogResult.Yes)
             {
                 int ftype = (int)Firmware.FIRMWARE_TYPE.FIRMWARE_A;
-                if (radioA.Checked)
+                if (RadioA.Checked)
                     ftype = (int)Firmware.FIRMWARE_TYPE.FIRMWARE_A;
-                if (radioCS.Checked)
+                if (RadioCS.Checked)
                     ftype = (int)Firmware.FIRMWARE_TYPE.FIRMWARE_CS;
-                if (radioDump.Checked)
+                if (RadioDump.Checked)
                     ftype = (int)Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM;
                 ProgressBar1.Maximum = (int)Firmware.ENCRYPTED_FIRMWARE_SIZE;
                 worker.RunWorkerAsync(new object[] { 1, ftype });
@@ -176,13 +173,13 @@ namespace TL866
         }
 
 
-        private void btnSave_Click(object sender, EventArgs e)
+        private void BtnSave_Click(object sender, EventArgs e)
         {
-            Save(radiofA.Checked ? Properties.Resources.firmwareA : Properties.Resources.firmwareCS);
+            Save(RadiofA.Checked ? Properties.Resources.firmwareA : Properties.Resources.firmwareCS);
         }
 
 
-        private void btnReset_Click(object sender, EventArgs e)
+        private void BtnReset_Click(object sender, EventArgs e)
         {
             if (worker.IsBusy)
                 return;
@@ -235,10 +232,11 @@ namespace TL866
         }
 
 
-        public void UsbDeviceChanged(int message)
+        public void UsbDeviceChanged()
         {
             if (usb.Get_Devices().Count == 0 && reset_flag)
                 return;
+           
             reset_flag = false;
             int count = usb.Get_Devices().Count;
             this.Text = String.Format("TL866 firmware updater ({0} {1} connected)", count, count == 1 ? "device" : "devices");
@@ -248,84 +246,86 @@ namespace TL866
                 usb.Write(new byte[] { Firmware.REPORT_COMMAND, 0, 0, 0, 0 });
                 byte[] readbuffer = new byte[64];
                 usb.Read(readbuffer);
-                txtInfo.Clear();
+                TxtInfo.Clear();
                 switch (readbuffer[6])
                 {
                     case 1:
-                        txtInfo.AppendText("Device version: TL866A\n");
+                        TxtInfo.AppendText("Device version: TL866A\n");
                         devtype = (int)Firmware.PROGRAMMER_TYPE.TL866A;
                         break;
                     case 2:
-                        txtInfo.AppendText("Device version: TL866CS\n");
+                        TxtInfo.AppendText("Device version: TL866CS\n");
                         devtype = (int)Firmware.PROGRAMMER_TYPE.TL866CS;
                         break;
                     default:
-                        txtInfo.AppendText("Device version: Unknown\n");
+                        TxtInfo.AppendText("Device version: Unknown\n");
                         break;
                 }
                 switch (readbuffer[1])
                 {
                     case (int)Firmware.DEVICE_STATUS.NORMAL_MODE:
-                        txtInfo.AppendText("Device status: Normal working mode.\n");
-                        LedNorma.BackColor = Color.FromArgb(0, 255, 0);
+                        TxtInfo.AppendText("Device status: Normal working mode.\n");
+                        LedNorm.BackColor = Color.FromArgb(0, 255, 0);
                         LedBoot.BackColor = Color.FromArgb(0, 64, 0);
                         break;
                     case (int)Firmware.DEVICE_STATUS.BOOTLOADER_MODE:
-                        txtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\n");
-                        LedNorma.BackColor = Color.FromArgb(0, 64, 0);
+                        TxtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\n");
+                        LedNorm.BackColor = Color.FromArgb(0, 64, 0);
                         LedBoot.BackColor = Color.FromArgb(0, 255, 0);
                         break;
                     default:
-                        txtInfo.AppendText("Device status: Unknown\n");
-                        LedNorma.BackColor = Color.FromArgb(0, 64, 0);
+                        TxtInfo.AppendText("Device status: Unknown\n");
+                        LedNorm.BackColor = Color.FromArgb(0, 64, 0);
                         LedBoot.BackColor = Color.FromArgb(0, 64, 0);
                         break;
                 }
 
+
+
                 string s_dev = System.Text.Encoding.UTF8.GetString(readbuffer, 7, 8).Trim();
                 string s_ser = System.Text.Encoding.UTF8.GetString(readbuffer, 15, 24).Trim();
                 bool isDumperActive = (s_dev.ToLower() == "codedump" && s_ser == "000000000000000000000000");
+
                 if (isDumperActive)
                 {
-                    AdvancedWindow.devcode = "";
-                    AdvancedWindow.serial = "";
-                    AdvancedWindow.txtInfo.Clear();
                     usb.Write(new byte[] { Firmware.DUMPER_INFO });
                     byte[] info = new byte[34];
                     if (usb.Read(info) > 0)
                     {
-                        AdvancedWindow.devcode = System.Text.Encoding.ASCII.GetString(info, 0, 8).Trim();
-                        AdvancedWindow.serial = System.Text.Encoding.ASCII.GetString(info, 8, 24).Trim();
-                        AdvancedWindow.txtInfo.AppendText(String.Format("Device code: {0}{1}\n", AdvancedWindow.devcode, EditWindow.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
-                        AdvancedWindow.txtInfo.AppendText(String.Format("Serial number: {0}{1}\n", AdvancedWindow.serial, EditWindow.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
-                        AdvancedWindow.txtInfo.AppendText(String.Format("Bootloader version: {0}\n", info[32] == 1 ? "A" : "CS"));
-                        AdvancedWindow.txtInfo.AppendText(String.Format("Code Protection bit: {0}", info[33] > 0 ? "No" : "Yes"));
-                        AdvancedWindow.chkCP.Checked = (info[33] == 0);
-                        AdvancedWindow.radioCS.Checked = (info[32] == 2);
+                        devcode = System.Text.Encoding.ASCII.GetString(info, 0, 8).Trim();
+                        serial = System.Text.Encoding.ASCII.GetString(info, 8, 24).Trim();
+                    }
+                    else
+                    {
+                        devcode = "";
+                        serial = "";
                     }
                 }
-                devcode = isDumperActive ? AdvancedWindow.devcode : s_dev;
-                serial = isDumperActive ? AdvancedWindow.serial : s_ser;
-                txtInfo.AppendText(String.Format("Device code: {0}{1}\n", devcode, EditWindow.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
-                txtInfo.AppendText(String.Format("Serial number: {0}{1}\n", serial, EditWindow.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
-                txtInfo.AppendText(String.Format("Firmware version: {0}", isDumperActive ? "Firmware dumper" : readbuffer[1] == 1 ? String.Format("{0}.{1}.{2}", readbuffer[39], readbuffer[5], readbuffer[4]) : "Bootloader"));
-                btnDump.Enabled = isDumperActive;
-                btnAdvanced.Enabled = isDumperActive;
+                else
+                {
+                    devcode = s_dev;
+                    serial = s_ser;
+                }
+
+
+                if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
+                    AdvancedWindow.GetInfo();
+                TxtInfo.AppendText(String.Format("Device code: {0}{1}\n", devcode, firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
+                TxtInfo.AppendText(String.Format("Serial number: {0}{1}\n", serial, firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
+                TxtInfo.AppendText(String.Format("Firmware version: {0}", isDumperActive ? "Firmware dumper" : readbuffer[1] == 1 ? String.Format("{0}.{1}.{2}", readbuffer[39], readbuffer[5], readbuffer[4]) : "Bootloader"));
+                BtnDump.Enabled = isDumperActive;
+                BtnAdvanced.Enabled = isDumperActive;
             }
             else
             {
-                btnDump.Enabled = false;
-                btnAdvanced.Enabled = false;
+                BtnDump.Enabled = false;
+                BtnAdvanced.Enabled = false;
                 Leds_Off();
-                txtInfo.Clear();
+                TxtInfo.Clear();
                 devcode = "";
                 serial = "";
-                if (AdvancedWindow.Visible)
-                {
-                    AdvancedWindow.devcode = "";
-                    AdvancedWindow.serial = "";
-                    AdvancedWindow.txtInfo.Clear();
-                }
+                if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
+                    AdvancedWindow.GetInfo();
             }
         }
 
@@ -393,7 +393,7 @@ namespace TL866
                 MessageBox.Show("Reflash Failed!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
+            Thread.Sleep(500);
             Message("<resetting...>");
             worker.ReportProgress((int)LED_ACTION.LED_WRITE_OFF);
             worker.ReportProgress((int)LED_ACTION.LED_ERASE_OFF);
@@ -418,8 +418,6 @@ namespace TL866
             }
             SetProgressBar(0);
         }
-
-
 
         private bool Write_Device(byte[] buffer)
         {
@@ -471,13 +469,13 @@ namespace TL866
         private void Leds_Off()
         {
             LedBoot.BackColor = Color.FromArgb(0, 64, 0);
-            LedNorma.BackColor = Color.FromArgb(0, 64, 0);
+            LedNorm.BackColor = Color.FromArgb(0, 64, 0);
             LedErase.BackColor = Color.FromArgb(64, 64, 0);
             LedWrite.BackColor = Color.FromArgb(64, 0, 0);
         }
 
 
-        private bool CheckDevices(Form parent)
+        public bool CheckDevices(Form parent)
         {
             if (usb.Get_Devices().Count == 0)
             {
@@ -526,11 +524,11 @@ namespace TL866
                 else
                 {
 
-                    string[] lines = txtInfo.Lines;
+                    string[] lines = TxtInfo.Lines;
                     if (lines.Length > 0)
                     {
                         lines[1] = "Device status: Bootloader mode " + message;
-                        txtInfo.Lines = lines;
+                        TxtInfo.Lines = lines;
                     }
                 }
             }
@@ -602,7 +600,7 @@ namespace TL866
                 ////Writing bootloader 
                 memorystream.Write(data, 0, (int)Firmware.BOOTLOADER_SIZE);
                 ////Writing main firmware or empty on choice
-                if (optionFull.Checked)
+                if (OptionFull.Checked)
                 {
                     memorystream.Write(data, (int)Firmware.BOOTLOADER_SIZE, (int)Firmware.UNENCRYPTED_FIRMWARE_SIZE);
                 }
@@ -619,14 +617,14 @@ namespace TL866
                 byte[] info = new byte[80];
                 Array.Copy(data, 0x1FD00, info, 0, info.Length);
                 firmware.DecryptSerial(info, data);
-                string s1 = txtDevcode.Text + new string(' ', 8 - txtDevcode.Text.Length);
-                string s2 = txtSerial.Text + new string(' ', 24 - txtSerial.Text.Length);
+                string s1 = TxtDevcode.Text + new string(' ', 8 - TxtDevcode.Text.Length);
+                string s2 = TxtSerial.Text + new string(' ', 24 - TxtSerial.Text.Length);
                 Array.Copy(System.Text.Encoding.ASCII.GetBytes(s1), 0, info, 0, 8);
                 Array.Copy(System.Text.Encoding.ASCII.GetBytes(s2), 0, info, 8, 24);
                 firmware.EncryptSerial(info, data);
-                memorystream.Write(data, 0x1FC00, 0x100);
-                memorystream.Write(info, 0, info.Length);
-                memorystream.Write(data, 0x1FD50, 0x2B0);
+                memorystream.Write(data, 0x1FC00, 0x100);//write 256 bytes xor table
+                memorystream.Write(info, 0, info.Length);//write 80 bytes encrypted serial
+                memorystream.Write(data, 0x1FD50, 0x2B0);// write the remaining bytes up to 0x1FFFF
                 memorystream.Close();
                 ////writing to file
                 hexwriter hexwriter = new hexwriter();
