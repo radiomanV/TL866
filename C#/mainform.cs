@@ -631,7 +631,7 @@ namespace TL866
                     streamwriter.Close();
                     SystemSounds.Asterisk.Play();
                 }
-                catch (Exception e)
+                catch
                 {
                     MessageBox.Show(string.Format("Error creating file {0}", dlg.FileName), "TL866",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
