@@ -11,6 +11,7 @@ namespace TL866
         public delegate void UsbDeviceChangedEventHandler();
 
 
+        [Flags]
         public enum DiGetClassFlags
         {
             DIGCF_DEFAULT = 0x1,
@@ -32,6 +33,14 @@ namespace TL866
         {
             hDrv = null;
         }
+
+
+        public uint DevicesCount
+        {
+            get { return GetDevicesByClass(MINIPRO_GUID, null); }
+        }
+
+        public event UsbDeviceChangedEventHandler UsbDeviceChanged;
 
 
         [DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -67,21 +76,25 @@ namespace TL866
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool UnregisterDeviceNotification(IntPtr hHandle);
 
-        public event UsbDeviceChangedEventHandler UsbDeviceChanged;
-
 
         public bool OpenDevice(string DevicePath)
         {
-            hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE,
-                EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero,
-                ECreationDisposition.OPEN_EXISTING, EFileAttributes.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+            lock (SyncObject)
+            {
+                hDrv = CreateFile(DevicePath, EFileAccess.GENERIC_READ | EFileAccess.GENERIC_WRITE,
+                    EFileShare.FILE_SHARE_READ | EFileShare.FILE_SHARE_WRITE, IntPtr.Zero,
+                    ECreationDisposition.OPEN_EXISTING, EFileAttributes.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+            }
             return !(hDrv.IsClosed || hDrv.IsInvalid);
         }
 
         public void CloseDevice()
         {
             if (hDrv != null)
-                hDrv.Close();
+                lock (SyncObject)
+                {
+                    hDrv.Close();
+                }
         }
 
 
@@ -89,7 +102,7 @@ namespace TL866
         {
             uint btr = 0;
             byte[] obuff = new byte[4096];
-            bool r = false;
+            bool r;
             lock (SyncObject)
             {
                 if (hDrv.IsClosed || hDrv.IsInvalid)
@@ -124,11 +137,9 @@ namespace TL866
             return DevicesPathName;
         }
 
-
         public bool RegisterForDeviceChange(bool Register, Form f)
         {
             bool Status = false;
-            long LastError = 0;
 
             if (Register)
             {
@@ -136,14 +147,12 @@ namespace TL866
                 int size = Marshal.SizeOf(deviceInterface);
                 deviceInterface.dbcc_size = size;
                 deviceInterface.dbcc_devicetype = (int) DBTDEVTYP.DBT_DEVTYP_DEVICEINTERFACE;
-                IntPtr buffer = IntPtr.Zero;
-                buffer = Marshal.AllocHGlobal(size);
+                IntPtr buffer = Marshal.AllocHGlobal(size);
                 Marshal.StructureToPtr(deviceInterface, buffer, true);
                 deviceEventHandle = RegisterDeviceNotification(f.Handle, buffer,
                     Convert.ToInt32(DEVICE_NOTIFY.DEVICE_NOTIFY_WINDOW_HANDLE |
                                     DEVICE_NOTIFY.DEVICE_NOTIFY_ALL_INTERFACE_CLASSES));
                 Status = deviceEventHandle != IntPtr.Zero;
-                if (!Status) LastError = Marshal.GetLastWin32Error();
                 Marshal.FreeHGlobal(buffer);
             }
             else
@@ -189,49 +198,45 @@ namespace TL866
         private uint GetDevicesByClass(string guid, List<string> devicePathName)
         {
             Guid g = new Guid(guid);
-            uint i = 0;
-            IntPtr h = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero,
+            uint count = 0;
+            IntPtr handle = SetupDiGetClassDevs(ref g, 0, IntPtr.Zero,
                 (int) (DiGetClassFlags.DIGCF_PRESENT | DiGetClassFlags.DIGCF_DEVICEINTERFACE));
             lock (SyncObject)
             {
-                if (h.ToInt32() != INVALID_HANDLE_VALUE)
+                if (handle.ToInt32() != INVALID_HANDLE_VALUE)
                 {
                     bool Success = true;
                     while (Success)
                     {
                         SP_DEVICE_INTERFACE_DATA dia = new SP_DEVICE_INTERFACE_DATA();
                         dia.cbSize = Marshal.SizeOf(dia);
-                        Success = SetupDiEnumDeviceInterfaces(h, IntPtr.Zero, ref g, i, ref dia);
+                        Success = SetupDiEnumDeviceInterfaces(handle, IntPtr.Zero, ref g, count, ref dia);
                         if (Success)
                         {
-                            IntPtr detailDataBuffer = IntPtr.Zero;
                             int bufferSize = 0;
                             SP_DEVINFO_DATA da = new SP_DEVINFO_DATA();
                             da.cbSize = Marshal.SizeOf(da);
-                            SP_DEVICE_INTERFACE_DETAIL_DATA didd = new SP_DEVICE_INTERFACE_DETAIL_DATA();
-                            didd.DevicePath = new byte[1001];
-                            didd.cbSize = 4 + Marshal.SystemDefaultCharSize;
-                            int nBytes = didd.cbSize;
-                            Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, IntPtr.Zero, 0, ref bufferSize,
+                            SetupDiGetDeviceInterfaceDetail(handle, ref dia, IntPtr.Zero, 0, ref bufferSize,
                                 IntPtr.Zero);
-                            detailDataBuffer = Marshal.AllocHGlobal(bufferSize);
+                            IntPtr detailDataBuffer = Marshal.AllocHGlobal(bufferSize);
                             Marshal.WriteInt32(detailDataBuffer,
                                 IntPtr.Size == 4 ? 4 + Marshal.SystemDefaultCharSize : 8);
-                            nBytes = bufferSize;
-                            Success = SetupDiGetDeviceInterfaceDetail(h, ref dia, detailDataBuffer, (uint) nBytes,
+                            int nBytes = bufferSize;
+                            Success = SetupDiGetDeviceInterfaceDetail(handle, ref dia, detailDataBuffer, (uint) nBytes,
                                 ref bufferSize, IntPtr.Zero);
                             if (Success)
                             {
                                 IntPtr pDevicePathName = new IntPtr(detailDataBuffer.ToInt32() + 4);
-                                devicePathName.Add(Marshal.PtrToStringAuto(pDevicePathName));
+                                if (devicePathName != null)
+                                    devicePathName.Add(Marshal.PtrToStringAuto(pDevicePathName));
                                 Marshal.FreeHGlobal(detailDataBuffer);
                             }
                         }
-                        i += 1;
+                        count++;
                     }
                 }
             }
-            return i;
+            return count - 1;
         }
 
         private enum IOCTL

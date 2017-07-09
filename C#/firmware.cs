@@ -80,13 +80,15 @@ namespace TL866
 
         private byte[] m_firmwareA;
         private byte[] m_firmwareCS;
-        private bool m_IsValid;
-        private byte m_version;
+
+
+        public byte Version { get; private set; }
+        public bool IsValid { get; private set; }
 
 
         public void Open(string UpdateDat_Path)
         {
-            m_IsValid = false;
+            IsValid = false;
             FileStream fsin = null;
             try
             {
@@ -109,7 +111,7 @@ namespace TL866
 
             m_eraseA = inbuffer[9];
             m_eraseCS = inbuffer[17];
-            m_version = inbuffer[0];
+            Version = inbuffer[0];
 
             ////Decrypt A firmware (stage 1)
             int CryptoIndex = 0x14;
@@ -154,13 +156,7 @@ namespace TL866
             c2 = BitConverter.ToUInt32(b, FIRMWARE_SIGNATURE_OFFSET);
             if (c1 != 0x5AA5AA55 || c2 != 0x5AA5AA55)
                 throw new Exception("Firmware decryption error!");
-            m_IsValid = true;
-        }
-
-
-        public bool IsValid()
-        {
-            return m_IsValid;
+            IsValid = true;
         }
 
 
@@ -168,12 +164,6 @@ namespace TL866
         {
             return type == (int) PROGRAMMER_TYPE.TL866A ? m_eraseA : m_eraseCS;
         }
-
-        public byte GetVersion()
-        {
-            return m_version;
-        }
-
 
         public byte[] GetEncryptedFirmware(int type, int key)
         {

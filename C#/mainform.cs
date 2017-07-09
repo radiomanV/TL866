@@ -74,7 +74,7 @@ namespace TL866
                     lblVersion.Text = "";
                     return;
                 }
-                lblVersion.Text = string.Format("[V:{0}]", firmware.GetVersion());
+                lblVersion.Text = string.Format("[V:{0}]", firmware.Version);
             }
             TxtInput.Text = dlg.FileName;
         }
@@ -114,7 +114,7 @@ namespace TL866
         {
             if (!CheckDevices(this))
                 return;
-            if (!firmware.IsValid())
+            if (!firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
@@ -144,7 +144,7 @@ namespace TL866
             if (worker.IsBusy) return;
             if (!CheckDevices(this))
                 return;
-            if (!firmware.IsValid())
+            if (!firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
@@ -225,16 +225,16 @@ namespace TL866
 
         public void UsbDeviceChanged()
         {
-            if (usb.Get_Devices().Count == 0 && reset_flag)
+            if (usb.DevicesCount == 0 && reset_flag)
                 return;
 
             reset_flag = false;
-            int count = usb.Get_Devices().Count;
             Assembly assembly = Assembly.GetExecutingAssembly();
             FileVersionInfo version = FileVersionInfo.GetVersionInfo(assembly.Location);
-            Text = string.Format("TL866 firmware updater  V{0}   ({1} {2} connected)", version.FileVersion, count,
-                count == 1 ? "device" : "devices");
-            if (usb.Get_Devices().Count > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
+            Text = string.Format("TL866 firmware updater  V{0}   ({1} {2} connected)", version.FileVersion,
+                usb.DevicesCount,
+                usb.DevicesCount == 1 ? "device" : "devices");
+            if (usb.DevicesCount > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
             {
                 usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
                 byte[] readbuffer = new byte[64];
@@ -442,7 +442,7 @@ namespace TL866
 
         private bool Erase_Device(byte magic_number)
         {
-            if (usb.Get_Devices().Count > 0)
+            if (usb.DevicesCount > 0)
                 if (usb.OpenDevice(usb.Get_Devices()[0]))
                 {
                     byte[] buffer = new byte[20];
@@ -470,12 +470,12 @@ namespace TL866
 
         public bool CheckDevices(Form parent)
         {
-            if (usb.Get_Devices().Count == 0)
+            if (usb.DevicesCount == 0)
             {
                 MessageBox.Show(parent, Utils.NO_DEVICE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return false;
             }
-            if (usb.Get_Devices().Count > 1)
+            if (usb.DevicesCount > 1)
             {
                 MessageBox.Show(parent, Utils.MULTIPLE_DEVICES, "TL866", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
@@ -644,7 +644,7 @@ namespace TL866
         private bool wait_for_device()
         {
             int cnt = 50; //5 seconds
-            while (usb.Get_Devices().Count > 0) //wait for device to leave
+            while (usb.DevicesCount > 0) //wait for device to leave
             {
                 Thread.Sleep(100);
                 if (!(--cnt > 0))
@@ -652,7 +652,7 @@ namespace TL866
             }
 
             cnt = 50; //5 seconds
-            while (!(usb.Get_Devices().Count > 0)) //wait for device to arrive
+            while (!(usb.DevicesCount > 0)) //wait for device to arrive
             {
                 Thread.Sleep(100);
                 if (!(--cnt > 0))

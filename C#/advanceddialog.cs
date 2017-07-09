@@ -176,7 +176,7 @@ namespace TL866
         private bool IsDumperActive()
         {
             byte[] rd = new byte[64];
-            if (GetMainForm().usb.Get_Devices().Count > 0)
+            if (GetMainForm().usb.DevicesCount > 0)
                 if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
                 {
                     GetMainForm().usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
