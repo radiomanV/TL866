@@ -49,12 +49,13 @@ namespace TL866
         public const int XOR_TABLE_START = 0x1EEDF;
         public const int XOR_TABLE_OFFSET = 0x1FC00;
 
-        public const uint SERIAL_OFFSET = 0x1FD00;
+        public const int SERIAL_OFFSET = 0x1FD00;
         public const int FLASH_SIZE = 0x20000;
         public const int BOOTLOADER_SIZE = 0x1800;
         public const int ENCRYPTED_FIRMWARE_SIZE = 0x25D00;
         public const int UNENCRYPTED_FIRMWARE_SIZE = 0x1E400;
         public const int FIRMWARE_SIGNATURE_OFFSET = 0x1E3FC;
+        public const int REPORT_SIZE = 34;
 
         public const uint A_BOOTLOADER_CRC = 0x95AB;
         public const uint CS_BOOTLOADER_CRC = 0x20D2;

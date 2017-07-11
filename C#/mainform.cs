@@ -281,7 +281,7 @@ namespace TL866
                 if (isDumperActive)
                 {
                     usb.Write(new[] {Firmware.DUMPER_INFO});
-                    byte[] info = new byte[34];
+                    byte[] info = new byte[Firmware.REPORT_SIZE];
                     if (usb.Read(info) > 0)
                     {
                         devcode = Encoding.ASCII.GetString(info, 0, 8).Trim();
@@ -309,7 +309,7 @@ namespace TL866
                 TxtInfo.AppendText(string.Format("Firmware version: {0}",
                     isDumperActive
                         ? "Firmware dumper"
-                        : readbuffer[1] == 1
+                        : readbuffer[1] == (int)Firmware.DEVICE_STATUS.NORMAL_MODE
                             ? string.Format("{0}.{1}.{2}", readbuffer[39], readbuffer[5], readbuffer[4])
                             : "Bootloader"));
                 BtnDump.Enabled = isDumperActive;
