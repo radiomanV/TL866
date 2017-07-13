@@ -178,9 +178,7 @@ namespace TL866
                 return;
             if (!CheckDevices(this))
                 return;
-
-            if (usb.OpenDevice(usb.Get_Devices()[0]))
-                worker.RunWorkerAsync(new object[] {device_action.reset_device});
+            worker.RunWorkerAsync(new object[] {device_action.reset_device});
         }
 
 

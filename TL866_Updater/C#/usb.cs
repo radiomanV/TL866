@@ -100,6 +100,8 @@ namespace TL866
 
         public bool Write(byte[] buffer)
         {
+            if (hDrv == null)
+                return false;
             uint btr = 0;
             byte[] obuff = new byte[4096];
             bool r;
@@ -116,6 +118,8 @@ namespace TL866
 
         public uint Read(byte[] buffer)
         {
+            if (hDrv == null)
+                return 0;
             uint btr = 0;
             byte[] o = new byte[4];
             lock (SyncObject)

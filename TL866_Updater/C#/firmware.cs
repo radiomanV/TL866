@@ -62,7 +62,7 @@ namespace TL866
 
         public const uint A_BOOTLOADER_CRC = 0x95AB;
         public const uint CS_BOOTLOADER_CRC = 0x20D2;
-        public const uint BAD_CRC = 0xc8C2F013;
+        public const uint BAD_CRC = 0xC8C2F013;
 
 
         public const byte WRITE_COMMAND = 0xAA;
