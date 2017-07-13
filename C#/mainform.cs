@@ -24,7 +24,6 @@ namespace TL866
         private string serial;
         public UsbDevice usb;
 
-
         public MainForm()
         {
             InitializeComponent();
@@ -128,7 +127,7 @@ namespace TL866
             {
                 UsbDeviceChanged();
                 ProgressBar1.Maximum = Firmware.FLASH_SIZE; //128Kbytes
-                worker.RunWorkerAsync(new object[] {2, sdialog.FileName});
+                worker.RunWorkerAsync(new object[] {device_action.dump_device, sdialog.FileName});
             }
         }
 
@@ -162,7 +161,7 @@ namespace TL866
                 if (RadioDump.Checked)
                     ftype = (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM;
                 ProgressBar1.Maximum = Firmware.ENCRYPTED_FIRMWARE_SIZE;
-                worker.RunWorkerAsync(new object[] {1, ftype});
+                worker.RunWorkerAsync(new object[] {device_action.reflash_device, ftype});
             }
         }
 
@@ -181,24 +180,24 @@ namespace TL866
                 return;
 
             if (usb.OpenDevice(usb.Get_Devices()[0]))
-                worker.RunWorkerAsync(new object[] {0});
+                worker.RunWorkerAsync(new object[] {device_action.reset_device});
         }
 
 
         private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            switch ((LED_ACTION) e.ProgressPercentage)
+            switch ((led_action) e.ProgressPercentage)
             {
-                case LED_ACTION.LED_ERASE_ON:
+                case led_action.led_erase_on:
                     LedErase.BackColor = Color.FromArgb(255, 255, 0);
                     break;
-                case LED_ACTION.LED_ERASE_OFF:
+                case led_action.led_erase_off:
                     LedErase.BackColor = Color.FromArgb(64, 64, 0);
                     break;
-                case LED_ACTION.LED_WRITE_ON:
+                case led_action.led_write_on:
                     LedWrite.BackColor = Color.FromArgb(255, 0, 0);
                     break;
-                case LED_ACTION.LED_WRITE_OFF:
+                case led_action.led_write_off:
                     LedWrite.BackColor = Color.FromArgb(64, 0, 0);
                     break;
             }
@@ -274,8 +273,8 @@ namespace TL866
                 }
 
 
-                string s_dev = Encoding.UTF8.GetString(readbuffer, 7, 8).Trim();
-                string s_ser = Encoding.UTF8.GetString(readbuffer, 15, 24).Trim();
+                string s_dev = Encoding.UTF8.GetString(readbuffer, 7, Firmware.DEVCODE_LENGHT).Trim();
+                string s_ser = Encoding.UTF8.GetString(readbuffer, 15, Firmware.SERIALCODE_LENGHT).Trim();
                 bool isDumperActive = s_dev.ToLower() == "codedump" && s_ser == "000000000000000000000000";
 
                 if (isDumperActive)
@@ -284,8 +283,9 @@ namespace TL866
                     byte[] info = new byte[Firmware.REPORT_SIZE];
                     if (usb.Read(info) > 0)
                     {
-                        devcode = Encoding.ASCII.GetString(info, 0, 8).Trim();
-                        serial = Encoding.ASCII.GetString(info, 8, 24).Trim();
+                        devcode = Encoding.ASCII.GetString(info, 0, Firmware.DEVCODE_LENGHT).Trim();
+                        serial = Encoding.ASCII.GetString(info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT)
+                            .Trim();
                     }
                     else
                     {
@@ -309,7 +309,7 @@ namespace TL866
                 TxtInfo.AppendText(string.Format("Firmware version: {0}",
                     isDumperActive
                         ? "Firmware dumper"
-                        : readbuffer[1] == (int)Firmware.DEVICE_STATUS.NORMAL_MODE
+                        : readbuffer[1] == (int) Firmware.DEVICE_STATUS.NORMAL_MODE
                             ? string.Format("{0}.{1}.{2}", readbuffer[39], readbuffer[5], readbuffer[4])
                             : "Bootloader"));
                 BtnDump.Enabled = isDumperActive;
@@ -373,7 +373,7 @@ namespace TL866
 
             Thread.Sleep(1000);
             Message("<erasing...>");
-            worker.ReportProgress((int) LED_ACTION.LED_ERASE_ON);
+            worker.ReportProgress((int) led_action.led_erase_on);
             if (!Erase_Device(firmware.GetEraseParametter(devtype)))
             {
                 MessageBox.Show("Erase failed", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -381,21 +381,21 @@ namespace TL866
             }
             if (worker.CancellationPending)
                 return;
-            worker.ReportProgress((int) LED_ACTION.LED_ERASE_OFF);
+            worker.ReportProgress((int) led_action.led_erase_off);
             Thread.Sleep(1000);
-            worker.ReportProgress((int) LED_ACTION.LED_WRITE_ON);
+            worker.ReportProgress((int) led_action.led_write_on);
             Message("<writing...>");
             if (!Write_Device(buffer))
             {
-                worker.ReportProgress((int) LED_ACTION.LED_WRITE_OFF);
-                worker.ReportProgress((int) LED_ACTION.LED_ERASE_OFF);
+                worker.ReportProgress((int) led_action.led_write_off);
+                worker.ReportProgress((int) led_action.led_erase_off);
                 MessageBox.Show("Reflash Failed!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             Thread.Sleep(500);
             Message("<resetting...>");
-            worker.ReportProgress((int) LED_ACTION.LED_WRITE_OFF);
-            worker.ReportProgress((int) LED_ACTION.LED_ERASE_OFF);
+            worker.ReportProgress((int) led_action.led_write_off);
+            worker.ReportProgress((int) led_action.led_erase_off);
             Reset_Device();
             if (!wait_for_device())
             {
@@ -419,7 +419,7 @@ namespace TL866
             if (!usb.OpenDevice(usb.Get_Devices()[0]))
                 return false;
             byte[] b = new byte[Firmware.BLOCK_SIZE + 7];
-            uint address = 0x1800;
+            uint address = Firmware.BOOTLOADER_SIZE;
             SetProgressBar(0);
             for (int i = 0; i <= buffer.Length - 1; i += Firmware.BLOCK_SIZE)
             {
@@ -431,7 +431,7 @@ namespace TL866
                 b[3] = 0;
                 Array.Copy(BitConverter.GetBytes(address), 0, b, 4, 4);
                 Array.Copy(buffer, i, b, 7, Firmware.BLOCK_SIZE);
-                address += 64;
+                address += Firmware.BLOCK_SIZE - 16;
                 if (!usb.Write(b))
                     return false;
                 SetProgressBar(i);
@@ -452,7 +452,7 @@ namespace TL866
                     usb.Write(buffer);
                     byte[] readbuffer = new byte[32];
                     usb.Read(readbuffer);
-                    if (readbuffer[0] == 0xcc)
+                    if (readbuffer[0] == Firmware.ERASE_COMMAND)
                         return true;
                 }
             return false;
@@ -611,17 +611,20 @@ namespace TL866
                     memorystream.Write(b, 0, b.Length);
                 }
                 ////Writing Decryption tables and serials
-                byte[] info = new byte[80];
-                Array.Copy(data, 0x1FD00, info, 0, info.Length);
+                byte[] info = new byte[Firmware.BLOCK_SIZE];
+                Array.Copy(data, Firmware.SERIAL_OFFSET, info, 0, info.Length);
                 firmware.DecryptSerial(info, data);
-                string s1 = TxtDevcode.Text + new string(' ', 8 - TxtDevcode.Text.Length);
-                string s2 = TxtSerial.Text + new string(' ', 24 - TxtSerial.Text.Length);
-                Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, 8);
-                Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, 8, 24);
+                string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
+                string s2 = TxtSerial.Text + new string(' ', Firmware.SERIALCODE_LENGHT - TxtSerial.Text.Length);
+                Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);
+                Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT);
                 firmware.EncryptSerial(info, data);
-                memorystream.Write(data, 0x1FC00, 0x100); //write 256 bytes xor table
+                memorystream.Write(data, Firmware.XOR_TABLE_OFFSET,
+                    Firmware.XOR_TABLE_SIZE); //write 256 bytes xor table
                 memorystream.Write(info, 0, info.Length); //write 80 bytes encrypted serial
-                memorystream.Write(data, 0x1FD50, 0x2B0); // write the remaining bytes up to 0x1FFFF
+                memorystream.Write(data, Firmware.SERIAL_OFFSET + Firmware.BLOCK_SIZE,
+                    Firmware.FLASH_SIZE -
+                    (Firmware.SERIAL_OFFSET + Firmware.BLOCK_SIZE)); // write the remaining bytes up to 0x1FFFF
                 memorystream.Close();
                 ////writing to file
                 try
@@ -669,13 +672,20 @@ namespace TL866
             usb.CloseDevice();
         }
 
-
-        private enum LED_ACTION
+        private enum device_action
         {
-            LED_ERASE_ON,
-            LED_ERASE_OFF,
-            LED_WRITE_ON,
-            LED_WRITE_OFF
+            reset_device,
+            reflash_device,
+            dump_device
+        }
+
+
+        private enum led_action
+        {
+            led_erase_on,
+            led_erase_off,
+            led_write_on,
+            led_write_off
         }
 
         //Delegates

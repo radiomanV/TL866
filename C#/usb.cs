@@ -22,7 +22,7 @@ namespace TL866
         }
 
         private const int INVALID_HANDLE_VALUE = -1;
-        public const int WM_DEVICECHANGE = 0x219;
+        private const int WM_DEVICECHANGE = 0x219;
         private const string MINIPRO_GUID = "{85980D83-32B9-4ba1-8FDF-12A711B99CA2}";
         private readonly object SyncObject = new object();
         private IntPtr deviceEventHandle;
