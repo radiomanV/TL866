@@ -285,7 +285,11 @@ namespace TL866
             byte[] info = new byte[BLOCK_SIZE];
             Array.Copy(firmware, SERIAL_OFFSET, info, 0, info.Length);
             DecryptSerial(info, firmware);
-            return new[] {Encoding.UTF8.GetString(info, 0, DEVCODE_LENGHT), Encoding.UTF8.GetString(info, DEVCODE_LENGHT, SERIALCODE_LENGHT)};
+            return new[]
+            {
+                Encoding.UTF8.GetString(info, 0, DEVCODE_LENGHT),
+                Encoding.UTF8.GetString(info, DEVCODE_LENGHT, SERIALCODE_LENGHT)
+            };
         }
 
         public void DecryptSerial(byte[] info, byte[] firmware)
@@ -363,9 +367,11 @@ namespace TL866
 
         public bool Calc_CRC(string DevCode, string Serial)
         {
-            byte[] k = new byte[DEVCODE_LENGHT+SERIALCODE_LENGHT];
-            Array.Copy(Encoding.ASCII.GetBytes(DevCode + new string(' ', DEVCODE_LENGHT - DevCode.Length)), 0, k, 0, DEVCODE_LENGHT);
-            Array.Copy(Encoding.ASCII.GetBytes(Serial + new string(' ', SERIALCODE_LENGHT - Serial.Length)), 0, k, DEVCODE_LENGHT, SERIALCODE_LENGHT);
+            byte[] k = new byte[DEVCODE_LENGHT + SERIALCODE_LENGHT];
+            Array.Copy(Encoding.ASCII.GetBytes(DevCode + new string(' ', DEVCODE_LENGHT - DevCode.Length)), 0, k, 0,
+                DEVCODE_LENGHT);
+            Array.Copy(Encoding.ASCII.GetBytes(Serial + new string(' ', SERIALCODE_LENGHT - Serial.Length)), 0, k,
+                DEVCODE_LENGHT, SERIALCODE_LENGHT);
             crc32 crc = new crc32();
             return crc.GetCRC32(k, 0xFFFFFFFF) == BAD_CRC;
         }
