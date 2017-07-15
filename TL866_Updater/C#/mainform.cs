@@ -585,7 +585,7 @@ namespace TL866
             Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);
             Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT);
             firmware.EncryptSerial(info, data);
-
+            Array.Copy(info, 0, data, Firmware.SERIAL_OFFSET, info.Length);
 
             SaveFileDialog dlg = new SaveFileDialog();
             StreamWriter streamwriter;
