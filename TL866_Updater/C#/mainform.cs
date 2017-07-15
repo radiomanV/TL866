@@ -205,15 +205,15 @@ namespace TL866
         private void worker_DoWork(object sender, DoWorkEventArgs e)
         {
             object[] parameters = e.Argument as object[];
-            switch ((int) parameters[0])
+            switch ((device_action) parameters[0])
             {
-                case 0:
+                case device_action.reset_device:
                     Reset_Device();
                     break;
-                case 1:
+                case device_action.reflash_device:
                     Reflash((int) parameters[1]);
                     break;
-                case 2:
+                case device_action.dump_device:
                     Dump(parameters[1].ToString());
                     break;
             }
