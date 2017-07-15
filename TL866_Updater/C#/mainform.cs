@@ -168,7 +168,7 @@ namespace TL866
 
         private void BtnSave_Click(object sender, EventArgs e)
         {
-            Save(RadiofA.Checked ? Resources.firmwareA : Resources.firmwareCS);
+            SaveHex(RadiofA.Checked ? Resources.firmwareA : Resources.firmwareCS);
         }
 
 
@@ -570,8 +570,23 @@ namespace TL866
         }
 
 
-        private void Save(byte[] data)
+        private void SaveHex(byte[] data)
         {
+            ////Writing the main firmware or empty on choice
+            if (!OptionFull.Checked)
+                for (int i = Firmware.BOOTLOADER_SIZE; i < Firmware.XOR_TABLE_OFFSET; i++)
+                    data[i] = 0xFF;
+            ////Writing serial code
+            byte[] info = new byte[Firmware.BLOCK_SIZE];
+            Array.Copy(data, Firmware.SERIAL_OFFSET, info, 0, info.Length);
+            firmware.DecryptSerial(info, data);
+            string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
+            string s2 = TxtSerial.Text + new string(' ', Firmware.SERIALCODE_LENGHT - TxtSerial.Text.Length);
+            Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);
+            Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT);
+            firmware.EncryptSerial(info, data);
+
+
             SaveFileDialog dlg = new SaveFileDialog();
             StreamWriter streamwriter;
             dlg.Title = "Firmware output hex file";
@@ -579,56 +594,13 @@ namespace TL866
             dlg.CheckPathExists = true;
             dlg.OverwritePrompt = true;
             if (dlg.ShowDialog() == DialogResult.OK)
-            {
                 try
                 {
                     if (File.Exists(dlg.FileName))
                         File.Delete(dlg.FileName);
                     streamwriter = File.CreateText(dlg.FileName);
-                }
-                catch
-                {
-                    MessageBox.Show(string.Format("Error creating file {0}", dlg.FileName), "TL866",
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                byte[] temp = new byte[data.Length];
-                MemoryStream memorystream = new MemoryStream(temp);
-                ////Writing bootloader 
-                memorystream.Write(data, 0, Firmware.BOOTLOADER_SIZE);
-                ////Writing main firmware or empty on choice
-                if (OptionFull.Checked)
-                {
-                    memorystream.Write(data, Firmware.BOOTLOADER_SIZE, Firmware.UNENCRYPTED_FIRMWARE_SIZE);
-                }
-                else
-                {
-                    byte[] b = new byte[Firmware.UNENCRYPTED_FIRMWARE_SIZE];
-                    for (int i = 0; i <= b.Length - 1; i++)
-                        b[i] = 0xFF;
-                    memorystream.Write(b, 0, b.Length);
-                }
-                ////Writing Decryption tables and serials
-                byte[] info = new byte[Firmware.BLOCK_SIZE];
-                Array.Copy(data, Firmware.SERIAL_OFFSET, info, 0, info.Length);
-                firmware.DecryptSerial(info, data);
-                string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
-                string s2 = TxtSerial.Text + new string(' ', Firmware.SERIALCODE_LENGHT - TxtSerial.Text.Length);
-                Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);
-                Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT);
-                firmware.EncryptSerial(info, data);
-                memorystream.Write(data, Firmware.XOR_TABLE_OFFSET,
-                    Firmware.XOR_TABLE_SIZE); //write 256 bytes xor table
-                memorystream.Write(info, 0, info.Length); //write 80 bytes encrypted serial
-                memorystream.Write(data, Firmware.SERIAL_OFFSET + Firmware.BLOCK_SIZE,
-                    Firmware.FLASH_SIZE -
-                    (Firmware.SERIAL_OFFSET + Firmware.BLOCK_SIZE)); // write the remaining bytes up to 0x1FFFF
-                memorystream.Close();
-                ////writing to file
-                try
-                {
                     hexwriter hexwriter = new hexwriter();
-                    hexwriter.WriteHex(temp, streamwriter);
+                    hexwriter.WriteHex(data, streamwriter);
                     streamwriter.Close();
                     SystemSounds.Asterisk.Play();
                 }
@@ -637,7 +609,6 @@ namespace TL866
                     MessageBox.Show(string.Format("Error creating file {0}", dlg.FileName), "TL866",
                         MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-            }
         }
 
 
