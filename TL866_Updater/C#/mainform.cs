@@ -351,22 +351,6 @@ namespace TL866
                 }
             }
 
-
-            byte[] buffer = null;
-            switch (version)
-            {
-                case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_A:
-                    buffer = firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.A_KEY, devtype);
-                    break;
-                case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CS:
-                    buffer = firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.CS_KEY, devtype);
-                    break;
-                case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM:
-                    buffer = firmware.Encrypt_Firmware(Resources.Dumper, devtype);
-                    break;
-            }
-
-
             Thread.Sleep(1000);
             Message("<erasing...>");
             worker.ReportProgress((int) led_action.led_erase_on);
@@ -381,7 +365,9 @@ namespace TL866
             Thread.Sleep(1000);
             worker.ReportProgress((int) led_action.led_write_on);
             Message("<writing...>");
-            if (!Write_Device(buffer))
+            if (!Write_Device(version == (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM
+                ? firmware.Encrypt_Firmware(Resources.Dumper, devtype)
+                : firmware.GetEncryptedFirmware(version, devtype)))
             {
                 worker.ReportProgress((int) led_action.led_write_off);
                 worker.ReportProgress((int) led_action.led_erase_off);
