@@ -108,7 +108,6 @@ namespace TL866
                 throw new Exception(UpdateDat_Path + "\nFile size error!");
             }
             byte[] inbuffer = new byte[fsin.Length + 1];
-            byte[] outbuffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
             fsin.Read(inbuffer, 0, (int) fsin.Length);
             fsin.Close();
 
@@ -116,40 +115,28 @@ namespace TL866
             m_eraseCS = inbuffer[17];
             Version = inbuffer[0];
 
-            ////Decrypt A firmware (stage 1)
-            int CryptoIndex = 0x14;
-            uint FirmwareIndex = 0xA1C;
-            uint idx1;
-            uint idx2;
-            for (uint i = 0; i <= outbuffer.Length - 1; i++)
+            ////Decrypt firmwares (stage 1)
+            m_firmwareA = new byte[ENCRYPTED_FIRMWARE_SIZE];
+            m_firmwareCS = new byte[ENCRYPTED_FIRMWARE_SIZE];
+            for (uint i = 0; i < ENCRYPTED_FIRMWARE_SIZE; i++)
             {
-                idx1 = (uint) (CryptoIndex + 260 + ((BitConverter.ToInt32(inbuffer, CryptoIndex) + i) & 0x3ff));
-                idx2 = (uint) (CryptoIndex + 4 + ((i / 80) & 0xFF));
-                outbuffer[i] = Convert.ToByte(inbuffer[FirmwareIndex + i] ^ inbuffer[idx1] ^ inbuffer[idx2]);
+                m_firmwareA[i] = (byte) (inbuffer[0xA1C + i] ^
+                                         inbuffer[
+                                             0x118 +
+                                             ((BitConverter.ToInt32(inbuffer, 0x14) + i) & 0x3FF)] ^
+                                         inbuffer[0x18 + ((i / 80) & 0xFF)]);
+                m_firmwareCS[i] = (byte) (inbuffer[0x2671C + i] ^
+                                          inbuffer[
+                                              0x61C +
+                                              ((BitConverter.ToInt32(inbuffer, 0x518) + i) & 0x3FF)] ^
+                                          inbuffer[0x51C + ((i / 80) & 0xFF)]);
             }
             crc32 crcc = new crc32();
-            uint crc32 = BitConverter.ToUInt32(inbuffer, 4);
-            uint crc = ~crcc.GetCRC32(outbuffer, 0xFFFFFFFF);
-            if (crc != crc32)
+            uint crca = ~crcc.GetCRC32(m_firmwareA, 0xFFFFFFFF);
+            uint crccs = ~crcc.GetCRC32(m_firmwareCS, 0xFFFFFFFF);
+            if (crca != BitConverter.ToUInt32(inbuffer, 4) || crccs != BitConverter.ToUInt32(inbuffer, 12))
                 throw new Exception(UpdateDat_Path + "\nData CRC error!");
-            m_firmwareA = new byte[outbuffer.Length];
-            Array.Copy(outbuffer, m_firmwareA, outbuffer.Length);
 
-            ////Decrypt CS firmware (stage 1)
-            CryptoIndex = 0x518;
-            FirmwareIndex = 0x2671C;
-            for (uint i = 0; i <= outbuffer.Length - 1; i++)
-            {
-                idx1 = (uint) (CryptoIndex + 260 + ((BitConverter.ToInt32(inbuffer, CryptoIndex) + i) & 0x3FF));
-                idx2 = (uint) (CryptoIndex + 4 + ((i / 80) & 0xFF));
-                outbuffer[i] = Convert.ToByte(inbuffer[FirmwareIndex + i] ^ inbuffer[idx1] ^ inbuffer[idx2]);
-            }
-            crc32 = BitConverter.ToUInt32(inbuffer, 12);
-            crc = ~crcc.GetCRC32(outbuffer, 0xFFFFFFFF);
-            if (crc != crc32)
-                throw new Exception(UpdateDat_Path + "\nData CRC error!");
-            m_firmwareCS = new byte[outbuffer.Length];
-            Array.Copy(outbuffer, m_firmwareCS, outbuffer.Length);
             byte[] b = new byte[UNENCRYPTED_FIRMWARE_SIZE];
             Decrypt_Firmware(b, (int) PROGRAMMER_TYPE.TL866A);
             uint c1 = BitConverter.ToUInt32(b, FIRMWARE_SIGNATURE_OFFSET);
@@ -165,6 +152,8 @@ namespace TL866
         {
             return type == (int) PROGRAMMER_TYPE.TL866A ? m_eraseA : m_eraseCS;
         }
+
+
 
         public byte[] GetEncryptedFirmware(int type, int key)
         {
@@ -250,7 +239,7 @@ namespace TL866
             //step3: xor
             for (uint i = 0; i <= data.Length - 1; i++)
             {
-                data[i] = Convert.ToByte(data[i] ^ xortable[index]);
+                data[i] = (byte) (data[i] ^ xortable[index]);
                 index += 1;
                 index = index & 0xFF;
             }
@@ -262,7 +251,7 @@ namespace TL866
             //step1: xor
             for (uint i = 0; i <= data.Length - 1; i++)
             {
-                data[i] = Convert.ToByte(data[i] ^ xortable[index]);
+                data[i] = (byte) (data[i] ^ xortable[index]);
                 index += 1;
                 index = index & 0xFF;
             }
@@ -335,8 +324,8 @@ namespace TL866
                 crc = GetKeyCRC(b);
             } while (!(crc < 0x2000));
             Array.Copy(b, 0, data, 0, b.Length);
-            data[data.Length - 1] = Convert.ToByte(crc >> 8);
-            data[data.Length - 2] = Convert.ToByte(crc & 0xff);
+            data[data.Length - 1] = (byte) (crc >> 8);
+            data[data.Length - 2] = (byte) (crc & 0xff);
         }
 
         public void EncryptSerial(byte[] info, byte[] firmware)
