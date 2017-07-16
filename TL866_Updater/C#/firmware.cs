@@ -137,12 +137,10 @@ namespace TL866
             if (crca != BitConverter.ToUInt32(inbuffer, 4) || crccs != BitConverter.ToUInt32(inbuffer, 12))
                 throw new Exception(UpdateDat_Path + "\nData CRC error!");
 
-            byte[] b = new byte[UNENCRYPTED_FIRMWARE_SIZE];
-            Decrypt_Firmware(b, (int) PROGRAMMER_TYPE.TL866A);
-            uint c1 = BitConverter.ToUInt32(b, FIRMWARE_SIGNATURE_OFFSET);
-            Decrypt_Firmware(b, (int) PROGRAMMER_TYPE.TL866CS);
-            uint c2 = BitConverter.ToUInt32(b, FIRMWARE_SIGNATURE_OFFSET);
-            if (c1 != FIRMWARE_SIGNATURE || c2 != FIRMWARE_SIGNATURE)
+            if (BitConverter.ToUInt32(GetUnencryptedFirmware((int) PROGRAMMER_TYPE.TL866A),
+                    FIRMWARE_SIGNATURE_OFFSET) != FIRMWARE_SIGNATURE ||
+                BitConverter.ToUInt32(GetUnencryptedFirmware((int) PROGRAMMER_TYPE.TL866CS),
+                    FIRMWARE_SIGNATURE_OFFSET) != FIRMWARE_SIGNATURE)
                 throw new Exception("Firmware decryption error!");
             IsValid = true;
         }
@@ -154,7 +152,6 @@ namespace TL866
         }
 
 
-
         public byte[] GetEncryptedFirmware(int type, int key)
         {
             byte[] buffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
@@ -163,18 +160,16 @@ namespace TL866
                 Array.Copy(type == (int) PROGRAMMER_TYPE.TL866A ? m_firmwareA : m_firmwareCS, buffer, buffer.Length);
                 return buffer;
             }
-            byte[] db = new byte[UNENCRYPTED_FIRMWARE_SIZE];
-            Decrypt_Firmware(db, type);
-            Array.Copy(Encrypt_Firmware(db, key), buffer, buffer.Length);
+            Array.Copy(Encrypt_Firmware(GetUnencryptedFirmware(type), key), buffer, buffer.Length);
             return buffer;
         }
 
-        public void Decrypt_Firmware(byte[] firmware, int type)
+
+        public byte[] GetUnencryptedFirmware(int type)
         {
             byte[] outbuffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
-            Array.Copy(type == (int) PROGRAMMER_TYPE.TL866A ? m_firmwareA : m_firmwareCS, outbuffer, outbuffer.Length);
+            Array.Copy(type == (int) ENCRYPTION_KEY.A_KEY ? m_firmwareA : m_firmwareCS, outbuffer, outbuffer.Length);
             byte[] xortable = new byte[XOR_TABLE_SIZE];
-            byte[] buffer = new byte[BLOCK_SIZE];
             //extract encryption xor table
             for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
@@ -184,16 +179,19 @@ namespace TL866
             for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
             //Decrypt each data block
-            MemoryStream msout = new MemoryStream(firmware);
-            uint index = 0x15;
+            byte[] data = new byte[UNENCRYPTED_FIRMWARE_SIZE];
+            byte[] buffer = new byte[BLOCK_SIZE];
+            byte index = 0x15;
+            int block = 0;
             for (uint i = 0; i < outbuffer.Length; i += BLOCK_SIZE)
             {
                 Array.Copy(outbuffer, i, buffer, 0, BLOCK_SIZE);
                 Decrypt_Block(buffer, xortable, index);
-                msout.Write(buffer, 0, BLOCK_SIZE - 16);
-                index = (index + 4) & 0xFF;
+                Array.Copy(buffer, 0, data, block, BLOCK_SIZE - 16);
+                block += BLOCK_SIZE - 16;
+                index += 4;
             }
-            msout.Close();
+            return data;
         }
 
         public byte[] Encrypt_Firmware(byte[] firmware, int type)
@@ -201,27 +199,27 @@ namespace TL866
             byte[] outbuffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
             Array.Copy(type == (int) ENCRYPTION_KEY.A_KEY ? m_firmwareA : m_firmwareCS, outbuffer, outbuffer.Length);
             byte[] xortable = new byte[XOR_TABLE_SIZE];
-            byte[] buffer = new byte[BLOCK_SIZE];
             //extract encryption xor table
             for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
             for (uint i = 0; i < 16; i++)
                 Array.Copy(outbuffer, XOR_TABLE_START + i * 320, xortable, i * 16, 16);
             //Encrypt each data block
-            MemoryStream msout = new MemoryStream(outbuffer);
-            uint index = 0x15;
+            byte[] buffer = new byte[BLOCK_SIZE];
+            byte index = 0x15;
+            int block = 0;
             for (uint i = 0; i < firmware.Length; i += BLOCK_SIZE - 16)
             {
                 Array.Copy(firmware, i, buffer, 0, BLOCK_SIZE - 16);
                 Encrypt_Block(buffer, xortable, index);
-                msout.Write(buffer, 0, buffer.Length);
-                index = (index + 4) & 0xFF;
+                Array.Copy(buffer, 0, outbuffer, block, BLOCK_SIZE);
+                block += BLOCK_SIZE;
+                index += 4;
             }
-            msout.Close();
             return outbuffer;
         }
 
-        private void Encrypt_Block(byte[] data, byte[] xortable, uint index)
+        private void Encrypt_Block(byte[] data, byte[] xortable, byte index)
         {
             for (int i = data.Length - 16; i < data.Length; i++)
                 data[i] = (byte) Utils.Generator.Next(0, 0xFF);
@@ -238,23 +236,15 @@ namespace TL866
             data[data.Length - 1] = (byte) ((data[data.Length - 1] << 3) & 0xF8);
             //step3: xor
             for (uint i = 0; i < data.Length; i++)
-            {
-                data[i] = (byte) (data[i] ^ xortable[index]);
-                index += 1;
-                index = index & 0xFF;
-            }
+                data[i] = (byte) (data[i] ^ xortable[index++]);
         }
 
 
-        private void Decrypt_Block(byte[] data, byte[] xortable, uint index)
+        private void Decrypt_Block(byte[] data, byte[] xortable, byte index)
         {
             //step1: xor
             for (uint i = 0; i < data.Length; i++)
-            {
-                data[i] = (byte) (data[i] ^ xortable[index]);
-                index += 1;
-                index = index & 0xFF;
-            }
+                data[i] = (byte) (data[i] ^ xortable[index++]);
             //step2: shift the whole array three bits right
             for (int i = data.Length - 1; i > 0; i--)
                 data[i] = (byte) (((data[i] >> 3) & 0x1F) | (data[i - 1] << 5));
@@ -284,13 +274,9 @@ namespace TL866
         public void DecryptSerial(byte[] info, byte[] firmware)
         {
             //step1
-            uint index = 0x0A;
+            byte index = 0x0A;
             for (uint i = 0; i < info.Length; i++)
-            {
-                info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index]);
-                index += 1;
-                index = index & 0xFF;
-            }
+                info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
             //step2
             for (int i = info.Length - 1; i > 0; i--)
                 info[i] = (byte) (((info[i] >> 3) & 0x1F) | (info[i - 1] << 5));
@@ -330,7 +316,7 @@ namespace TL866
 
         public void EncryptSerial(byte[] info, byte[] firmware)
         {
-            uint index = 0x0A;
+            byte index = 0x0A;
             if (GetKeyCRC(info) != 0)
                 Make_CRC(info);
             //step1
@@ -346,11 +332,7 @@ namespace TL866
             info[info.Length - 1] = (byte) ((info[info.Length - 1] << 3) & 0xF8);
             //step3
             for (int i = 0; i < info.Length; i++)
-            {
-                info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index]);
-                index += 1;
-                index = index & 0xFF;
-            }
+                info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
         }
 
 

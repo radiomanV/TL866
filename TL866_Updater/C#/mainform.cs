@@ -352,19 +352,17 @@ namespace TL866
             }
 
 
-            byte[] buffer = new byte[Firmware.ENCRYPTED_FIRMWARE_SIZE];
+            byte[] buffer = null;
             switch (version)
             {
                 case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_A:
-                    Array.Copy(firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.A_KEY, devtype), buffer,
-                        buffer.Length);
+                    buffer = firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.A_KEY, devtype);
                     break;
                 case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CS:
-                    Array.Copy(firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.CS_KEY, devtype), buffer,
-                        buffer.Length);
+                    buffer = firmware.GetEncryptedFirmware((int) Firmware.ENCRYPTION_KEY.CS_KEY, devtype);
                     break;
                 case (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM:
-                    Array.Copy(firmware.Encrypt_Firmware(Resources.Dumper, devtype), buffer, buffer.Length);
+                    buffer = firmware.Encrypt_Firmware(Resources.Dumper, devtype);
                     break;
             }
 
@@ -549,9 +547,8 @@ namespace TL866
                 SetProgressBar(i);
                 Application.DoEvents();
             }
-            byte[] temp = new byte[Firmware.UNENCRYPTED_FIRMWARE_SIZE];
-            firmware.Decrypt_Firmware(temp, devtype);
-            Array.Copy(temp, 0, buffer, Firmware.BOOTLOADER_SIZE, Firmware.UNENCRYPTED_FIRMWARE_SIZE);
+            Array.Copy(firmware.GetUnencryptedFirmware(devtype), 0, buffer, Firmware.BOOTLOADER_SIZE,
+                Firmware.UNENCRYPTED_FIRMWARE_SIZE);
             try
             {
                 StreamWriter streamwriter = File.CreateText(filepath);
