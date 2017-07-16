@@ -419,7 +419,7 @@ namespace TL866
             byte[] b = new byte[Firmware.BLOCK_SIZE + 7];
             uint address = Firmware.BOOTLOADER_SIZE;
             SetProgressBar(0);
-            for (int i = 0; i <= buffer.Length - 1; i += Firmware.BLOCK_SIZE)
+            for (int i = 0; i < buffer.Length; i += Firmware.BLOCK_SIZE)
             {
                 if (worker.CancellationPending)
                     return false;
@@ -531,7 +531,7 @@ namespace TL866
         {
             byte[] buffer = new byte[Firmware.FLASH_SIZE]; //128Kbytes buffer   
             byte[] readbuffer = new byte[64];
-            for (int i = 0; i <= buffer.Length - 1; i += 64)
+            for (int i = 0; i < buffer.Length; i += 64)
             {
                 if (worker.CancellationPending)
                     return;

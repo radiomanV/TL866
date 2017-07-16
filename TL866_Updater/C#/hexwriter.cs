@@ -8,7 +8,7 @@ namespace TL866
         {
             int bl = 0;
             fstream.WriteLine(GetLine(2, 0, 4, new byte[] {0, 0}));
-            for (int i = 0; i <= buffer.Length - 1; i += 16)
+            for (int i = 0; i < buffer.Length; i += 16)
             {
                 bl += 16;
                 fstream.WriteLine(GetLine(buffer.Length - (i + 16) == 0 ? 8 : 16, i, 0, buffer));
@@ -28,7 +28,7 @@ namespace TL866
             cs += (byte) (address & 0xff);
             cs += (byte) (recordtype & 0xff);
             if (buffer != null)
-                for (int k = 0; k <= lenght - 1; k++)
+                for (int k = 0; k < lenght; k++)
                 {
                     s += buffer[address + k].ToString("X2");
                     cs += buffer[address + k];

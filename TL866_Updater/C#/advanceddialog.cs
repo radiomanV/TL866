@@ -152,7 +152,7 @@ namespace TL866
         {
             byte[] buff = new byte[6144]; //6 Kbytes
             byte[] rd = new byte[64];
-            for (uint i = 0; i <= buff.Length - 1; i += 64)
+            for (uint i = 0; i < buff.Length; i += 64)
             {
                 GetMainForm().usb.Write(new byte[]
                 {

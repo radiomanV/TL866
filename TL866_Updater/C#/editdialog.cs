@@ -50,7 +50,7 @@ namespace TL866
             do
             {
                 s = "";
-                for (int i = 0; i <= 23; i++)
+                for (int i = 0; i < 24; i++)
                     s += Utils.Generator.Next(0, 15).ToString("X");
             } while (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, s));
             TxtSerial.Text = s;

@@ -176,17 +176,17 @@ namespace TL866
             byte[] xortable = new byte[XOR_TABLE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
             //extract encryption xor table
-            for (uint i = 0; i <= outbuffer.Length - 1; i++)
+            for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
-            for (uint i = 0; i <= 15; i++)
+            for (uint i = 0; i < 16; i++)
                 Array.Copy(outbuffer, XOR_TABLE_START + i * 320, xortable, i * 16, 16);
             //Restoring the buffer
-            for (uint i = 0; i <= outbuffer.Length - 1; i++)
+            for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
             //Decrypt each data block
             MemoryStream msout = new MemoryStream(firmware);
             uint index = 0x15;
-            for (uint i = 0; i <= outbuffer.Length - 1; i += BLOCK_SIZE)
+            for (uint i = 0; i < outbuffer.Length; i += BLOCK_SIZE)
             {
                 Array.Copy(outbuffer, i, buffer, 0, BLOCK_SIZE);
                 Decrypt_Block(buffer, xortable, index);
@@ -203,14 +203,14 @@ namespace TL866
             byte[] xortable = new byte[XOR_TABLE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
             //extract encryption xor table
-            for (uint i = 0; i <= outbuffer.Length - 1; i++)
+            for (uint i = 0; i < outbuffer.Length; i++)
                 outbuffer[i] = (byte) (outbuffer[i] ^ 0xFF);
-            for (uint i = 0; i <= 15; i++)
+            for (uint i = 0; i < 16; i++)
                 Array.Copy(outbuffer, XOR_TABLE_START + i * 320, xortable, i * 16, 16);
             //Encrypt each data block
             MemoryStream msout = new MemoryStream(outbuffer);
             uint index = 0x15;
-            for (uint i = 0; i <= firmware.Length - 1; i += BLOCK_SIZE - 16)
+            for (uint i = 0; i < firmware.Length; i += BLOCK_SIZE - 16)
             {
                 Array.Copy(firmware, i, buffer, 0, BLOCK_SIZE - 16);
                 Encrypt_Block(buffer, xortable, index);
@@ -223,21 +223,21 @@ namespace TL866
 
         private void Encrypt_Block(byte[] data, byte[] xortable, uint index)
         {
-            for (int i = data.Length - 16; i <= data.Length - 1; i++)
+            for (int i = data.Length - 16; i < data.Length; i++)
                 data[i] = (byte) Utils.Generator.Next(0, 0xFF);
             //step1: swap data bytes
-            for (uint i = 0; i <= data.Length / 2 - 1; i += 4)
+            for (uint i = 0; i < data.Length / 2; i += 4)
             {
                 byte t = data[i];
                 data[i] = data[data.Length - i - 1];
                 data[data.Length - i - 1] = t;
             }
             //step2: shift the whole array three bits left
-            for (uint i = 0; i <= data.Length - 2; i++)
+            for (uint i = 0; i < data.Length - 1; i++)
                 data[i] = (byte) (((data[i] << 3) & 0xF8) | (data[i + 1] >> 5));
             data[data.Length - 1] = (byte) ((data[data.Length - 1] << 3) & 0xF8);
             //step3: xor
-            for (uint i = 0; i <= data.Length - 1; i++)
+            for (uint i = 0; i < data.Length; i++)
             {
                 data[i] = (byte) (data[i] ^ xortable[index]);
                 index += 1;
@@ -249,18 +249,18 @@ namespace TL866
         private void Decrypt_Block(byte[] data, byte[] xortable, uint index)
         {
             //step1: xor
-            for (uint i = 0; i <= data.Length - 1; i++)
+            for (uint i = 0; i < data.Length; i++)
             {
                 data[i] = (byte) (data[i] ^ xortable[index]);
                 index += 1;
                 index = index & 0xFF;
             }
             //step2: shift the whole array three bits right
-            for (int i = data.Length - 1; i >= 1; i += -1)
+            for (int i = data.Length - 1; i > 0; i--)
                 data[i] = (byte) (((data[i] >> 3) & 0x1F) | (data[i - 1] << 5));
             data[0] = (byte) ((data[0] >> 3) & 0x1F);
             //step3: swap data bytes
-            for (uint i = 0; i <= data.Length / 2 - 1; i += 4)
+            for (uint i = 0; i < data.Length / 2; i += 4)
             {
                 byte t = data[i];
                 data[i] = data[data.Length - i - 1];
@@ -285,18 +285,18 @@ namespace TL866
         {
             //step1
             uint index = 0x0A;
-            for (uint i = 0; i <= info.Length - 1; i++)
+            for (uint i = 0; i < info.Length; i++)
             {
                 info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index]);
                 index += 1;
                 index = index & 0xFF;
             }
             //step2
-            for (int i = info.Length - 1; i >= 1; i += -1)
+            for (int i = info.Length - 1; i > 0; i--)
                 info[i] = (byte) (((info[i] >> 3) & 0x1F) | (info[i - 1] << 5));
             info[0] = (byte) ((info[0] >> 3) & 0x1F);
             //step3
-            for (int i = 0; i <= info.Length / 2 - 1; i += 4)
+            for (int i = 0; i < info.Length / 2; i += 4)
             {
                 byte t = info[i];
                 info[i] = info[info.Length - i - 1];
@@ -319,7 +319,7 @@ namespace TL866
             Array.Copy(data, 0, b, 0, b.Length);
             do
             {
-                for (int i = 32; i <= b.Length - 1; i++)
+                for (int i = 32; i < b.Length; i++)
                     b[i] = (byte) Utils.Generator.Next(0, 255);
                 crc = GetKeyCRC(b);
             } while (!(crc < 0x2000));
@@ -334,18 +334,18 @@ namespace TL866
             if (GetKeyCRC(info) != 0)
                 Make_CRC(info);
             //step1
-            for (int i = 0; i <= info.Length / 2 - 1; i += 4)
+            for (int i = 0; i < info.Length / 2; i += 4)
             {
                 byte t = info[i];
                 info[i] = info[info.Length - i - 1];
                 info[info.Length - i - 1] = t;
             }
             //step2
-            for (int i = 0; i <= info.Length - 2; i++)
+            for (int i = 0; i < info.Length - 1; i++)
                 info[i] = (byte) (((info[i] << 3) & 0xF8) | (info[i + 1] >> 5));
             info[info.Length - 1] = (byte) ((info[info.Length - 1] << 3) & 0xF8);
             //step3
-            for (int i = 0; i <= info.Length - 1; i++)
+            for (int i = 0; i < info.Length; i++)
             {
                 info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index]);
                 index += 1;

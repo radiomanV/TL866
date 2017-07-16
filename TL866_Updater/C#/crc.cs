@@ -11,10 +11,10 @@ namespace TL866
         {
             const uint poly = 0xedb88320u;
             table = new uint[256];
-            for (uint i = 0; i <= table.Length - 1; i++)
+            for (uint i = 0; i < table.Length; i++)
             {
                 uint temp = i;
-                for (int j = 8; j >= 1; j += -1)
+                for (int j = 8; j > 0; j--)
                     if ((temp & 1) == 1)
                         temp = Convert.ToUInt32((temp >> 1) ^ poly);
                     else
@@ -25,7 +25,7 @@ namespace TL866
 
         public uint GetCRC32(byte[] bytes, uint initial)
         {
-            for (int i = 0; i <= bytes.Length - 1; i++)
+            for (int i = 0; i < bytes.Length; i++)
                 initial = Convert.ToUInt32((initial >> 8) ^ table[Convert.ToByte((initial & 0xff) ^ bytes[i])]);
             return initial;
         }
@@ -40,11 +40,11 @@ namespace TL866
             const ushort polynomial = 0xa001;
             table = new ushort[256];
             int r = 0;
-            for (ushort i = 0; i <= table.Length - 1; i++)
+            for (ushort i = 0; i < table.Length; i++)
             {
                 ushort value = 0;
                 ushort temp = i;
-                for (byte j = 0; j <= 7; j++)
+                for (byte j = 0; j < 8; j++)
                 {
                     if (((value ^ temp) & 0x1) != 0)
                         value = Convert.ToUInt16((value >> 1) ^ polynomial);
@@ -60,7 +60,7 @@ namespace TL866
 
         public ushort GetCRC16(byte[] bytes, ushort initial)
         {
-            for (int i = 0; i <= bytes.Length - 1; i++)
+            for (int i = 0; i < bytes.Length; i++)
                 initial = Convert.ToUInt16((initial >> 8) ^ table[Convert.ToByte((initial ^ bytes[i]) & 0xff)]);
             return initial;
         }
