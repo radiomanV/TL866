@@ -1,11 +1,11 @@
 ﻿namespace TL866
 {
-    public class crc32
+    public class CRC32
     {
         private readonly uint[] table;
 
 
-        public crc32()
+        public CRC32()
         {
             const uint poly = 0xEDB88320;
             table = new uint[256];
@@ -29,11 +29,11 @@
         }
     }
 
-    public class Crc16
+    public class CRC16
     {
         private readonly ushort[] table;
 
-        public Crc16()
+        public CRC16()
         {
             const ushort polynomial = 0xA001;
             table = new ushort[256];

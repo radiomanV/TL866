@@ -54,8 +54,8 @@ namespace TL866
         public const int DEVCODE_LENGHT = 8;
         public const int SERIALCODE_LENGHT = 24;
 
-        public const uint A_BOOTLOADER_CRC = 0x95AB;
-        public const uint CS_BOOTLOADER_CRC = 0x20D2;
+        public const uint A_BOOTLOADER_CRC = 0x1B8960EF;
+        public const uint CS_BOOTLOADER_CRC = 0xFB3DED05;
         public const uint BAD_CRC = 0xC8C2F013;
 
 
@@ -135,8 +135,8 @@ namespace TL866
             m_xortableCS = new byte[XOR_TABLE_SIZE];
             for (uint i = 0; i < ENCRYPTED_FIRMWARE_SIZE; i++)
             {
-                ta[i] = (byte) (ta[i] ^ 0xFF);
-                tcs[i] = (byte) (tcs[i] ^ 0xFF);
+                ta[i] = (byte)~(ta[i]);
+                tcs[i] = (byte) ~(tcs[i]);
             }
             for (uint i = 0; i < 16; i++)
             {
@@ -145,9 +145,9 @@ namespace TL866
             }
 
             //Check if decryption was O.K.
-            crc32 crcc = new crc32();
-            uint crca = ~crcc.GetCRC32(m_firmwareA, 0xFFFFFFFF);
-            uint crccs = ~crcc.GetCRC32(m_firmwareCS, 0xFFFFFFFF);
+            CRC32 crc32 = new CRC32();
+            uint crca = ~crc32.GetCRC32(m_firmwareA, 0xFFFFFFFF);
+            uint crccs = ~crc32.GetCRC32(m_firmwareCS, 0xFFFFFFFF);
             if (crca != BitConverter.ToUInt32(inbuffer, 4) || crccs != BitConverter.ToUInt32(inbuffer, 12))
                 throw new Exception(UpdateDat_Path + "\nData CRC error!");
 
@@ -299,8 +299,8 @@ namespace TL866
 
         public ushort GetKeyCRC(byte[] data)
         {
-            Crc16 crcc = new Crc16();
-            return crcc.GetCRC16(data, 0);
+            CRC16 crc16 = new CRC16();
+            return crc16.GetCRC16(data, 0);
         }
 
 
@@ -327,7 +327,7 @@ namespace TL866
                 DEVCODE_LENGHT);
             Array.Copy(Encoding.ASCII.GetBytes(Serial + new string(' ', SERIALCODE_LENGHT - Serial.Length)), 0, k,
                 DEVCODE_LENGHT, SERIALCODE_LENGHT);
-            crc32 crc = new crc32();
+            CRC32 crc = new CRC32();
             return crc.GetCRC32(k, 0xFFFFFFFF) == BAD_CRC;
         }
     }

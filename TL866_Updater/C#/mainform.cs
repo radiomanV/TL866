@@ -224,7 +224,6 @@ namespace TL866
         {
             if (usb.DevicesCount == 0 && reset_flag)
                 return;
-
             reset_flag = false;
             Assembly assembly = Assembly.GetExecutingAssembly();
             FileVersionInfo version = FileVersionInfo.GetVersionInfo(assembly.Location);

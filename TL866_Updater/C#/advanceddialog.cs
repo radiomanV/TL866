@@ -64,7 +64,7 @@ namespace TL866
                     if (MessageBox.Show(this, Utils.WARNING_BRICK, "TL866", MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation) == DialogResult.Yes)
                     {
-                        ushort crc = Bootloader_CRC();
+                        uint crc = Bootloader_CRC();
                         if (crc == Firmware.A_BOOTLOADER_CRC || crc == Firmware.CS_BOOTLOADER_CRC)
                         {
                             GetMainForm().usb.Write(new[]
@@ -139,7 +139,7 @@ namespace TL866
                         GetMainForm().usb.Write(b);
                         GetMainForm().usb.Read(b);
                         GetMainForm().UsbDeviceChanged();
-                        if (b[0] == 4)
+                        if (b[0] == Firmware.DUMPER_WRITE_INFO)
                             MessageBox.Show("Device info was successfully written.", "TL866", MessageBoxButtons.OK,
                                 MessageBoxIcon.Information);
                         else
@@ -148,19 +148,19 @@ namespace TL866
                     }
         }
 
-        private ushort Bootloader_CRC()
+        private uint Bootloader_CRC()
         {
-            byte[] buff = new byte[6144]; //6 Kbytes
+            byte[] buff = new byte[Firmware.BOOTLOADER_SIZE]; //6 Kbytes
             byte[] rd = new byte[64];
             for (uint i = 0; i < buff.Length; i += 64)
             {
                 GetMainForm().usb.Write(new byte[]
                 {
-                    1,
+                    Firmware.DUMPER_READ_FLASH,
                     64,
-                    (byte) (i & 0xff),
-                    (byte) ((i >> 8) & 0xff),
-                    (byte) ((i >> 16) & 0xff)
+                    (byte) (i & 0xFF),
+                    (byte) ((i >> 8) & 0xFF),
+                    (byte) ((i >> 16) & 0xFF)
                 });
                 if (GetMainForm().usb.Read(rd) != 64)
                 {
@@ -169,8 +169,8 @@ namespace TL866
                 }
                 Array.Copy(rd, 0, buff, i, rd.Length);
             }
-            Crc16 crc = new Crc16();
-            return crc.GetCRC16(buff, 0);
+            CRC32 crc = new CRC32();
+            return ~crc.GetCRC32(buff, 0xFFFFFFFF);
         }
 
         private bool IsDumperActive()
