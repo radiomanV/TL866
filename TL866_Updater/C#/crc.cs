@@ -9,7 +9,7 @@
         {
             const uint poly = 0xEDB88320;
             table = new uint[256];
-            for (uint i = 0; i < table.Length; i++)
+            for (uint i = 0; i < 256; i++)
             {
                 uint temp = i;
                 for (int j = 8; j > 0; j--)
@@ -24,7 +24,7 @@
         public uint GetCRC32(byte[] bytes, uint initial)
         {
             for (int i = 0; i < bytes.Length; i++)
-                initial = (initial >> 8) ^ table[(byte) ((initial & 0xFF) ^ bytes[i])];
+                initial = (initial >> 8) ^ table[(byte)((initial ^ bytes[i]) & 0xFF)];
             return initial;
         }
     }
@@ -35,28 +35,24 @@
 
         public CRC16()
         {
-            const ushort polynomial = 0xA001;
+            const ushort poly = 0xA001;
             table = new ushort[256];
-            for (ushort i = 0; i < table.Length; i++)
+            for (ushort i = 0; i < 256; i++)
             {
-                ushort value = 0;
                 ushort temp = i;
                 for (byte j = 0; j < 8; j++)
-                {
-                    if (((value ^ temp) & 0x1) != 0)
-                        value = (ushort) ((value >> 1) ^ polynomial);
+                    if ((temp & 0x1) == 1)
+                        temp = (ushort)((temp >> 1) ^ poly);
                     else
-                        value >>= 1;
-                    temp >>= 1;
-                }
-                table[i] = value;
+                        temp >>= 1;
+                table[i] = temp;
             }
         }
 
         public ushort GetCRC16(byte[] bytes, ushort initial)
         {
             for (int i = 0; i < bytes.Length; i++)
-                initial = (ushort) ((initial >> 8) ^ table[(byte) ((initial ^ bytes[i]) & 0xff)]);
+                initial = (ushort)((initial >> 8) ^ table[(byte)((initial ^ bytes[i]) & 0xFF)]);
             return initial;
         }
     }
