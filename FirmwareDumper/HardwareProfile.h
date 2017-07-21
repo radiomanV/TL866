@@ -55,5 +55,4 @@
 #define CLOCK_FREQ 48000000
 #define GetSystemClock()  CLOCK_FREQ
 #define GetInstructionClock() CLOCK_FREQ
-
 #endif
