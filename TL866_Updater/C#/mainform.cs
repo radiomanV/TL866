@@ -241,10 +241,10 @@ namespace TL866
             if (usb.DevicesCount > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
             {
                 usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-                TL866_Report report = new TL866_Report();
-                usb.Read(report.buffer);
+                TL866_Report tl866_report = new TL866_Report();
+                usb.Read(tl866_report.buffer);
                 TxtInfo.Clear();
-                switch (report.Device_Version)
+                switch (tl866_report.Device_Version)
                 {
                     case 1:
                         TxtInfo.AppendText("Device version: TL866A\n");
@@ -258,14 +258,14 @@ namespace TL866
                         TxtInfo.AppendText("Device version: Unknown\n");
                         break;
                 }
-                switch (report.Device_Status)
+                switch ((Firmware.DEVICE_STATUS)tl866_report.Device_Status)
                 {
-                    case (int) Firmware.DEVICE_STATUS.NORMAL_MODE:
+                    case Firmware.DEVICE_STATUS.NORMAL_MODE:
                         TxtInfo.AppendText("Device status: Normal working mode.\n");
                         LedNorm.BackColor = LightGreen;
                         LedBoot.BackColor = DarkGreen;
                         break;
-                    case (int) Firmware.DEVICE_STATUS.BOOTLOADER_MODE:
+                    case Firmware.DEVICE_STATUS.BOOTLOADER_MODE:
                         TxtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\n");
                         LedNorm.BackColor = DarkGreen;
                         LedBoot.BackColor = LightGreen;
@@ -278,9 +278,8 @@ namespace TL866
                 }
 
 
-                string s_dev = report.DeviceCode;
-                string s_ser = report.SerialCode;
-                bool isDumperActive = s_dev.ToLower() == "codedump" && s_ser == "000000000000000000000000";
+                bool isDumperActive = tl866_report.DeviceCode.ToLower() == "codedump" &&
+                                      tl866_report.SerialCode == "000000000000000000000000";
 
                 if (isDumperActive)
                 {
@@ -299,8 +298,8 @@ namespace TL866
                 }
                 else
                 {
-                    devcode = s_dev;
-                    serial = s_ser;
+                    devcode = tl866_report.DeviceCode;
+                    serial = tl866_report.SerialCode;
                 }
 
 
@@ -313,9 +312,10 @@ namespace TL866
                 TxtInfo.AppendText(string.Format("Firmware version: {0}",
                     isDumperActive
                         ? "Firmware dumper"
-                        : report.Device_Status == (int) Firmware.DEVICE_STATUS.NORMAL_MODE
-                            ? string.Format("{0}.{1}.{2}", report.hardware_version, report.firmware_version_major,
-                                report.firmware_version_minor)
+                        : tl866_report.Device_Status == (byte) Firmware.DEVICE_STATUS.NORMAL_MODE
+                            ? string.Format("{0}.{1}.{2}", tl866_report.hardware_version,
+                                tl866_report.firmware_version_major,
+                                tl866_report.firmware_version_minor)
                             : "Bootloader"));
                 BtnDump.Enabled = isDumperActive;
                 BtnAdvanced.Enabled = isDumperActive;
@@ -345,10 +345,10 @@ namespace TL866
         private void Reflash(int version)
         {
             usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-            byte[] readbuffer = new byte[64];
-            usb.Read(readbuffer);
+            TL866_Report tl866_report = new TL866_Report();
+            usb.Read(tl866_report.buffer);
 
-            if (readbuffer[1] != (int) Firmware.DEVICE_STATUS.BOOTLOADER_MODE)
+            if (tl866_report.Device_Status != (byte) Firmware.DEVICE_STATUS.BOOTLOADER_MODE)
             {
                 Reset_Device();
                 if (!wait_for_device())
@@ -395,8 +395,8 @@ namespace TL866
 
 
             usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-            usb.Read(readbuffer);
-            if (readbuffer[1] == (int) Firmware.DEVICE_STATUS.NORMAL_MODE)
+            usb.Read(tl866_report.buffer);
+            if (tl866_report.Device_Status == (byte) Firmware.DEVICE_STATUS.NORMAL_MODE)
                 MessageBox.Show("Reflash O.K.!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
                 MessageBox.Show("Reflash Failed!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Error);
