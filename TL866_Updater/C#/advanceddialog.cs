@@ -24,20 +24,22 @@ namespace TL866
             {
                 TxtInfo.Clear();
                 GetMainForm().usb.Write(new[] {Firmware.DUMPER_INFO});
-                byte[] info = new byte[34];
-                if (GetMainForm().usb.Read(info) > 0)
+                Dumper_Report dumper_report = new Dumper_Report();
+                if (GetMainForm().usb.Read(dumper_report.buffer) > 0)
                 {
-                    TxtDevcode.Text = Encoding.ASCII.GetString(info, 0, 8).Trim();
-                    TxtSerial.Text = Encoding.ASCII.GetString(info, 8, 24).Trim();
+                    TxtDevcode.Text = dumper_report.DeviceCode;
+                    TxtSerial.Text = dumper_report.SerialCode;
 
                     TxtInfo.AppendText(string.Format("Device code: {0}{1}\n", TxtDevcode.Text,
                         GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad device code)" : ""));
                     TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", TxtSerial.Text,
                         GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad serial code)" : ""));
-                    TxtInfo.AppendText(string.Format("Bootloader version: {0}\n", info[32] == 1 ? "A" : "CS"));
-                    TxtInfo.AppendText(string.Format("Code Protection bit: {0}", info[33] > 0 ? "No" : "Yes"));
-                    ChkCP.CheckState = info[33] == 0 ? CheckState.Checked : CheckState.Unchecked;
-                    if (info[32] == 1)
+                    TxtInfo.AppendText(string.Format("Bootloader version: {0}\n",
+                        dumper_report.bootloader_version == 1 ? "A" : "CS"));
+                    TxtInfo.AppendText(string.Format("Code Protection bit: {0}",
+                        dumper_report.cp_bit > 0 ? "No" : "Yes"));
+                    ChkCP.CheckState = dumper_report.cp_bit == 0 ? CheckState.Checked : CheckState.Unchecked;
+                    if (dumper_report.bootloader_version == 1)
                         RadioA.Checked = true;
                     else
                         RadioCS.Checked = true;

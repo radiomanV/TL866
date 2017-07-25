@@ -50,7 +50,6 @@ namespace TL866
         public const int UNENCRYPTED_FIRMWARE_SIZE = 0x1E400;
         public const int FIRMWARE_SIGNATURE_OFFSET = 0x1E3FC;
         public const uint FIRMWARE_SIGNATURE = 0x5AA5AA55;
-        public const int REPORT_SIZE = 34;
         public const int DEVCODE_LENGHT = 8;
         public const int SERIALCODE_LENGHT = 24;
 
@@ -135,8 +134,8 @@ namespace TL866
             m_xortableCS = new byte[XOR_TABLE_SIZE];
             for (uint i = 0; i < ENCRYPTED_FIRMWARE_SIZE; i++)
             {
-                ta[i] = (byte)~(ta[i]);
-                tcs[i] = (byte) ~(tcs[i]);
+                ta[i] = (byte) ~ta[i];
+                tcs[i] = (byte) ~tcs[i];
             }
             for (uint i = 0; i < 16; i++)
             {
@@ -317,7 +316,7 @@ namespace TL866
             } while (!(crc < 0x2000));
             Array.Copy(b, 0, data, 0, b.Length);
             data[data.Length - 1] = (byte) (crc >> 8);
-            data[data.Length - 2] = (byte) (crc & 0xff);
+            data[data.Length - 2] = (byte) (crc & 0xFF);
         }
 
         public bool Calc_CRC(string DevCode, string Serial)
@@ -329,6 +328,72 @@ namespace TL866
                 DEVCODE_LENGHT, SERIALCODE_LENGHT);
             CRC32 crc = new CRC32();
             return crc.GetCRC32(k, 0xFFFFFFFF) == BAD_CRC;
+        }
+    }
+
+
+    public class TL866_Report
+    {
+        public byte[] buffer = new byte[64];
+
+        public byte Device_Version
+        {
+            get { return buffer[6]; }
+        }
+
+        public byte Device_Status
+        {
+            get { return buffer[1]; }
+        }
+
+        public string DeviceCode
+        {
+            get { return Encoding.UTF8.GetString(buffer, 7, Firmware.DEVCODE_LENGHT).Trim(); }
+        }
+
+        public string SerialCode
+        {
+            get { return Encoding.UTF8.GetString(buffer, 15, Firmware.SERIALCODE_LENGHT).Trim(); }
+        }
+
+        public byte firmware_version_minor
+        {
+            get { return buffer[4]; }
+        }
+
+        public byte firmware_version_major
+        {
+            get { return buffer[5]; }
+        }
+
+        public byte hardware_version
+        {
+            get { return buffer[39]; }
+        }
+    }
+
+    public class Dumper_Report
+    {
+        public byte[] buffer = new byte[34];
+
+        public string DeviceCode
+        {
+            get { return Encoding.UTF8.GetString(buffer, 0, Firmware.DEVCODE_LENGHT).Trim(); }
+        }
+
+        public string SerialCode
+        {
+            get { return Encoding.ASCII.GetString(buffer, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT).Trim(); }
+        }
+
+        public byte bootloader_version
+        {
+            get { return buffer[32]; }
+        }
+
+        public byte cp_bit
+        {
+            get { return buffer[33]; }
         }
     }
 }

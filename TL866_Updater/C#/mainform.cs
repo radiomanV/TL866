@@ -233,10 +233,10 @@ namespace TL866
             if (usb.DevicesCount > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
             {
                 usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-                byte[] readbuffer = new byte[64];
-                usb.Read(readbuffer);
+                TL866_Report report = new TL866_Report();
+                usb.Read(report.buffer);
                 TxtInfo.Clear();
-                switch (readbuffer[6])
+                switch (report.Device_Version)
                 {
                     case 1:
                         TxtInfo.AppendText("Device version: TL866A\n");
@@ -250,7 +250,7 @@ namespace TL866
                         TxtInfo.AppendText("Device version: Unknown\n");
                         break;
                 }
-                switch (readbuffer[1])
+                switch (report.Device_Status)
                 {
                     case (int) Firmware.DEVICE_STATUS.NORMAL_MODE:
                         TxtInfo.AppendText("Device status: Normal working mode.\n");
@@ -270,19 +270,18 @@ namespace TL866
                 }
 
 
-                string s_dev = Encoding.UTF8.GetString(readbuffer, 7, Firmware.DEVCODE_LENGHT).Trim();
-                string s_ser = Encoding.UTF8.GetString(readbuffer, 15, Firmware.SERIALCODE_LENGHT).Trim();
+                string s_dev = report.DeviceCode;
+                string s_ser = report.SerialCode;
                 bool isDumperActive = s_dev.ToLower() == "codedump" && s_ser == "000000000000000000000000";
 
                 if (isDumperActive)
                 {
                     usb.Write(new[] {Firmware.DUMPER_INFO});
-                    byte[] info = new byte[Firmware.REPORT_SIZE];
-                    if (usb.Read(info) > 0)
+                    Dumper_Report dumper_report = new Dumper_Report();
+                    if (usb.Read(dumper_report.buffer) > 0)
                     {
-                        devcode = Encoding.ASCII.GetString(info, 0, Firmware.DEVCODE_LENGHT).Trim();
-                        serial = Encoding.ASCII.GetString(info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT)
-                            .Trim();
+                        devcode = dumper_report.DeviceCode;
+                        serial = dumper_report.SerialCode;
                     }
                     else
                     {
@@ -306,8 +305,9 @@ namespace TL866
                 TxtInfo.AppendText(string.Format("Firmware version: {0}",
                     isDumperActive
                         ? "Firmware dumper"
-                        : readbuffer[1] == (int) Firmware.DEVICE_STATUS.NORMAL_MODE
-                            ? string.Format("{0}.{1}.{2}", readbuffer[39], readbuffer[5], readbuffer[4])
+                        : report.Device_Status == (int) Firmware.DEVICE_STATUS.NORMAL_MODE
+                            ? string.Format("{0}.{1}.{2}", report.hardware_version, report.firmware_version_major,
+                                report.firmware_version_minor)
                             : "Bootloader"));
                 BtnDump.Enabled = isDumperActive;
                 BtnAdvanced.Enabled = isDumperActive;
