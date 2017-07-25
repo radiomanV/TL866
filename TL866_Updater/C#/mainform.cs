@@ -14,15 +14,23 @@ namespace TL866
 {
     public partial class MainForm : Form
     {
-        private readonly BackgroundWorker worker;
+        private static readonly Color DarkGreen = Color.FromArgb(0, 64, 0);
+        private static readonly Color LightGreen = Color.FromArgb(0, 255, 0);
+        private static readonly Color DarkRed = Color.FromArgb(64, 0, 0);
+        private static readonly Color LightRed = Color.FromArgb(255, 0, 0);
+        private static readonly Color DarkYellow = Color.FromArgb(64, 64, 0);
+        private static readonly Color LightYellow = Color.FromArgb(255, 255, 0);
         private AdvancedDialog AdvancedWindow;
+
+
         private string devcode;
         private int devtype;
         public Firmware firmware;
-
         private bool reset_flag;
         private string serial;
         public UsbDevice usb;
+
+        private BackgroundWorker worker;
 
         public MainForm()
         {
@@ -36,8 +44,8 @@ namespace TL866
             usb.UsbDeviceChanged += UsbDeviceChanged;
             usb.RegisterForDeviceChange(true, this);
             worker = new BackgroundWorker();
-            worker.DoWork += worker_DoWork;
-            worker.ProgressChanged += worker_ProgressChanged;
+            worker.DoWork += Worker_DoWork;
+            worker.ProgressChanged += Worker_ProgressChanged;
             worker.WorkerReportsProgress = true;
             worker.WorkerSupportsCancellation = true;
             Leds_Off();
@@ -182,27 +190,27 @@ namespace TL866
         }
 
 
-        private void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             switch ((led_action) e.ProgressPercentage)
             {
                 case led_action.led_erase_on:
-                    LedErase.BackColor = Color.FromArgb(255, 255, 0);
+                    LedErase.BackColor = LightYellow;
                     break;
                 case led_action.led_erase_off:
-                    LedErase.BackColor = Color.FromArgb(64, 64, 0);
+                    LedErase.BackColor = DarkYellow;
                     break;
                 case led_action.led_write_on:
-                    LedWrite.BackColor = Color.FromArgb(255, 0, 0);
+                    LedWrite.BackColor = LightRed;
                     break;
                 case led_action.led_write_off:
-                    LedWrite.BackColor = Color.FromArgb(64, 0, 0);
+                    LedWrite.BackColor = DarkRed;
                     break;
             }
         }
 
 
-        private void worker_DoWork(object sender, DoWorkEventArgs e)
+        private void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             object[] parameters = e.Argument as object[];
             switch ((device_action) parameters[0])
@@ -254,18 +262,18 @@ namespace TL866
                 {
                     case (int) Firmware.DEVICE_STATUS.NORMAL_MODE:
                         TxtInfo.AppendText("Device status: Normal working mode.\n");
-                        LedNorm.BackColor = Color.FromArgb(0, 255, 0);
-                        LedBoot.BackColor = Color.FromArgb(0, 64, 0);
+                        LedNorm.BackColor = LightGreen;
+                        LedBoot.BackColor = DarkGreen;
                         break;
                     case (int) Firmware.DEVICE_STATUS.BOOTLOADER_MODE:
                         TxtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\n");
-                        LedNorm.BackColor = Color.FromArgb(0, 64, 0);
-                        LedBoot.BackColor = Color.FromArgb(0, 255, 0);
+                        LedNorm.BackColor = DarkGreen;
+                        LedBoot.BackColor = LightGreen;
                         break;
                     default:
                         TxtInfo.AppendText("Device status: Unknown\n");
-                        LedNorm.BackColor = Color.FromArgb(0, 64, 0);
-                        LedBoot.BackColor = Color.FromArgb(0, 64, 0);
+                        LedNorm.BackColor = DarkGreen;
+                        LedBoot.BackColor = DarkGreen;
                         break;
                 }
 
@@ -442,10 +450,10 @@ namespace TL866
 
         private void Leds_Off()
         {
-            LedBoot.BackColor = Color.FromArgb(0, 64, 0);
-            LedNorm.BackColor = Color.FromArgb(0, 64, 0);
-            LedErase.BackColor = Color.FromArgb(64, 64, 0);
-            LedWrite.BackColor = Color.FromArgb(64, 0, 0);
+            LedBoot.BackColor = DarkGreen;
+            LedNorm.BackColor = DarkGreen;
+            LedErase.BackColor = DarkYellow;
+            LedWrite.BackColor = DarkRed;
         }
 
 
