@@ -1,10 +1,21 @@
+using System;
 using System.IO;
 
 namespace TL866
 {
-    public class hexwriter
+    public class HexWriter
     {
-        public void WriteHex(byte[] buffer, StreamWriter fstream)
+        private readonly StreamWriter fstream;
+
+        public HexWriter(StreamWriter stream)
+        {
+            if (stream != null)
+                fstream = stream;
+            else
+                throw new Exception();
+        }
+
+        public void WriteHex(byte[] buffer)
         {
             int bl = 0;
             fstream.WriteLine(GetLine(2, 0, 4, new byte[] {0, 0}));
@@ -17,6 +28,7 @@ namespace TL866
             }
             fstream.WriteLine(GetLine(8, 0x1FFF8, 0, buffer));
             fstream.WriteLine(GetLine(0, 0, 1, null));
+            fstream.Close();
         }
 
 

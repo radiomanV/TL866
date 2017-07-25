@@ -119,8 +119,7 @@ namespace TL866
 
         private void BtnDump_Click(object sender, EventArgs e)
         {
-            if (!CheckDevices(this))
-                return;
+            if (!CheckDevices(this)) return;
             if (!firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
@@ -149,8 +148,7 @@ namespace TL866
         private void BtnReflash_Click(object sender, EventArgs e)
         {
             if (worker.IsBusy) return;
-            if (!CheckDevices(this))
-                return;
+            if (!CheckDevices(this)) return;
             if (!firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
@@ -240,9 +238,8 @@ namespace TL866
                 usb.DevicesCount == 1 ? "device" : "devices");
             if (usb.DevicesCount > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
             {
-                usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
                 TL866_Report tl866_report = new TL866_Report();
-                usb.Read(tl866_report.buffer);
+                Get_Report(tl866_report);
                 TxtInfo.Clear();
                 switch (tl866_report.Device_Version)
                 {
@@ -258,7 +255,7 @@ namespace TL866
                         TxtInfo.AppendText("Device version: Unknown\n");
                         break;
                 }
-                switch ((Firmware.DEVICE_STATUS)tl866_report.Device_Status)
+                switch ((Firmware.DEVICE_STATUS) tl866_report.Device_Status)
                 {
                     case Firmware.DEVICE_STATUS.NORMAL_MODE:
                         TxtInfo.AppendText("Device status: Normal working mode.\n");
@@ -344,9 +341,8 @@ namespace TL866
         //Functions//////////////////////////////
         private void Reflash(int version)
         {
-            usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
             TL866_Report tl866_report = new TL866_Report();
-            usb.Read(tl866_report.buffer);
+            Get_Report(tl866_report);
 
             if (tl866_report.Device_Status != (byte) Firmware.DEVICE_STATUS.BOOTLOADER_MODE)
             {
@@ -394,8 +390,7 @@ namespace TL866
             }
 
 
-            usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-            usb.Read(tl866_report.buffer);
+            Get_Report(tl866_report);
             if (tl866_report.Device_Status == (byte) Firmware.DEVICE_STATUS.NORMAL_MODE)
                 MessageBox.Show("Reflash O.K.!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Information);
             else
@@ -426,6 +421,13 @@ namespace TL866
                 SetProgressBar(i);
             }
             return true;
+        }
+
+
+        private void Get_Report(TL866_Report report)
+        {
+            usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
+            usb.Read(report.buffer);
         }
 
 
@@ -544,10 +546,15 @@ namespace TL866
                 Firmware.UNENCRYPTED_FIRMWARE_SIZE);
             try
             {
-                StreamWriter streamwriter = File.CreateText(filepath);
-                hexwriter hexwriter = new hexwriter();
-                hexwriter.WriteHex(buffer, streamwriter);
-                streamwriter.Close();
+                if (filepath.EndsWith(".hex"))
+                {
+                    HexWriter hexwriter = new HexWriter(File.CreateText(filepath));
+                    hexwriter.WriteHex(buffer);
+                }
+                else
+                {
+                    File.WriteAllBytes(filepath, buffer);
+                }
                 MessageBox.Show("Firmware dump complete!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 SetProgressBar(0);
             }
@@ -578,7 +585,6 @@ namespace TL866
             Array.Copy(info, 0, data, Firmware.SERIAL_OFFSET, info.Length);
 
             SaveFileDialog dlg = new SaveFileDialog();
-            StreamWriter streamwriter;
             dlg.Title = "Firmware output hex file";
             dlg.Filter = "hex files (*.hex)|*.hex|All files (*.*)|*.*";
             dlg.CheckPathExists = true;
@@ -588,10 +594,15 @@ namespace TL866
                 {
                     if (File.Exists(dlg.FileName))
                         File.Delete(dlg.FileName);
-                    streamwriter = File.CreateText(dlg.FileName);
-                    hexwriter hexwriter = new hexwriter();
-                    hexwriter.WriteHex(data, streamwriter);
-                    streamwriter.Close();
+                    if (dlg.FileName.EndsWith(".hex"))
+                    {
+                        HexWriter hexwriter = new HexWriter(File.CreateText(dlg.FileName));
+                        hexwriter.WriteHex(data);
+                    }
+                    else
+                    {
+                        File.WriteAllBytes(dlg.FileName, data);
+                    }
                     SystemSounds.Asterisk.Play();
                 }
                 catch

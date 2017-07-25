@@ -177,14 +177,14 @@ namespace TL866
 
         private bool IsDumperActive()
         {
-            TL866_Report report = new TL866_Report();
+            TL866_Report tl866_report = new TL866_Report();
             if (GetMainForm().usb.DevicesCount > 0)
                 if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
                 {
                     GetMainForm().usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-                    if (GetMainForm().usb.Read(report.buffer) > 0)
-                        return report.DeviceCode.ToLower() == "codedump" &&
-                               report.SerialCode == "000000000000000000000000";
+                    if (GetMainForm().usb.Read(tl866_report.buffer) > 0)
+                        return tl866_report.DeviceCode.ToLower() == "codedump" &&
+                               tl866_report.SerialCode == "000000000000000000000000";
                 }
             return false;
         }
