@@ -348,12 +348,12 @@ namespace TL866
 
         public string DeviceCode
         {
-            get { return Encoding.UTF8.GetString(buffer, 7, Firmware.DEVCODE_LENGHT).Trim(); }
+            get { return Encoding.ASCII.GetString(buffer, 7, Firmware.DEVCODE_LENGHT).Trim(); }
         }
 
         public string SerialCode
         {
-            get { return Encoding.UTF8.GetString(buffer, 15, Firmware.SERIALCODE_LENGHT).Trim(); }
+            get { return Encoding.ASCII.GetString(buffer, 15, Firmware.SERIALCODE_LENGHT).Trim(); }
         }
 
         public byte firmware_version_minor
@@ -378,7 +378,7 @@ namespace TL866
 
         public string DeviceCode
         {
-            get { return Encoding.UTF8.GetString(buffer, 0, Firmware.DEVCODE_LENGHT).Trim(); }
+            get { return Encoding.ASCII.GetString(buffer, 0, Firmware.DEVCODE_LENGHT).Trim(); }
         }
 
         public string SerialCode
