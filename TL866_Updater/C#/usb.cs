@@ -6,7 +6,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace TL866
 {
-    public class UsbDevice
+    public static class UsbDevice
     {
         public delegate void UsbDeviceChangedEventHandler();
 
@@ -24,23 +24,18 @@ namespace TL866
         private const int INVALID_HANDLE_VALUE = -1;
         private const int WM_DEVICECHANGE = 0x219;
         private const string MINIPRO_GUID = "{85980D83-32B9-4ba1-8FDF-12A711B99CA2}";
-        private readonly object SyncObject = new object();
-        private IntPtr deviceEventHandle;
+        private static readonly object SyncObject = new object();
+        private static IntPtr deviceEventHandle;
 
-        private SafeFileHandle hDrv;
-
-        public UsbDevice()
-        {
-            hDrv = null;
-        }
+        private static SafeFileHandle hDrv;
 
 
-        public uint DevicesCount
+        public static uint DevicesCount
         {
             get { return GetDevicesByClass(MINIPRO_GUID, null); }
         }
 
-        public event UsbDeviceChangedEventHandler UsbDeviceChanged;
+        public static event UsbDeviceChangedEventHandler UsbDeviceChanged;
 
 
         [DllImport("setupapi.dll", CharSet = CharSet.Auto, SetLastError = true)]
@@ -77,7 +72,7 @@ namespace TL866
         private static extern bool UnregisterDeviceNotification(IntPtr hHandle);
 
 
-        public bool OpenDevice(string DevicePath)
+        public static bool OpenDevice(string DevicePath)
         {
             lock (SyncObject)
             {
@@ -88,7 +83,7 @@ namespace TL866
             return !(hDrv.IsClosed || hDrv.IsInvalid);
         }
 
-        public void CloseDevice()
+        public static void CloseDevice()
         {
             if (hDrv != null)
                 lock (SyncObject)
@@ -98,7 +93,7 @@ namespace TL866
         }
 
 
-        public bool Write(byte[] buffer)
+        public static bool Write(byte[] buffer)
         {
             if (hDrv == null)
                 return false;
@@ -116,7 +111,7 @@ namespace TL866
             return r;
         }
 
-        public uint Read(byte[] buffer)
+        public static uint Read(byte[] buffer)
         {
             if (hDrv == null)
                 return 0;
@@ -134,14 +129,14 @@ namespace TL866
         }
 
 
-        public List<string> Get_Devices()
+        public static List<string> Get_Devices()
         {
             List<string> DevicesPathName = new List<string>();
             GetDevicesByClass(MINIPRO_GUID, DevicesPathName);
             return DevicesPathName;
         }
 
-        public bool RegisterForDeviceChange(bool Register, Form f)
+        public static bool RegisterForDeviceChange(bool Register, Form f)
         {
             bool Status = false;
 
@@ -169,7 +164,7 @@ namespace TL866
         }
 
 
-        public void ProcessWindowsMessage(ref Message m)
+        public static void ProcessWindowsMessage(ref Message m)
         {
             int devType;
 
@@ -199,7 +194,12 @@ namespace TL866
         }
 
 
-        private uint GetDevicesByClass(string guid, List<string> devicePathName)
+        public static void UsbDeviceChange()
+        {
+            UsbDeviceChanged();
+        }
+
+        private static uint GetDevicesByClass(string guid, List<string> devicePathName)
         {
             Guid g = new Guid(guid);
             uint count = 0;

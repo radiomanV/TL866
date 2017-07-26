@@ -23,17 +23,17 @@ namespace TL866
             if (IsDumperActive())
             {
                 TxtInfo.Clear();
-                GetMainForm().usb.Write(new[] {Firmware.DUMPER_INFO});
+                UsbDevice.Write(new[] {Firmware.DUMPER_INFO});
                 Dumper_Report dumper_report = new Dumper_Report();
-                if (GetMainForm().usb.Read(dumper_report.buffer) > 0)
+                if (UsbDevice.Read(dumper_report.buffer) > 0)
                 {
                     TxtDevcode.Text = dumper_report.DeviceCode;
                     TxtSerial.Text = dumper_report.SerialCode;
 
                     TxtInfo.AppendText(string.Format("Device code: {0}{1}\n", TxtDevcode.Text,
-                        GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad device code)" : ""));
+                        Firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad device code)" : ""));
                     TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", TxtSerial.Text,
-                        GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad serial code)" : ""));
+                        Firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text) ? "(Bad serial code)" : ""));
                     TxtInfo.AppendText(string.Format("Bootloader version: {0}\n",
                         dumper_report.bootloader_version == 1 ? "A" : "CS"));
                     TxtInfo.AppendText(string.Format("Code Protection bit: {0}",
@@ -58,18 +58,18 @@ namespace TL866
         //Write bootloader
         private void BtnWriteBootloader_Click(object sender, EventArgs e)
         {
-            if (!GetMainForm().CheckDevices(this))
+            if (!MainForm.CheckDevices(this))
                 return;
 
             if (IsDumperActive())
-                if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
+                if (UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                     if (MessageBox.Show(this, Utils.WARNING_BRICK, "TL866", MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation) == DialogResult.Yes)
                     {
                         uint crc = Bootloader_CRC();
                         if (crc == Firmware.A_BOOTLOADER_CRC || crc == Firmware.CS_BOOTLOADER_CRC)
                         {
-                            GetMainForm().usb.Write(new[]
+                            UsbDevice.Write(new[]
                             {
                                 Firmware.DUMPER_WRITE_BOOTLOADER,
                                 (byte) (RadioA.Checked
@@ -77,8 +77,8 @@ namespace TL866
                                     : Firmware.BOOTLOADER_TYPE.CS_BOOTLOADER)
                             });
                             byte[] readbuffer = new byte[9];
-                            GetMainForm().usb.Read(readbuffer);
-                            GetMainForm().UsbDeviceChanged();
+                            UsbDevice.Read(readbuffer);
+                            UsbDevice.UsbDeviceChange();
                             if (readbuffer[0] == Firmware.DUMPER_WRITE_BOOTLOADER)
                                 MessageBox.Show("Bootloader was successfully written.", "TL866", MessageBoxButtons.OK,
                                     MessageBoxIcon.Information);
@@ -100,17 +100,17 @@ namespace TL866
         {
             byte[] b = new byte[9];
 
-            if (!GetMainForm().CheckDevices(this))
+            if (!MainForm.CheckDevices(this))
                 return;
 
             if (IsDumperActive())
-                if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
+                if (UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                     if (MessageBox.Show(this, Utils.WARNING_BRICK, "TL866", MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation) == DialogResult.Yes)
                     {
-                        GetMainForm().usb.Write(new[] {Firmware.DUMPER_WRITE_CONFIG, (byte) (ChkCP.Checked ? 1 : 0)});
-                        GetMainForm().usb.Read(b);
-                        GetMainForm().UsbDeviceChanged();
+                        UsbDevice.Write(new[] {Firmware.DUMPER_WRITE_CONFIG, (byte) (ChkCP.Checked ? 1 : 0)});
+                        UsbDevice.Read(b);
+                        UsbDevice.UsbDeviceChange();
                         if (b[0] == Firmware.DUMPER_WRITE_CONFIG)
                             MessageBox.Show("Code protection bit was successfully written.", "TL866",
                                 MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -130,17 +130,17 @@ namespace TL866
             Array.Copy(Encoding.ASCII.GetBytes(s1), 0, b, 1, 8);
             Array.Copy(Encoding.ASCII.GetBytes(s2), 0, b, 9, 24);
 
-            if (!GetMainForm().CheckDevices(this))
+            if (!MainForm.CheckDevices(this))
                 return;
 
             if (IsDumperActive())
-                if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
+                if (UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                     if (MessageBox.Show(this, Utils.WARNING_BRICK, "TL866", MessageBoxButtons.YesNo,
                             MessageBoxIcon.Exclamation) == DialogResult.Yes)
                     {
-                        GetMainForm().usb.Write(b);
-                        GetMainForm().usb.Read(b);
-                        GetMainForm().UsbDeviceChanged();
+                        UsbDevice.Write(b);
+                        UsbDevice.Read(b);
+                        UsbDevice.UsbDeviceChange();
                         if (b[0] == Firmware.DUMPER_WRITE_INFO)
                             MessageBox.Show("Device info was successfully written.", "TL866", MessageBoxButtons.OK,
                                 MessageBoxIcon.Information);
@@ -156,7 +156,7 @@ namespace TL866
             byte[] rd = new byte[64];
             for (uint i = 0; i < buff.Length; i += 64)
             {
-                GetMainForm().usb.Write(new byte[]
+                UsbDevice.Write(new byte[]
                 {
                     Firmware.DUMPER_READ_FLASH,
                     64,
@@ -164,7 +164,7 @@ namespace TL866
                     (byte) ((i >> 8) & 0xFF),
                     (byte) ((i >> 16) & 0xFF)
                 });
-                if (GetMainForm().usb.Read(rd) != 64)
+                if (UsbDevice.Read(rd) != 64)
                 {
                     MessageBox.Show("Read error!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     return 0;
@@ -178,11 +178,11 @@ namespace TL866
         private bool IsDumperActive()
         {
             TL866_Report tl866_report = new TL866_Report();
-            if (GetMainForm().usb.DevicesCount > 0)
-                if (GetMainForm().usb.OpenDevice(GetMainForm().usb.Get_Devices()[0]))
+            if (UsbDevice.DevicesCount > 0)
+                if (UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                 {
-                    GetMainForm().usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-                    if (GetMainForm().usb.Read(tl866_report.buffer) > 0)
+                    UsbDevice.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
+                    if (UsbDevice.Read(tl866_report.buffer) > 0)
                         return tl866_report.DeviceCode.ToLower() == "codedump" &&
                                tl866_report.SerialCode == "000000000000000000000000";
                 }
@@ -191,7 +191,7 @@ namespace TL866
 
         private void BtnClone_Click(object sender, EventArgs e)
         {
-            GetMainForm().UsbDeviceChanged();
+            UsbDevice.UsbDeviceChange();
             GetInfo();
         }
 
@@ -211,12 +211,6 @@ namespace TL866
                 TxtDevcode.Text = dlg.TxtDevcode.Text;
                 TxtSerial.Text = dlg.TxtSerial.Text;
             }
-        }
-
-
-        private MainForm GetMainForm()
-        {
-            return Application.OpenForms["MainForm"] as MainForm;
         }
     }
 }

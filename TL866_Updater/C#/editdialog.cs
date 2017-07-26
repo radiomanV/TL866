@@ -18,7 +18,7 @@ namespace TL866
                     MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
-            if (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
+            if (Firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
             {
                 MessageBox.Show("Bad Device and serial code!", "TL866", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
@@ -40,7 +40,7 @@ namespace TL866
             do
             {
                 s = Utils.Generator.Next(0, 99999999).ToString("00000000");
-            } while (GetMainForm().firmware.Calc_CRC(s, TxtSerial.Text));
+            } while (Firmware.Calc_CRC(s, TxtSerial.Text));
             TxtDevcode.Text = s;
         }
 
@@ -52,22 +52,16 @@ namespace TL866
                 s = "";
                 for (int i = 0; i < 24; i++)
                     s += Utils.Generator.Next(0, 15).ToString("X");
-            } while (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, s));
+            } while (Firmware.Calc_CRC(TxtDevcode.Text, s));
             TxtSerial.Text = s;
         }
 
 
         private void TxtDevcode_TextChanged(object sender, EventArgs e)
         {
-            if (GetMainForm().firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
+            if (Firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
                 MessageBox.Show("Bad Device and serial code!", "TL866", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
-        }
-
-
-        private MainForm GetMainForm()
-        {
-            return Application.OpenForms["MainForm"] as MainForm;
         }
     }
 }

@@ -20,29 +20,25 @@ namespace TL866
         private static readonly Color LightRed = Color.FromArgb(255, 0, 0);
         private static readonly Color DarkYellow = Color.FromArgb(64, 64, 0);
         private static readonly Color LightYellow = Color.FromArgb(255, 255, 0);
+
+        private readonly BackgroundWorker worker;
         private AdvancedDialog AdvancedWindow;
 
 
         private string devcode;
         private int devtype;
-        public Firmware firmware;
         private bool reset_flag;
         private string serial;
-        public UsbDevice usb;
-
-        private BackgroundWorker worker;
 
         public MainForm()
         {
             InitializeComponent();
 
             reset_flag = false;
-            firmware = new Firmware();
-            usb = new UsbDevice();
             devcode = "";
             serial = "";
-            usb.UsbDeviceChanged += UsbDeviceChanged;
-            usb.RegisterForDeviceChange(true, this);
+            UsbDevice.UsbDeviceChanged += UsbDeviceChanged;
+            UsbDevice.RegisterForDeviceChange(true, this);
             worker = new BackgroundWorker();
             worker.DoWork += Worker_DoWork;
             worker.ProgressChanged += Worker_ProgressChanged;
@@ -57,8 +53,8 @@ namespace TL866
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             worker.CancelAsync();
-            usb.CloseDevice();
-            usb.RegisterForDeviceChange(false, this);
+            UsbDevice.CloseDevice();
+            UsbDevice.RegisterForDeviceChange(false, this);
         }
 
 
@@ -73,7 +69,7 @@ namespace TL866
                 TxtInput.Text = "";
                 try
                 {
-                    firmware.Open(dlg.FileName);
+                    Firmware.Open(dlg.FileName);
                 }
                 catch (Exception ex)
                 {
@@ -81,7 +77,7 @@ namespace TL866
                     lblVersion.Text = "";
                     return;
                 }
-                lblVersion.Text = string.Format("[V:{0}]", firmware.Version);
+                lblVersion.Text = string.Format("[V:{0}]", Firmware.Version);
             }
             TxtInput.Text = dlg.FileName;
         }
@@ -120,7 +116,7 @@ namespace TL866
         private void BtnDump_Click(object sender, EventArgs e)
         {
             if (!CheckDevices(this)) return;
-            if (!firmware.IsValid)
+            if (!Firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
@@ -149,7 +145,7 @@ namespace TL866
         {
             if (worker.IsBusy) return;
             if (!CheckDevices(this)) return;
-            if (!firmware.IsValid)
+            if (!Firmware.IsValid)
             {
                 MessageBox.Show(Utils.NO_FIRMWARE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
@@ -228,15 +224,15 @@ namespace TL866
 
         public void UsbDeviceChanged()
         {
-            if (usb.DevicesCount == 0 && reset_flag)
+            if (UsbDevice.DevicesCount == 0 && reset_flag)
                 return;
             reset_flag = false;
             Assembly assembly = Assembly.GetExecutingAssembly();
             FileVersionInfo version = FileVersionInfo.GetVersionInfo(assembly.Location);
             Text = string.Format("TL866 firmware updater  V{0}   ({1} {2} connected)", version.FileVersion,
-                usb.DevicesCount,
-                usb.DevicesCount == 1 ? "device" : "devices");
-            if (usb.DevicesCount > 0 && usb.OpenDevice(usb.Get_Devices()[0]))
+                UsbDevice.DevicesCount,
+                UsbDevice.DevicesCount == 1 ? "device" : "devices");
+            if (UsbDevice.DevicesCount > 0 && UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
             {
                 TL866_Report tl866_report = new TL866_Report();
                 Get_Report(tl866_report);
@@ -280,9 +276,9 @@ namespace TL866
 
                 if (isDumperActive)
                 {
-                    usb.Write(new[] {Firmware.DUMPER_INFO});
+                    UsbDevice.Write(new[] {Firmware.DUMPER_INFO});
                     Dumper_Report dumper_report = new Dumper_Report();
-                    if (usb.Read(dumper_report.buffer) > 0)
+                    if (UsbDevice.Read(dumper_report.buffer) > 0)
                     {
                         devcode = dumper_report.DeviceCode;
                         serial = dumper_report.SerialCode;
@@ -303,9 +299,9 @@ namespace TL866
                 if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
                     AdvancedWindow.GetInfo();
                 TxtInfo.AppendText(string.Format("Device code: {0}{1}\n", devcode,
-                    firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
+                    Firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
                 TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", serial,
-                    firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
+                    Firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
                 TxtInfo.AppendText(string.Format("Firmware version: {0}",
                     isDumperActive
                         ? "Firmware dumper"
@@ -333,7 +329,7 @@ namespace TL866
 
         protected override void WndProc(ref Message m)
         {
-            usb.ProcessWindowsMessage(ref m);
+            UsbDevice.ProcessWindowsMessage(ref m);
             base.WndProc(ref m);
         }
 
@@ -357,7 +353,7 @@ namespace TL866
             Thread.Sleep(1000);
             Message("<erasing...>");
             worker.ReportProgress((int) led_action.led_erase_on);
-            if (!Erase_Device(firmware.GetEraseParametter(devtype)))
+            if (!Erase_Device(Firmware.GetEraseParametter(devtype)))
             {
                 MessageBox.Show("Erase failed", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -369,8 +365,8 @@ namespace TL866
             worker.ReportProgress((int) led_action.led_write_on);
             Message("<writing...>");
             if (!Write_Device(version == (int) Firmware.FIRMWARE_TYPE.FIRMWARE_CUSTOM
-                ? firmware.Encrypt_Firmware(Resources.Dumper, devtype)
-                : firmware.GetEncryptedFirmware(version, devtype)))
+                ? Firmware.Encrypt_Firmware(Resources.Dumper, devtype)
+                : Firmware.GetEncryptedFirmware(version, devtype)))
             {
                 worker.ReportProgress((int) led_action.led_write_off);
                 worker.ReportProgress((int) led_action.led_erase_off);
@@ -400,7 +396,7 @@ namespace TL866
 
         private bool Write_Device(byte[] buffer)
         {
-            if (!usb.OpenDevice(usb.Get_Devices()[0]))
+            if (!UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                 return false;
             byte[] b = new byte[Firmware.BLOCK_SIZE + 7];
             uint address = Firmware.BOOTLOADER_SIZE;
@@ -416,7 +412,7 @@ namespace TL866
                 Array.Copy(BitConverter.GetBytes(address), 0, b, 4, 4);
                 Array.Copy(buffer, i, b, 7, Firmware.BLOCK_SIZE);
                 address += Firmware.BLOCK_SIZE - 16;
-                if (!usb.Write(b))
+                if (!UsbDevice.Write(b))
                     return false;
                 SetProgressBar(i);
             }
@@ -426,23 +422,23 @@ namespace TL866
 
         private void Get_Report(TL866_Report report)
         {
-            usb.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
-            usb.Read(report.buffer);
+            UsbDevice.Write(new byte[] {Firmware.REPORT_COMMAND, 0, 0, 0, 0});
+            UsbDevice.Read(report.buffer);
         }
 
 
         private bool Erase_Device(byte magic_number)
         {
-            if (usb.DevicesCount > 0)
-                if (usb.OpenDevice(usb.Get_Devices()[0]))
+            if (UsbDevice.DevicesCount > 0)
+                if (UsbDevice.OpenDevice(UsbDevice.Get_Devices()[0]))
                 {
                     byte[] buffer = new byte[20];
                     Array.Clear(buffer, 0, buffer.Length);
                     buffer[0] = Firmware.ERASE_COMMAND;
                     buffer[7] = magic_number;
-                    usb.Write(buffer);
+                    UsbDevice.Write(buffer);
                     byte[] readbuffer = new byte[32];
-                    usb.Read(readbuffer);
+                    UsbDevice.Read(readbuffer);
                     if (readbuffer[0] == Firmware.ERASE_COMMAND)
                         return true;
                 }
@@ -459,14 +455,14 @@ namespace TL866
         }
 
 
-        public bool CheckDevices(Form parent)
+        public static bool CheckDevices(Form parent)
         {
-            if (usb.DevicesCount == 0)
+            if (UsbDevice.DevicesCount == 0)
             {
                 MessageBox.Show(parent, Utils.NO_DEVICE, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return false;
             }
-            if (usb.DevicesCount > 1)
+            if (UsbDevice.DevicesCount > 1)
             {
                 MessageBox.Show(parent, Utils.MULTIPLE_DEVICES, "TL866", MessageBoxButtons.OK,
                     MessageBoxIcon.Exclamation);
@@ -528,12 +524,12 @@ namespace TL866
             {
                 if (worker.CancellationPending)
                     return;
-                usb.Write(new byte[]
+                UsbDevice.Write(new byte[]
                 {
                     Firmware.DUMPER_READ_FLASH, 64, (byte) (i & 0xFF), (byte) ((i >> 8) & 0xFF),
                     (byte) ((i >> 16) & 0xFF)
                 });
-                if (usb.Read(readbuffer) != 64)
+                if (UsbDevice.Read(readbuffer) != 64)
                 {
                     MessageBox.Show("Read error!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                     return;
@@ -542,7 +538,7 @@ namespace TL866
                 SetProgressBar(i);
                 Application.DoEvents();
             }
-            Array.Copy(firmware.GetUnencryptedFirmware(devtype), 0, buffer, Firmware.BOOTLOADER_SIZE,
+            Array.Copy(Firmware.GetUnencryptedFirmware(devtype), 0, buffer, Firmware.BOOTLOADER_SIZE,
                 Firmware.UNENCRYPTED_FIRMWARE_SIZE);
             try
             {
@@ -576,12 +572,12 @@ namespace TL866
             ////Writing serial code
             byte[] info = new byte[Firmware.BLOCK_SIZE];
             Array.Copy(data, Firmware.SERIAL_OFFSET, info, 0, info.Length);
-            firmware.DecryptSerial(info, data);
+            Firmware.DecryptSerial(info, data);
             string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
             string s2 = TxtSerial.Text + new string(' ', Firmware.SERIALCODE_LENGHT - TxtSerial.Text.Length);
             Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);
             Array.Copy(Encoding.ASCII.GetBytes(s2), 0, info, Firmware.DEVCODE_LENGHT, Firmware.SERIALCODE_LENGHT);
-            firmware.EncryptSerial(info, data);
+            Firmware.EncryptSerial(info, data);
             Array.Copy(info, 0, data, Firmware.SERIAL_OFFSET, info.Length);
 
             SaveFileDialog dlg = new SaveFileDialog();
@@ -617,7 +613,7 @@ namespace TL866
         private bool wait_for_device()
         {
             int cnt = 50; //5 seconds
-            while (usb.DevicesCount > 0) //wait for device to leave
+            while (UsbDevice.DevicesCount > 0) //wait for device to leave
             {
                 Thread.Sleep(100);
                 if (!(--cnt > 0))
@@ -625,7 +621,7 @@ namespace TL866
             }
 
             cnt = 50; //5 seconds
-            while (!(usb.DevicesCount > 0)) //wait for device to arrive
+            while (!(UsbDevice.DevicesCount > 0)) //wait for device to arrive
             {
                 Thread.Sleep(100);
                 if (!(--cnt > 0))
@@ -638,8 +634,8 @@ namespace TL866
         private void Reset_Device()
         {
             reset_flag = true;
-            usb.Write(new byte[] {Firmware.RESET_COMMAND, 0, 0, 0});
-            usb.CloseDevice();
+            UsbDevice.Write(new byte[] {Firmware.RESET_COMMAND, 0, 0, 0});
+            UsbDevice.CloseDevice();
         }
 
         private enum device_action
