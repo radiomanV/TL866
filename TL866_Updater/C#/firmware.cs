@@ -69,12 +69,12 @@ namespace TL866
         public const byte DUMPER_WRITE_INFO = 0x04;
         public const byte DUMPER_INFO = 0x05;
 
-        private static byte m_eraseA;
-        private static byte m_eraseCS;
-        private static byte[] m_firmwareA;
-        private static byte[] m_firmwareCS;
-        private static byte[] m_xortableA;
-        private static byte[] m_xortableCS;
+        private  byte m_eraseA;
+        private  byte m_eraseCS;
+        private  byte[] m_firmwareA;
+        private  byte[] m_firmwareCS;
+        private  byte[] m_xortableA;
+        private  byte[] m_xortableCS;
 
 
         public  byte Version { get; private set; }
