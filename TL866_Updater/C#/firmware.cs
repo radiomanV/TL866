@@ -4,7 +4,7 @@ using System.Text;
 
 namespace TL866
 {
-    public static class Firmware
+    public class Firmware
     {
         public enum BOOTLOADER_TYPE
         {
@@ -77,11 +77,11 @@ namespace TL866
         private static byte[] m_xortableCS;
 
 
-        public static byte Version { get; private set; }
-        public static bool IsValid { get; private set; }
+        public  byte Version { get; private set; }
+        public  bool IsValid { get; private set; }
 
 
-        public static void Open(string UpdateDat_Path)
+        public  void Open(string UpdateDat_Path)
         {
             IsValid = false;
             FileStream fsin = null;
@@ -160,13 +160,13 @@ namespace TL866
         }
 
 
-        public static byte GetEraseParametter(int type)
+        public  byte GetEraseParametter(int type)
         {
             return type == (int) PROGRAMMER_TYPE.TL866A ? m_eraseA : m_eraseCS;
         }
 
 
-        public static byte[] GetEncryptedFirmware(int type, int key)
+        public  byte[] GetEncryptedFirmware(int type, int key)
         {
             byte[] buffer = new byte[ENCRYPTED_FIRMWARE_SIZE];
             if (type == key)
@@ -179,7 +179,7 @@ namespace TL866
         }
 
 
-        public static byte[] GetUnencryptedFirmware(int type)
+        public  byte[] GetUnencryptedFirmware(int type)
         {
             byte[] data = new byte[UNENCRYPTED_FIRMWARE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
@@ -198,7 +198,7 @@ namespace TL866
             return data;
         }
 
-        public static byte[] Encrypt_Firmware(byte[] firmware, int type)
+        public  byte[] Encrypt_Firmware(byte[] firmware, int type)
         {
             byte[] data = new byte[ENCRYPTED_FIRMWARE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
@@ -216,7 +216,7 @@ namespace TL866
             return data;
         }
 
-        private static void Encrypt_Block(byte[] data, byte[] xortable, byte index)
+        private  void Encrypt_Block(byte[] data, byte[] xortable, byte index)
         {
             for (int i = data.Length - 16; i < data.Length; i++)
                 data[i] = (byte) Utils.Generator.Next(0, 0xFF);
@@ -237,7 +237,7 @@ namespace TL866
         }
 
 
-        private static void Decrypt_Block(byte[] data, byte[] xortable, byte index)
+        private  void Decrypt_Block(byte[] data, byte[] xortable, byte index)
         {
             //step1: xor
             for (uint i = 0; i < data.Length; i++)
@@ -256,7 +256,7 @@ namespace TL866
         }
 
 
-        public static void DecryptSerial(byte[] info, byte[] firmware)
+        public  void DecryptSerial(byte[] info, byte[] firmware)
         {
             //step1
             byte index = 0x0A;
@@ -275,7 +275,7 @@ namespace TL866
             }
         }
 
-        public static void EncryptSerial(byte[] info, byte[] firmware)
+        public  void EncryptSerial(byte[] info, byte[] firmware)
         {
             byte index = 0x0A;
             if (GetKeyCRC(info) != 0)
@@ -296,14 +296,14 @@ namespace TL866
                 info[i] = (byte) (info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
         }
 
-        private static ushort GetKeyCRC(byte[] data)
+        private  ushort GetKeyCRC(byte[] data)
         {
             CRC16 crc16 = new CRC16();
             return crc16.GetCRC16(data, 0);
         }
 
 
-        private static void Make_CRC(byte[] data)
+        private  void Make_CRC(byte[] data)
         {
             byte[] b = new byte[data.Length - 2];
             ushort crc;
