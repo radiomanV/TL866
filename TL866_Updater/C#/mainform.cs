@@ -548,8 +548,6 @@ namespace TL866
 
         private void WriteConfig(object sender, EventArgs e)
         {
-            byte[] b = new byte[9];
-
             if (!CheckDevices(this))
                 return;
 
@@ -560,6 +558,7 @@ namespace TL866
                     {
                         usbdevice.Write(new[]
                             {Firmware.DUMPER_WRITE_CONFIG, (byte) (AdvancedWindow.ChkCP.Checked ? 1 : 0)});
+                        byte[] b = new byte[9];
                         usbdevice.Read(b);
                         usbdevice.UsbDeviceChange();
                         if (b[0] == Firmware.DUMPER_WRITE_CONFIG)
