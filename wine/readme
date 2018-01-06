@@ -1,4 +1,5 @@
 Simple low level winelib usb wrapper for Minipro V6.0/V6.10/V6.13/V6.16/V6.17/V6.50/V6.60
+This version will autodetect the MiniPro.exe version and it should be compatible with future versions.
 
 Add the following rule to the udev subsystem:
 open terminal and as root type:
@@ -8,15 +9,10 @@ open terminal and as root type:
 
 How to install:
 1. Install wine
-2. Rename the provided setupapi_vxxx.dll file to setupapi.dll and copy this file in the minipro folder
+2. Copy the provided setupapi.dll file in the minipro folder
 3. Run the Minipro.exe
 
-The setupapi_v610.dll is for minipro V6.0/V6.10,
-setupapi_v613.dll is for minipro V6.13/V6.16,
-setupapi_v650.dll is for minipro V6.50,
-setupapi_v660.dll is for minipro V6.60.
 
-Just rename one of these dll's as setupapi.dll acording to your minipro version and copy this setupapi.dll in the minipro folder.
 Also be sure to add a rule to the udev subsystem (see above) to permit libusb access to usb interface from an regular user.
 
 How to compile:
