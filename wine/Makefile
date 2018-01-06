@@ -14,7 +14,7 @@ EXES                  =
 
 ### Common settings
 
-CEXTRA                =
+CEXTRA                =-m32 -mincoming-stack-boundary=2
 CXXEXTRA              =
 RCEXTRA               =
 DEFINES               =
@@ -33,7 +33,7 @@ usb_dll_MODULE        = usb.dll
 usb_dll_C_SRCS        = usb.c
 usb_dll_CXX_SRCS      =
 usb_dll_RC_SRCS       =
-usb_dll_LDFLAGS       = -shared \
+usb_dll_LDFLAGS       = -shared -m32 \
 			$(usb_dll_MODULE:.dll=.spec)
 usb_dll_ARFLAGS       =
 usb_dll_DLL_PATH      =
