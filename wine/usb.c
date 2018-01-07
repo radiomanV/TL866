@@ -150,7 +150,7 @@ BOOL patch_minipro()
 	BYTE t[] = { 0x68, 0, 0, 0, 0, 0xc3 };// push xxxx, ret; an absolute Jump replacement.
 	DWORD *p_func = (DWORD*)&t[1];
 	
-	//patch usb handle address to point to our custom address.
+	//Initialize the usb handle address.
 	usb_handle = p_usbhandle;
 	VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode, NtHeader->OptionalHeader.SizeOfCode, PAGE_READWRITE, &dwOldProtection);//unprotect the code memory section
 
