@@ -224,7 +224,7 @@ int open_devices(GUID guid, int *devices)
 		{
 			if (libusb_open(devs[i], &device_handle[devices_found]) == 0)
 			{
-				*(usb_handle + devices_found) = (HANDLE)devices_found;
+				usb_handle[devices_found] = (HANDLE)devices_found;
 				devices_found++;
 				if (devices_found == 4)
 					return 1;
