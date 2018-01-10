@@ -55,6 +55,7 @@ const unsigned char usb_write_patern[] = { 0x8B,0x94,0x24,0x0C,0x10,0x00,0x00,0x
 const unsigned char usb_write2_patern[] = { 0x8B,0x94,0x24,0x10,0x10,0x00,0x00,0x8D,0x44,0x24,0x00,0x6A,0x00,0x50,0x8B,0x84 };
 const unsigned char usb_read_patern[] = { 0x64,0xA1,0x00,0x00,0x00,0x00,0x8B,0x4C,0x24,0x08,0x8B,0x54,0x24,0x04,0x6A,0xFF };
 const unsigned char usb_read2_patern[] = { 0x8B,0x4C,0x24,0x0C,0x8B,0x54,0x24,0x08,0x8D,0x44,0x24,0x0C,0x6A,0x00,0x50,0x51 };
+const unsigned char brickbug_patern[]  = { 0x83,0xC4,0x18,0x3D,0x13,0xF0,0xC2,0xC8,0x75 };
 
 
 
@@ -128,7 +129,8 @@ BOOL patch_minipro()
 		return FALSE;//nope, exit with error.
 	}
 
-
+	//search for brick bug
+	unsigned char *p_brickbug = memmem(BaseAddress + NtHeader->OptionalHeader.BaseOfCode, NtHeader->OptionalHeader.SizeOfCode, &brickbug_patern, sizeof(brickbug_patern));
 	//Print debug info.
 	unsigned char *version = memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage, "MiniPro v", 9);
 	if (version) printf("Found %s\n", version);
@@ -141,6 +143,7 @@ BOOL patch_minipro()
 	printf("Usb Write2 found at  0x%08X\n", (DWORD)p_usbwrite2);
 	printf("Usb Read2 found at  0x%08X\n", (DWORD)p_usbread2);
 	printf("Usb Handle found at  0x%08X\n", (DWORD)p_usbhandle);
+	if (p_brickbug) printf("Patched brick bug at 0x%08X\n", (DWORD)p_brickbug + 0x08);
 	printf("Patched RegisterDeviceNotification at 0x%08X\n", func_addr);
 
 	InitializeCriticalSection (&lock);
@@ -176,6 +179,9 @@ BOOL patch_minipro()
 	//patch USB_Read2 function
 	*p_func = (DWORD)&usb_read2;
 	memcpy(p_usbread2, t, 6);
+	
+	//patch the brick bug
+	if (p_brickbug) *(p_brickbug + 0x08) = 0xEB;
 
 	VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode, NtHeader->OptionalHeader.SizeOfCode, dwOldProtection, &dwOldProtection);//restore the old protection
 	return TRUE;
