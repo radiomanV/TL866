@@ -6,7 +6,6 @@
 #include <glob.h>
 #include <libusb-1.0/libusb.h>
 #include <libudev.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
@@ -43,8 +42,8 @@ libusb_device_handle *device_handle[4];
 libusb_context *ctx;
 libusb_device **devs;
 
-pthread_t notifier_id;
-pthread_mutex_t lock;
+CRITICAL_SECTION lock;
+HANDLE h_thread;
 
 HWND hWnd;
 BOOL cancel;
@@ -144,7 +143,7 @@ BOOL patch_minipro()
 	printf("Usb Handle found at  0x%08X\n", (DWORD)p_usbhandle);
 	printf("Patched RegisterDeviceNotification at 0x%08X\n", func_addr);
 
-
+	InitializeCriticalSection (&lock);
 
 	//Patch all low level functions in MiniPro.exe to point to our custom functions.
 	BYTE t[] = { 0x68, 0, 0, 0, 0, 0xc3 };// push xxxx, ret; an absolute Jump replacement.
@@ -215,14 +214,14 @@ int open_devices(GUID guid, int *devices)
 
 	for (i = 0; i < count; i++) {
 		ret = libusb_get_device_descriptor(devs[i], &desc);
-		if (ret < 0)
+		if (ret !=   LIBUSB_SUCCESS)
 		{
 			return 0;
 		}
 
 		if (TL866_PID == desc.idProduct && TL866_VID == desc.idVendor)
 		{
-			if (libusb_open(devs[i], &device_handle[devices_found]) == 0)
+			if (libusb_open(devs[i], &device_handle[devices_found]) ==   LIBUSB_SUCCESS)
 			{
 				usb_handle[devices_found] = (HANDLE)devices_found;
 				devices_found++;
@@ -244,7 +243,7 @@ void close_devices()
 	{
 
 		int i;
-		pthread_mutex_lock(&lock);
+		EnterCriticalSection(&lock);
 		for (i = 0; i < 4; i++)
 		{
 			if (device_handle[i] != NULL)
@@ -256,25 +255,25 @@ void close_devices()
 		libusb_free_device_list(devs, 1);
 		libusb_exit(ctx);//close session
 		devs = NULL;
-		pthread_mutex_unlock(&lock);
+		LeaveCriticalSection(&lock);
 	}
 }
 
 
 BOOL usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize)
 {
-	pthread_mutex_lock(&lock);
+	EnterCriticalSection(&lock);
 	BOOL ret = uwrite(0, lpInBuffer, nInBufferSize);
-	pthread_mutex_unlock(&lock);
+	LeaveCriticalSection(&lock);
 	return ret;
 }
 
 
 unsigned int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
 {
-	pthread_mutex_lock(&lock);
+	EnterCriticalSection(&lock);
 	unsigned int ret = uread(0, lpOutBuffer, nBytesToRead);
-	pthread_mutex_unlock(&lock);
+	LeaveCriticalSection(&lock);
 	if (ret == 0xFFFFFFFF)
 		MessageBoxA(GetForegroundWindow(), "Read error!", "TL866", MB_ICONWARNING);
 	return ret;
@@ -283,18 +282,18 @@ unsigned int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, uns
 
 BOOL usb_write2(HANDLE hDevice, unsigned char *lpInBuffer, unsigned int nInBufferSize)
 {
-	pthread_mutex_lock(&lock);
+	EnterCriticalSection(&lock);
 	BOOL ret = uwrite(hDevice, lpInBuffer, nInBufferSize);
-	pthread_mutex_unlock(&lock);
+	LeaveCriticalSection(&lock);
 	return ret;
 }
 
 
 unsigned int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize)
 {
-	pthread_mutex_lock(&lock);
+	EnterCriticalSection(&lock);
 	unsigned int ret = uread(hDevice, lpOutBuffer, nBytesToRead);
-	pthread_mutex_unlock(&lock);
+	LeaveCriticalSection(&lock);
 	return ret;
 }
 
@@ -304,8 +303,8 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient, LPVOID Notificat
 
 	printf("RegisterDeviceNotifications hWnd=%X4\n", (unsigned int)hRecipient);
 	hWnd = hRecipient;
-	int tr = pthread_create(&notifier_id, NULL, (void*)notifier_function, NULL);
-	if (tr)
+	h_thread = CreateThread(NULL, 0, (void*)notifier_function, NULL, 0, NULL);
+	if(! h_thread)
 		printf("Thread notifier failed.\n");
 
 	return 0;
@@ -321,7 +320,7 @@ unsigned int  uread(HANDLE hDevice, unsigned char *data, size_t size)
 	if (device_handle[(int)hDevice] == NULL)
 		return 0;
 	size_t bytes_read;
-	if (libusb_claim_interface(device_handle[(int)hDevice], 0) < 0)
+	if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
 		return 0;
 	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1, data, size, &bytes_read, 3000);
 	libusb_release_interface(device_handle[(int)hDevice], 0);
@@ -336,7 +335,7 @@ BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size)
 	if (device_handle[(int)hDevice] == NULL)
 		return 0;
 	size_t bytes_writen;
-	if (libusb_claim_interface(device_handle[(int)hDevice], 0) < 0)
+	if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
 		return 0;
 	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1, data, size, &bytes_writen, 3000);
 	libusb_release_interface(device_handle[(int)hDevice], 0);
@@ -398,7 +397,7 @@ void notifier_function()
 			dev = udev_monitor_receive_device(mon);
 			if (dev && !strcmp(udev_device_get_devtype(dev), "usb_device")) {
 				int count_new;
-				if (!strcmp(udev_device_get_action(dev), "add"))
+				if (!strcasecmp(udev_device_get_action(dev), "add"))
 				{
 					count_new = get_device_count();
 					if (count != count_new)
@@ -413,7 +412,7 @@ void notifier_function()
 					}
 
 				}
-				else if (!strcmp(udev_device_get_action(dev), "remove"))
+				else if (!strcasecmp(udev_device_get_action(dev), "remove"))
 				{
 					count_new = get_device_count();
 					if (count != count_new)
@@ -493,7 +492,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 		break;
 	case DLL_PROCESS_DETACH:
 		cancel = TRUE;
-		pthread_join(notifier_id, NULL);
+		WaitForSingleObject(h_thread, 5000);
+		DeleteCriticalSection(&lock);
 		break;
 	}
 
