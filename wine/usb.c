@@ -7,6 +7,7 @@
 #include <libusb-1.0/libusb.h>
 #include <libudev.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
@@ -21,7 +22,7 @@
 
 
 //replacement functions for minipro. Function prototypes and calling convention must be the same as in minipro.exe, otherwise the application will crash.
-int  open_devices(GUID guid, int *devices);
+int  open_devices(GUID *guid, int *error);
 void close_devices();
 BOOL  usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize);
 unsigned int  usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead, unsigned int nOutBufferSize);
@@ -31,6 +32,7 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient, LPVOID Notificat
 
 
 //helper functions
+BOOL patch_minipro();
 unsigned int  uread(HANDLE hDevice, unsigned char *data, size_t size);
 BOOL  uwrite(HANDLE hDevice, unsigned char *data, size_t size);
 void  notifier_function();
@@ -48,8 +50,9 @@ HANDLE h_thread;
 HWND hWnd;
 BOOL cancel;
 HANDLE *usb_handle;
+GUID m_guid;
 
-//These are functions signature extracted from MiniPro.exe and are compatible from V6.0 upward.
+//These are functions signature extracted from MiniPro.exe and should be compatible from V6.0 and above.
 const unsigned char open_devices_pattern[] = { 0x6A,0x00,0x68,0x80,0x00,0x00,0x00,0x6A,0x03,0x6A,0x00,0x6A,0x03 };
 const unsigned char usb_write_patern[] = { 0x8B,0x94,0x24,0x0C,0x10,0x00,0x00,0x8D,0x44,0x24,0x00,0x6A,0x00,0x50,0x8B,0x84 };
 const unsigned char usb_write2_patern[] = { 0x8B,0x94,0x24,0x10,0x10,0x00,0x00,0x8D,0x44,0x24,0x00,0x6A,0x00,0x50,0x8B,0x84 };
@@ -78,18 +81,18 @@ BOOL patch_minipro()
 		ImpDesc++;
 	}
 
-	
+
 	//check if the user32.dll was found in the IAT
 	if(!ImpDesc->Characteristics)
 	{
 		printf("user32.dll was not found in the IAT.\n");
 		return FALSE;//nope, exit with error.
 	}
-		
+
 	//Get the address of RegisterDeviceNotificationA in user32.dll
 	DWORD_PTR ProcAddress = (DWORD_PTR)GetProcAddress(GetModuleHandleA("user32.dll"), "RegisterDeviceNotificationA");
 
-	//Find the address in the thunk table 
+	//Find the address in the thunk table
 	PIMAGE_THUNK_DATA thunk = (PIMAGE_THUNK_DATA)(BaseAddress + ImpDesc->FirstThunk);
 	while (thunk->u1.Function)
 	{
@@ -151,7 +154,7 @@ BOOL patch_minipro()
 	//Patch all low level functions in MiniPro.exe to point to our custom functions.
 	BYTE t[] = { 0x68, 0, 0, 0, 0, 0xc3 };// push xxxx, ret; an absolute Jump replacement.
 	DWORD *p_func = (DWORD*)&t[1];
-	
+
 	//Initialize the usb handle address.
 	usb_handle = p_usbhandle;
 	VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode, NtHeader->OptionalHeader.SizeOfCode, PAGE_READWRITE, &dwOldProtection);//unprotect the code memory section
@@ -179,7 +182,7 @@ BOOL patch_minipro()
 	//patch USB_Read2 function
 	*p_func = (DWORD)&usb_read2;
 	memcpy(p_usbread2, t, 6);
-	
+
 	//patch the brick bug
 	if (p_brickbug) *(p_brickbug + 0x08) = 0xEB;
 
@@ -190,9 +193,11 @@ BOOL patch_minipro()
 
 
 //Minipro replacement functions
-int open_devices(GUID guid, int *devices)
+int open_devices(GUID *guid, int *error)
 {
 	printf("Open devices.\n");
+	//Save the minipro GUID
+	memcpy(&m_guid, guid, sizeof(GUID));
 	close_devices();
 	device_handle[0] = NULL;
 	device_handle[1] = NULL;
@@ -356,12 +361,10 @@ void notifier_function()
 	struct udev *udev;
 	struct udev_monitor *mon;
 	struct udev_device *dev;
-	cancel = FALSE;
-	const GUID guid = { 0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2} };
 	DEV_BROADCAST_DEVICEINTERFACE_W DevBi;
 	DevBi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE_W);
 	DevBi.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-	DevBi.dbcc_classguid = guid;
+	DevBi.dbcc_classguid = m_guid;
 
 	udev = udev_new();
 	if (!udev) {
@@ -387,6 +390,7 @@ void notifier_function()
 	udev_monitor_enable_receiving(mon);
 	int fd = udev_monitor_get_fd(mon);
 
+	cancel = FALSE;
 	while (!cancel) {
 		fd_set fds;
 		struct timeval tv;
@@ -401,7 +405,7 @@ void notifier_function()
 		if (ret > 0 && FD_ISSET(fd, &fds)) {
 
 			dev = udev_monitor_receive_device(mon);
-			if (dev && !strcmp(udev_device_get_devtype(dev), "usb_device")) {
+			if (dev && !strcasecmp(udev_device_get_devtype(dev), "usb_device")) {
 				int count_new;
 				if (!strcasecmp(udev_device_get_action(dev), "add"))
 				{
@@ -456,19 +460,16 @@ int get_device_count()
 	udev_enumerate_add_match_subsystem(enumerate, "usb");
 	udev_enumerate_scan_devices(enumerate);
 	devices = udev_enumerate_get_list_entry(enumerate);
-	const char *path;
 	int count = 0;
 	udev_list_entry_foreach(dev_list_entry, devices)
 	{
-
-		path = udev_list_entry_get_name(dev_list_entry);
-		dev = udev_device_new_from_syspath(udev, path);
+		dev = udev_device_new_from_syspath(udev, udev_list_entry_get_name(dev_list_entry));
 		if (!dev)
 			return -1;
 
 		const char * vid = udev_device_get_sysattr_value(dev, "idVendor");
-		const char * pid = udev_device_get_sysattr_value(dev, "idProduct");
-		if ((vid && pid) && (!strcmp(vid, "04d8") && (!strcmp(pid, "e11c"))))
+		const char * pid = udev_device_get_sysattr_value(dev, "idProduct");;
+		if (vid && pid && strtoul(vid, NULL, 16) == TL866_VID &&  strtoul(pid, NULL, 16) == TL866_PID)
 			count++;
 		udev_device_unref(dev);
 	}
@@ -500,8 +501,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 		cancel = TRUE;
 		WaitForSingleObject(h_thread, 5000);
 		DeleteCriticalSection(&lock);
+		printf("Dll Unloaded.\n");
 		break;
 	}
 
 	return TRUE;
 }
+
+
+
