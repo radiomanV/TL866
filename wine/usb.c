@@ -219,7 +219,7 @@ int open_devices(GUID *guid, int *error)
 	int count = libusb_get_device_list(ctx, &devs);
 
 	if (count < 0) {
-		return -1;
+		return 0;
 	}
 
 
@@ -237,12 +237,12 @@ int open_devices(GUID *guid, int *error)
 				usb_handle[devices_found] = (HANDLE)devices_found;
 				devices_found++;
 				if (devices_found == 4)
-					return 1;
+					return 0;
 			}
 		}
 
 	}
-	return 1;
+	return 0;
 }
 
 
