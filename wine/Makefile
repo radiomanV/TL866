@@ -31,8 +31,7 @@ usb_dll_MODULE        = usb.dll
 usb_dll_C_SRCS        = usb.c
 usb_dll_CXX_SRCS      =
 usb_dll_RC_SRCS       =
-usb_dll_LDFLAGS       = -shared -m32 \
-			$(usb_dll_MODULE:.dll=.spec)
+usb_dll_LDFLAGS       = -shared -m32
 usb_dll_ARFLAGS       =
 usb_dll_DLL_PATH      =
 usb_dll_DLLS          =
@@ -106,7 +105,7 @@ $(EXTRASUBDIRS:%=%/__clean__): dummy
 ### Target specific build rules
 DEFLIB = $(LIBRARY_PATH) $(LIBRARIES) $(DLL_PATH) $(DLL_IMPORTS:%=-l%)
 
-$(usb_dll_MODULE).so: $(usb_dll_OBJS) $(usb_dll_MODULE:.dll=.spec)
+$(usb_dll_MODULE).so: $(usb_dll_OBJS)
 	$(CC) $(usb_dll_LDFLAGS) -o $@ $(usb_dll_OBJS) $(usb_dll_LIBRARY_PATH) $(usb_dll_DLL_PATH) $(DEFLIB) $(usb_dll_DLLS:%=-l%) $(usb_dll_LIBRARIES:%=-l%)
 
 
