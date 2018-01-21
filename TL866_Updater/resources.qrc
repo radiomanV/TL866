@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/firmware">
-        <file>firmwareA.bin</file>
-        <file>firmwareCS.bin</file>
-        <file>dumper.bin</file>
-    </qresource>
-</RCC>
