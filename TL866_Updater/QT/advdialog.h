@@ -1,7 +1,10 @@
 #ifndef ADVDIALOG_H
 #define ADVDIALOG_H
 
+
+#include <QLineEdit>
 #include <QDialog>
+#include "tl866_global.h"
 
 namespace Ui {
 class AdvDialog;
@@ -17,6 +20,15 @@ public:
     void SetSerial(QString devcode, QString serial);
     void SetInfo(QString info);
     void SetUi(bool cp, int type);
+
+
+signals:
+    void set_default(QLineEdit *devcode, QLineEdit *serial);
+    void Refresh();
+    void WriteBootloader(BootloaderType type);
+    void WriteConfig(bool copy_protect);
+    void WriteInfo(QString device_code, QString serial_number);
+
 
 private slots:
     void on_btnEdit_clicked();

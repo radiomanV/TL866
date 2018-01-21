@@ -23,6 +23,7 @@
 
 #include "editdialog.h"
 #include "ui_editdialog.h"
+#include "firmware.h"
 #include <QMessageBox>
 
 EditDialog::EditDialog(QWidget *parent) :
@@ -80,5 +81,12 @@ void EditDialog::okButton_clicked()
         QMessageBox::warning(this, "TL866", "Please enter another device and serial code!\nThese two are reserved.");
         return;
     }
+    if(Firmware::IsBadCrc((uchar*)ui->txtDevcode->text().toLatin1().data(), (uchar*)ui->txtSerial->text().toLatin1().data()))
+    {
+         QMessageBox::warning(this, "TL866", "Bad Device and serial code!\nPlease try again.");
+         return;
+    }
   accept();
 }
+
+

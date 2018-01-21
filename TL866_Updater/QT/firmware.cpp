@@ -23,8 +23,10 @@
 
 #include "firmware.h"
 #include "crc16.h"
+#include "crc32.h"
 #include <QFile>
 #include<QTime>
+#include <QDebug>
 
 
 Firmware::Firmware()
@@ -32,17 +34,6 @@ Firmware::Firmware()
     m_isValid=false;
     m_eraseA=0;
     m_eraseCS=0;
-    const unsigned int poly=0xEDB88320;
-    unsigned int tmp, i, j;
-    for(i = 0; i < 256; i++)
-    {
-        tmp = i;
-        for(j = 0; j < 8 ; j++)
-        {
-            tmp = (tmp & 1 ? (tmp >> 1) ^ poly : tmp >> 1);
-        }
-        crc32Table[i]=tmp;
-    }
     qsrand(QDateTime::currentDateTime().toTime_t());
 
 }
@@ -80,25 +71,15 @@ int Firmware::open(const QString &filename)
         m_firmwareA[i]   = upd.A_Firmware[i]  ^ upd.A_Xortable2[(i+upd.A_Index)&0x3FF]   ^ upd.A_Xortable1[(i/80)&0xFF];
         m_firmwareCS[i]  = upd.CS_Firmware[i] ^ upd.CS_Xortable2[(i+upd.CS_Index)&0x3FF] ^ upd.CS_Xortable1[(i/80)&0xFF];
     }
-
+    CRC32 crc32;
     //Check if decryption is ok
-    if((upd.A_CRC32!=crc32(m_firmwareA,sizeof(m_firmwareA)))||(upd.CS_CRC32=!crc32(m_firmwareCS,sizeof(m_firmwareCS))))
+    if((upd.A_CRC32!=~crc32.crc32(m_firmwareA,sizeof(m_firmwareA), 0xFFFFFFFF))||(upd.CS_CRC32!=~crc32.crc32(m_firmwareCS,sizeof(m_firmwareCS), 0xFFFFFFFF)))
         return CRCError;
 
     m_isValid=true;
     return NoError;
 }
 
-//Compute CRC32
-unsigned int Firmware::crc32(unsigned char *buffer,unsigned int length)
-{
-    unsigned int crc=0xFFFFFFFF;
-    while(length--)
-    {
-        crc=((crc>>8)^crc32Table[(crc&0xFF)^*buffer++]);
-    }
-    return ~crc;
-}
 
 //Get a magic number used in erase command
 unsigned char Firmware::GetEraseParammeter(int type)
@@ -256,16 +237,16 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     int i,index=0x0A;
     unsigned char o1,o2;
 
-
+    CRC16 crc16;
     //compute the right crc16. The last two bytes in the info table is the crc16 in little-endian order and must be max. 0x1FFF, otherwise the decryption will be wrong.
-    while(CRC16::crc16(key,BLOCK_SIZE-2) >0x1FFF)//a little brute-force method to match the required CRC;
+    while(crc16.crc16(key,BLOCK_SIZE-2, 0) >0x1FFF)//a little brute-force method to match the required CRC;
     {
         for(i=32;i<BLOCK_SIZE-2;i++)
         {
             key[i] = (unsigned char) (qrand() % 0x100);
         }
     }
-    ushort crc = CRC16::crc16(key,BLOCK_SIZE-2);
+    ushort crc = crc16.crc16(key,BLOCK_SIZE-2, 0);
     key[BLOCK_SIZE-2]=(crc & 0xff);
     key[BLOCK_SIZE-1]=(crc >> 8);
 
@@ -327,4 +308,12 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
         key[i]=key[BLOCK_SIZE-i-1];
         key[BLOCK_SIZE-i-1]=o1;
     }
+}
+
+bool Firmware::IsBadCrc(uchar *devcode, uchar *serial)
+{
+    CRC32 crc32;
+    unsigned int crc = crc32.crc32(serial,24,crc32.crc32(devcode, 8, 0xFFFFFFFF));
+    return (crc == BAD_CRC);
+
 }

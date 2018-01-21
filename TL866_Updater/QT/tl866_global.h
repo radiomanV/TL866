@@ -19,11 +19,13 @@
 #define DUMPER_WRITE_INFO           0x04
 #define DUMPER_INFO                 0x05
 
-#define A_BOOTLOADER_CRC            0x95AB
-#define CS_BOOTLOADER_CRC           0x20D2
+#define A_BOOTLOADER_CRC            0x1B8960EF
+#define CS_BOOTLOADER_CRC           0xFB3DED05
+#define BAD_CRC                     0xC8C2F013
 
-#define TL866_VID 0x04d8
-#define TL866_PID 0xe11c
+
+#define TL866_VID 0x04D8
+#define TL866_PID 0xE11C
 
  enum BootloaderType{A_BOOTLOADER, CS_BOOTLOADER};
  enum FirmwareType{FIRMWARE_A, FIRMWARE_CS, FIRMWARE_CUSTOM};

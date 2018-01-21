@@ -33,12 +33,14 @@
 USB::USB()
 {
    hDriver=INVALID_HANDLE_VALUE;
+   InitializeCriticalSection(&lock);
 }
 
 USB::~USB()
 {
    if(hDriver !=INVALID_HANDLE_VALUE)
        close_device();
+   DeleteCriticalSection(&lock);
 }
 const GUID MINIPRO_GUID={0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
 
@@ -108,22 +110,26 @@ bool USB::isOpen()
    return (hDriver != INVALID_HANDLE_VALUE);
 }
 
-size_t USB::usb_read(unsigned char *data, size_t size)
+size_t USB::usb_read(unsigned char *data, DWORD size)
 {
     DWORD bytes_read;
     uchar buffer[4];
     if (hDriver == INVALID_HANDLE_VALUE)
         return 0;
-   bool ret = DeviceIoControl(hDriver, TL866_IOCTL_READ, buffer, sizeof(buffer), data, size, &bytes_read, NULL);
+    EnterCriticalSection(&lock);
+    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_READ, buffer, sizeof(buffer), data, size, &bytes_read, NULL);
+    LeaveCriticalSection(&lock);
     return (ret ? bytes_read : 0);
 }
 
-size_t USB::usb_write(unsigned char *data, size_t size)
+size_t USB::usb_write(unsigned char *data, DWORD size)
 {
     DWORD bytes_written;
     uchar buffer[4096];
     if (hDriver == INVALID_HANDLE_VALUE)
         return 0;
-   bool ret = DeviceIoControl(hDriver, TL866_IOCTL_WRITE, data, size, buffer, sizeof(buffer), &bytes_written, NULL);
+    EnterCriticalSection(&lock);
+    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_WRITE, data, size, buffer, sizeof(buffer), &bytes_written, NULL);
+    LeaveCriticalSection(&lock);
     return (ret ? bytes_written : 0);
 }

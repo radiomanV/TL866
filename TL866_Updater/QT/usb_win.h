@@ -13,12 +13,13 @@ public:
     bool    open_device(int index);
     bool    isOpen();
     void close_device();
-    size_t  usb_read(unsigned char *data, size_t size);
-    size_t  usb_write(unsigned char *data, size_t size);
+    size_t  usb_read(unsigned char *data, DWORD size);
+    size_t  usb_write(unsigned char *data, DWORD size);
 
 private:
     QStringList devices;
     HANDLE hDriver;
+    CRITICAL_SECTION lock;
 };
 
 #endif // USB_WIN_H

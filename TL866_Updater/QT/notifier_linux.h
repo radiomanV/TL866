@@ -8,7 +8,7 @@ class Notifier : public QWidget
 {
     Q_OBJECT
 public:
-    explicit Notifier(QWidget *parent = 0);
+    explicit Notifier();
 
  ~Notifier();
 signals:
@@ -22,16 +22,6 @@ private slots:
 private:
     QSocketNotifier *socket_notifier;
     void RegisterUsbNotifications();
-
-
-#ifdef Q_OS_WIN32
-private:
-    bool winEvent(MSG *message, long *result);
-#if QT_VERSION >= 0x050000
-    bool nativeEvent(const QByteArray& eventType, void* message, long* result);
-#endif
-#endif
-
 };
 
 #endif // NOTIFIER_H

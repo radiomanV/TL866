@@ -83,27 +83,27 @@ void AdvDialog::on_btnEdit_clicked()
 
 void AdvDialog::on_btnDefault_clicked()
 {
-    static_cast<MainWindow*>(this->parent())->set_default(ui->txtDevcode, ui->txtSerial);
+    emit set_default(ui->txtDevcode, ui->txtSerial);
 }
 
 void AdvDialog::on_btnClone_clicked()
 {
-   static_cast<MainWindow*>(this->parent())->Refresh();
+    emit Refresh();
     ui->txtDevcode->setText(device_code);
     ui->txtSerial->setText(serial_number);
 }
 
 void AdvDialog::on_btnWriteBootloader_clicked()
 {
-    static_cast<MainWindow*>(this->parent())->WriteBootloader(ui->radioA->isChecked() ? A_BOOTLOADER : CS_BOOTLOADER);
+    emit WriteBootloader(ui->radioA->isChecked() ? A_BOOTLOADER : CS_BOOTLOADER);
 }
 
 void AdvDialog::on_btnWriteConfig_clicked()
 {
-   static_cast<MainWindow*>(this->parent())->WriteConfig(ui->optionCP->isChecked());
+    emit WriteConfig(ui->optionCP->isChecked());
 }
 
 void AdvDialog::on_btnWriteInfo_clicked()
 {
-   static_cast<MainWindow*>(this->parent())->WriteInfo(ui->txtDevcode->text(), ui->txtSerial->text());
+   emit WriteInfo(ui->txtDevcode->text(), ui->txtSerial->text());;
 }

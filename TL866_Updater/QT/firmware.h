@@ -25,6 +25,7 @@ public:
     void get_firmware(unsigned char *data_out, int type, int key);
     void encrypt_serial(unsigned char *key, const unsigned char *firmware);
     void decrypt_serial(unsigned char *key, const unsigned char *firmware);
+    static bool IsBadCrc(uchar *devcode, uchar *serial);
 
 
     enum

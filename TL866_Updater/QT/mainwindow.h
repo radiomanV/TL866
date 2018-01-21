@@ -13,15 +13,16 @@
 #include <QLineEdit>
 #include "advdialog.h"
 #include "firmware.h"
-#include "notifier.h"
 #include "tl866_global.h"
 
 #ifdef Q_OS_WIN32
 #include "usb_win.h"
+#include "notifier_win.h"
 #endif
 
 #ifdef Q_OS_LINUX
 #include "usb_linux.h"
+#include "notifier_linux.h"
 #endif
 
 
@@ -38,13 +39,6 @@ public:
     ~MainWindow();
     USB *usb_device;
 
-    void set_default(QLineEdit *devcode, QLineEdit *serial);
-    void Refresh();
-    void WriteBootloader(BootloaderType type);
-    void WriteConfig(bool copy_protect);
-    void WriteInfo(QString device_code, QString serial_number);
-
-
 
 private slots:
     void on_btnInput_clicked();
@@ -60,6 +54,12 @@ private slots:
     void dump_finished(QString succes);
     void DeviceChanged(bool arrived);
     void gui_updated(QString message, bool eraseLed, bool writeLed);
+
+    void set_default(QLineEdit *devcode, QLineEdit *serial);
+    void Refresh();
+    void WriteBootloader(BootloaderType type);
+    void WriteConfig(bool copy_protect);
+    void WriteInfo(QString device_code, QString serial_number);
 
 
 signals:
@@ -89,12 +89,13 @@ private:
     void SetBlank();
     bool CheckDevices(QWidget *parent);
     bool AdvQuestion();
-    ushort BootloaderCRC();
+    uint BootloaderCRC();
     bool reflash();
     QString dump();
     void reset();
     bool wait_for_device();
     void DoWork(WorkerJob job);
+    bool IsBadCrc(const uchar *devcode, const uchar *serial);
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"

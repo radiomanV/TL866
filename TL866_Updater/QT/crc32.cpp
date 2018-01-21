@@ -1,4 +1,4 @@
-/* Class CRC16
+/* Class CRC32
 *
 * This file is part of the TL866 updater project.
 *
@@ -21,17 +21,17 @@
 */
 
 
-#include "crc16.h"
+#include "crc32.h"
 
-CRC16::CRC16()
+CRC32::CRC32()
 {
-    const ushort poly = 0xA001;
-    for (ushort i = 0; i < 256; i++)
+    const uint poly=0xEDB88320;
+    for (uint i = 0; i < 256; i++)
     {
-        ushort temp = i;
-        for (uchar j = 0; j < 8; j++)
+        uint temp = i;
+        for (uint j = 0; j < 8; j++)
             if ((temp & 1) == 1)
-                temp = (ushort)((temp >> 1) ^ poly);
+                temp = (temp >> 1) ^ poly;
             else
                 temp >>= 1;
         table[i] = temp;
@@ -39,11 +39,11 @@ CRC16::CRC16()
 }
 
 
-ushort CRC16::crc16(const uchar *data, uint length, ushort initial)
+uint CRC32::crc32(const uchar *data, uint length, uint initial)
 {
     while(length--)
     {
-        initial=((initial>>8)^table[(initial^*data++)&0xFF]);
+        initial = ((initial>>8)^table[(initial^*data++)&0xFF]);
     }
     return initial;
 }

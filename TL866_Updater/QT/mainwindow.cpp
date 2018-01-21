@@ -25,6 +25,7 @@
 #include "editdialog.h"
 #include "hexwriter.h"
 #include "crc16.h"
+#include "crc32.h"
 #include <QWidget>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -51,6 +52,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, SIGNAL(reflash_status(bool)), this, SLOT(reflash_finished(bool)));
     connect(this, SIGNAL(dump_status(QString)), this, SLOT(dump_finished(QString)));
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
+
+    connect(advdlg,SIGNAL(Refresh()),this,SLOT(Refresh()));
+    connect(advdlg,SIGNAL(set_default(QLineEdit*,QLineEdit*)),this,SLOT(set_default(QLineEdit*,QLineEdit*)));
+    connect(advdlg,SIGNAL(WriteBootloader(BootloaderType)),SLOT(WriteBootloader(BootloaderType)));
+    connect(advdlg,SIGNAL(WriteConfig(bool)),this,SLOT(WriteConfig(bool)));
+    connect(advdlg,SIGNAL(WriteInfo(QString,QString)),this,SLOT(WriteInfo(QString,QString)));
 
     //set used properties
     this->setProperty("device_code", "");
@@ -171,6 +178,7 @@ void MainWindow::on_btnInput_clicked()
 //show advanced dialog
 void MainWindow::on_btnAdvanced_clicked()
 {
+    Refresh();
     advdlg->show();
 }
 
@@ -396,7 +404,7 @@ void MainWindow::reset()
 //wait for device to reset
 bool MainWindow::wait_for_device()
 {
-    int cnt = 50;//8 seconds
+    int cnt = 50;//5 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
         wait_ms(100);
@@ -446,19 +454,18 @@ bool MainWindow::reflash()
 
 
     //Erase device first
-    memset(buffer,0,20);
+    memset(buffer,0,sizeof(buffer));
     buffer[0]=ERASE_COMMAND;
     buffer[7]=firmware.GetEraseParammeter(device_version);
     emit update_gui(QString("<erasing...>"), true, false);
     usb_device->usb_write(buffer, 20);
-
     usb_device->usb_read(data, 32);
     if(data[0] != ERASE_COMMAND)
         return false;//erase failed
 
     //Write device.
     emit update_gui(QString("<erasing...>"), false, false);
-    wait_ms(1000);
+    wait_ms(500);
     emit update_gui(QString("<writing...>"), false, true);
 
 
@@ -597,7 +604,6 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
     ui->txtInfo->append(list.join("\n"));
 }
 
-
 //This procedure is called automatically by the usb device change. Call this function to refresh the info.
 void MainWindow::DeviceChanged(bool arrived)
 {
@@ -657,6 +663,7 @@ void MainWindow::DeviceChanged(bool arrived)
             QString s_serial = (QString::fromLatin1((const char*)&report.serial_number,24));
             bool isDumperActive = (s_devcode.toLower() == "codedump" && s_serial == "000000000000000000000000");
 
+
             if(isDumperActive)
             {
 
@@ -672,8 +679,8 @@ void MainWindow::DeviceChanged(bool arrived)
                 advdlg->SetSerial(s_devcode, s_serial);
 
                 QString info;
-                info.append(QString("Device code: %1\n").arg(s_devcode));
-                info.append(QString("Serial number: %1\n").arg(s_serial));
+                info.append(QString("Device code: %1\n").arg(s_devcode.trimmed()   + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad device code)" : "")));
+                info.append(QString("Serial number: %1\n").arg(s_serial.trimmed()  + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad serial code)" : "")));
                 info.append(QString("Bootloader version: %1\n").arg((devtype == VERSION_TL866A) ? "A" : "CS"));
                 info.append(QString("Code Protection bit: %1\n").arg(dumper_report.cp_bit ? "No" : "Yes"));
 
@@ -692,8 +699,8 @@ void MainWindow::DeviceChanged(bool arrived)
                 advdlg->hide();
             }
 
-            ui->txtInfo->append("Device code: " + s_devcode);
-            ui->txtInfo->append("Serial number: " + s_serial);
+            ui->txtInfo->append("Device code: " + s_devcode.trimmed() + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad device code)" : ""));
+            ui->txtInfo->append("Serial number: " + s_serial.trimmed() + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad serial code)" : ""));
             this->setProperty("device_code", s_devcode);
             this->setProperty("serial_number", s_serial);
             ui->txtInfo->append(isDumperActive ? "Firmware version: Firmware dumper" :
@@ -763,7 +770,7 @@ void MainWindow::WriteBootloader(BootloaderType type)
         return;
     if(usb_device->open_device(0))
     {
-        ushort crc = BootloaderCRC();
+        uint crc = BootloaderCRC();
         if(!((crc == A_BOOTLOADER_CRC) || (crc == CS_BOOTLOADER_CRC)))
         {
             usb_device->close_device();
@@ -771,7 +778,7 @@ void MainWindow::WriteBootloader(BootloaderType type)
                                  "The bootloader CRC of your device version doesn't match!\nAs a safety measure, nothing will be written.");
             return;
         }
-        uchar b[2]={DUMPER_WRITE_BOOTLOADER, type == A_BOOTLOADER ? VERSION_TL866A : VERSION_TL866CS};
+        uchar b[2]={DUMPER_WRITE_BOOTLOADER, (uchar) (type ==  A_BOOTLOADER ? VERSION_TL866A : VERSION_TL866CS)};
         usb_device->usb_write(b, 2);
         b[0] = 0;
         usb_device->usb_read(b, 1);
@@ -837,7 +844,7 @@ void MainWindow::WriteInfo(QString device_code, QString serial_number)
 
 
 //read bootloader and compute crc16
-ushort MainWindow::BootloaderCRC()
+uint MainWindow::BootloaderCRC()
 {
     uchar buffer[BOOTLOADER_SIZE];//6Kbyte
     uchar w[5];
@@ -856,7 +863,8 @@ ushort MainWindow::BootloaderCRC()
             return 0;
         }
     }
-    return CRC16::crc16(buffer, sizeof(buffer));
+    CRC32 crc;
+    return ~crc.crc32(buffer, sizeof(buffer), 0xFFFFFFFF);
 }
 
 

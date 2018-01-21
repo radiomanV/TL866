@@ -21,14 +21,13 @@
 */
 
 
-#include "notifier.h"
+#include "notifier_linux.h"
 #include "tl866_global.h"
 #include <QDebug>
+#include <libudev.h>
 
-Notifier::Notifier(QWidget *parent) :
-    QWidget(parent)
+Notifier::Notifier()
 {
-    this->hide();
     socket_notifier=NULL;
     RegisterUsbNotifications();
 }
@@ -39,85 +38,6 @@ Notifier::~Notifier()
         delete socket_notifier;
 }
 
-
-/* Platform specific implementation of usb device change notification.
- * We use a hidden widget class because we need the winId (hwnd) for Windows implementation.
- */
-
-//Usb Device change Windows implementation
-#ifdef Q_OS_WIN32
-#include <Windows.h>
-#include <Dbt.h>
-
-const GUID MINIPRO_GUID={0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
-
-void Notifier::RegisterUsbNotifications()
-{
-    DEV_BROADCAST_DEVICEINTERFACE deviceInterface;
-    ZeroMemory(&deviceInterface, sizeof(deviceInterface));
-    deviceInterface.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
-    deviceInterface.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-    deviceInterface.dbcc_classguid  = MINIPRO_GUID;
-    HDEVNOTIFY m_notify_handle = RegisterDeviceNotification((HANDLE)this->winId(),&deviceInterface, DEVICE_NOTIFY_WINDOW_HANDLE);
-    if(m_notify_handle==NULL)
-    {
-        qDebug() << "Failed to register device notification!";
-        return;
-    }
-
-    qDebug() << "Register device notification O.K.";
-}
-
-#if QT_VERSION >= 0x050000
-bool Notifier::nativeEvent(const QByteArray& eventType, void* message, long* result)
-{
-    Q_UNUSED( result );
-    Q_UNUSED( eventType );
-
-    MSG* msg = reinterpret_cast<MSG*>(message);
-    if(msg->message == WM_DEVICECHANGE)
-    {
-        switch(msg->wParam)
-        {
-        case DBT_DEVICEARRIVAL:
-              emit deviceChange(true);
-            break;
-
-        case DBT_DEVICEREMOVECOMPLETE:
-              emit deviceChange(false);
-            break;
-        }
-    }
-
-    return false;
-}
-#else
-bool Notifier::winEvent(MSG *message, long *result)
-{
-    Q_UNUSED(result);
-    if (message->message==WM_DEVICECHANGE)
-    {
-        if (message->wParam==DBT_DEVICEARRIVAL)
-            emit deviceChange(true);
-        if (message->wParam==DBT_DEVICEREMOVECOMPLETE)
-            emit deviceChange(false);
-    }
-    return false;
-}
-#endif
-
-void Notifier::udev_event()
-{
-    //stub function
-}
-
-#endif
-
-
-//Usb Device change Linux implementation
-#ifdef Q_OS_LINUX
-
-#include <libudev.h>
 
 udev_monitor *mon;//Global variable
 QStringList nodes;
@@ -207,5 +127,3 @@ void Notifier::RegisterUsbNotifications()
     connect(socket_notifier,SIGNAL(activated(int)),this,SLOT(udev_event()));
     qDebug() << "Register device notification O.K.";
 }
-#endif
-
