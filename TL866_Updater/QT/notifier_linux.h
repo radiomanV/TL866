@@ -1,6 +1,7 @@
 #ifndef NOTIFIER_H
 #define NOTIFIER_H
 
+#include <libudev.h>
 #include <QWidget>
 #include <QSocketNotifier>
 
@@ -21,6 +22,8 @@ private slots:
 
 private:
     QSocketNotifier *socket_notifier;
+    QStringList nodes;
+    udev_monitor *mon;
     void RegisterUsbNotifications();
 };
 

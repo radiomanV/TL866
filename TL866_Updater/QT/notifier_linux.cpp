@@ -24,7 +24,7 @@
 #include "notifier_linux.h"
 #include "tl866_global.h"
 #include <QDebug>
-#include <libudev.h>
+
 
 Notifier::Notifier()
 {
@@ -34,13 +34,10 @@ Notifier::Notifier()
 
 Notifier::~Notifier()
 {
+    udev_monitor_unref(mon);
     if(socket_notifier !=NULL)
         delete socket_notifier;
 }
-
-
-udev_monitor *mon;//Global variable
-QStringList nodes;
 
 
 void Notifier::udev_event()
