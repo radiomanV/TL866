@@ -441,6 +441,7 @@ void notifier_function()
 		}
 		usleep(10000);
 	}
+	udev_monitor_unref(mon);
 }
 
 
