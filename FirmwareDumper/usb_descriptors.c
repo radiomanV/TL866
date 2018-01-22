@@ -237,12 +237,12 @@ sd000 = {
 ROM struct {
 	BYTE bLength;
 	BYTE bDscType;
-	WORD string[9];
+	WORD string[8];
 }
 sd001 = {
 	sizeof(sd001), USB_DESCRIPTOR_STRING,
 	{
-		'R', 'a', 'd', 'i', 'o', 's', 'o', 'f', 't'}
+		'R', 'a', 'd', 'i', 'o', 'm', 'a', 'n'}
 };
 
 //Product string descriptor
@@ -250,12 +250,12 @@ sd001 = {
 ROM struct {
 	BYTE bLength;
 	BYTE bDscType;
-	WORD string[10];
+	WORD string[13];
 }
 sd002 = {
 	sizeof(sd002), USB_DESCRIPTOR_STRING,
 	{
-		'T', 'L', '8', '6', '6', ' ', 'T', 'e', 's', 't'}
+		'T', 'L', '8', '6', '6', ' ', 'U', 'p', 'd', 'a', 't', 'e', 'r'}
 };
 
 //Array of configuration descriptors
