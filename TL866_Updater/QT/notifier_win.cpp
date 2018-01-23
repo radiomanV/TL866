@@ -31,22 +31,13 @@ Notifier::Notifier(QWidget *parent) :
     QWidget(parent)
 {
     this->hide();
-    socket_notifier=NULL;
     RegisterUsbNotifications();
 }
 
-Notifier::~Notifier()
-{
-    if(socket_notifier !=NULL)
-        delete socket_notifier;
-}
 
 /*
  * We use a hidden widget class because we need the winId (hwnd) for Windows implementation.
  */
-
-
-
 
 const GUID MINIPRO_GUID={0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
 

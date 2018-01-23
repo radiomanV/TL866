@@ -2,7 +2,6 @@
 #define NOTIFIER_H
 
 #include <QWidget>
-#include <QSocketNotifier>
 
 
 class Notifier : public QWidget
@@ -11,12 +10,10 @@ class Notifier : public QWidget
 public:
     explicit Notifier(QWidget *parent = 0);
 
- ~Notifier();
 signals:
     void deviceChange(bool arrived);
 
 private:
-    QSocketNotifier *socket_notifier;
     void RegisterUsbNotifications();
 
 
