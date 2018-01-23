@@ -4,7 +4,7 @@
 
 #include <QLineEdit>
 #include <QDialog>
-#include "tl866_global.h"
+#include "firmware.h"
 
 namespace Ui {
 class AdvDialog;
@@ -25,7 +25,7 @@ public:
 signals:
     void set_default(QLineEdit *devcode, QLineEdit *serial);
     void Refresh();
-    void WriteBootloader(BootloaderType type);
+    void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
     void WriteInfo(QString device_code, QString serial_number);
 

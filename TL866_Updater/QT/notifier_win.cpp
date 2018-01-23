@@ -22,7 +22,6 @@
 
 
 #include "notifier_win.h"
-#include "tl866_global.h"
 #include <Windows.h>
 #include <Dbt.h>
 #include <QDebug>

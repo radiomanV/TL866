@@ -21,7 +21,7 @@
 */
 
 #include "usb_linux.h"
-#include "tl866_global.h"
+#include "firmware.h"
 #include <QDebug>
 
 USB::USB()

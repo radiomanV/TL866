@@ -13,7 +13,6 @@
 #include <QLineEdit>
 #include "advdialog.h"
 #include "firmware.h"
-#include "tl866_global.h"
 
 #ifdef Q_OS_WIN32
 #include "usb_win.h"
@@ -37,8 +36,6 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    USB *usb_device;
-
 
 private slots:
     void on_btnInput_clicked();
@@ -57,7 +54,7 @@ private slots:
 
     void set_default(QLineEdit *devcode, QLineEdit *serial);
     void Refresh();
-    void WriteBootloader(BootloaderType type);
+    void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
     void WriteInfo(QString device_code, QString serial_number);
 
@@ -72,6 +69,7 @@ signals:
 private:
     enum WorkerJob{REFLASH, DUMP};
     Ui::MainWindow *ui;
+    USB *usb_device;
     AdvDialog* advdlg;
     Firmware firmware;
     Notifier *usbNotifier;

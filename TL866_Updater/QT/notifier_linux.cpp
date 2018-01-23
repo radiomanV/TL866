@@ -22,9 +22,8 @@
 
 
 #include "notifier_linux.h"
-#include "tl866_global.h"
+#include "firmware.h"
 #include <QDebug>
-
 
 Notifier::Notifier()
 {
@@ -40,6 +39,12 @@ Notifier::~Notifier()
 }
 
 
+/* Called automatically when a usb device is inserted or removed.
+ * Because we can get the idVendor and idProduct only for inserted
+ * devices, for remove device notification we don't know if that
+ * device was an TL866 or else. So we keep a list of devices to
+ * track which device was removed.
+ */
 void Notifier::udev_event()
 {
     udev_device *dev = udev_monitor_receive_device(mon);
@@ -83,6 +88,7 @@ void Notifier::RegisterUsbNotifications()
         return;
     }
 
+    //Building the initial device list.
     udev_enumerate *enumerate;
     udev_list_entry *devices, *dev_list_entry;
     udev_device *dev;
@@ -101,26 +107,29 @@ void Notifier::RegisterUsbNotifications()
         QString devnode(udev_device_get_devnode(dev));
         QString vid(udev_device_get_sysattr_value(dev,"idVendor"));
         QString pid(udev_device_get_sysattr_value(dev,"idProduct"));
-        //QString product(udev_device_get_sysattr_value(dev,"product"));
         if((vid.toUShort(0,16) == TL866_VID) && (pid.toUShort(0,16) == TL866_PID))
         {
             nodes.append(devnode);
-            //qDebug()<< "Found" << devnode << vid << pid << product;
+            //qDebug()<< "Found" << devnode << vid << pid << udev_device_get_sysattr_value(dev,"product");
         }
         udev_device_unref(dev);
     }
     udev_enumerate_unref(enumerate);
 
+    //Rgistering usb notifications.
     mon = udev_monitor_new_from_netlink(udev, "udev");
     if(!mon)
     {
         qDebug() << "Netlink not available!" << endl;
+        udev_unref(udev);
         return;
     }
     udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", "usb_device");
     udev_monitor_enable_receiving(mon);
     int fd = udev_monitor_get_fd(mon);
     socket_notifier=new QSocketNotifier(fd,QSocketNotifier::Read);
+    socket_notifier->setEnabled(true);
     connect(socket_notifier,SIGNAL(activated(int)),this,SLOT(udev_event()));
+    udev_unref(udev);
     qDebug() << "Register device notification O.K.";
 }

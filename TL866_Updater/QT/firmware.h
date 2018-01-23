@@ -2,13 +2,36 @@
 #define FIRMWARE_H
 
 #include <QString>
-#include "tl866_global.h"
 
 #define UPDATE_DAT_SIZE             312348
 #define BLOCK_SIZE                  80
 #define XOR_TABLE_SIZE              0x100
 #define XOR_TABLE_START             0x1EEDF
 #define XOR_TABLE_OFFSET            0x1FC00
+
+#define SERIAL_OFFSET               0x1FD00
+#define FLASH_SIZE                  0x20000
+#define BOOTLOADER_SIZE             0x1800
+#define ENCRYPTED_FIRMWARE_SIZE     0x25D00
+#define UNENCRYPTED_FIRMWARE_SIZE   0x1E400
+
+#define WRITE_COMMAND               0xAA
+#define ERASE_COMMAND               0xCC
+#define RESET_COMMAND               0xFF
+#define REPORT_COMMAND              0x00
+
+#define DUMPER_READ_FLASH           0x01
+#define DUMPER_WRITE_BOOTLOADER     0x02
+#define DUMPER_WRITE_CONFIG         0x03
+#define DUMPER_WRITE_INFO           0x04
+#define DUMPER_INFO                 0x05
+
+#define A_BOOTLOADER_CRC            0x1B8960EF
+#define CS_BOOTLOADER_CRC           0xFB3DED05
+#define BAD_CRC                     0xC8C2F013
+
+#define TL866_VID 0x04D8
+#define TL866_PID 0xE11C
 
 
 class Firmware
@@ -26,6 +49,33 @@ public:
     void encrypt_serial(unsigned char *key, const unsigned char *firmware);
     void decrypt_serial(unsigned char *key, const unsigned char *firmware);
     static bool IsBadCrc(uchar *devcode, uchar *serial);
+
+
+    typedef struct {
+        uchar   echo;
+        uchar   device_status;
+        ushort  report_size;
+        uchar   firmware_version_minor;
+        uchar   firmware_version_major;
+        uchar   device_version;
+        uchar   device_code[8];
+        uchar   serial_number[24];
+        uchar   hardware_version;
+    }TL866_REPORT;
+
+
+    typedef struct{
+        uchar   device_code[8];
+        uchar   serial_number[24];
+        uchar   bootloader_version;
+        uchar   cp_bit;
+    }DUMPER_REPORT;
+
+
+    enum BootloaderType{A_BOOTLOADER, CS_BOOTLOADER};
+    enum FirmwareType{FIRMWARE_A, FIRMWARE_CS, FIRMWARE_CUSTOM};
+    enum DEVICE_VERSION{VERSION_TL866A = 1, VERSION_TL866CS = 2};
+    enum DEVICE_STATUS{NORMAL_MODE = 1, BOOTLOADER_MODE = 2};
 
 
     enum
@@ -73,7 +123,7 @@ void encrypt_block(unsigned char *data, unsigned char *xortable, int index);
 void decrypt_block(unsigned char *data, unsigned char *xortable, int index);
 
 
-unsigned int crc32Table[256];
+unsigned int  crc32Table[256];
 unsigned char m_firmwareA[ENCRYPTED_FIRMWARE_SIZE ];
 unsigned char m_firmwareCS[ENCRYPTED_FIRMWARE_SIZE ];
 unsigned char m_eraseA;

@@ -7,7 +7,7 @@ class CRC16
 {
 public:
     CRC16();
-   ushort crc16(const uchar *data, unsigned int length, ushort initial);
+    ushort crc16(const uchar *data, unsigned int length, ushort initial);
 
 private:
    ushort table[256];

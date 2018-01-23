@@ -22,7 +22,6 @@
 
 
 #include "usb_win.h"
-#include "tl866_global.h"
 #include <QDebug>
 #include <Windows.h>
 #include <SetupAPI.h>

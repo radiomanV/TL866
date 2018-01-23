@@ -32,7 +32,6 @@ HEADERS  += mainwindow.h \
     crc16.h \
     editdialog.h \
     hexwriter.h \
-    tl866_global.h \
     crc32.h
 
 FORMS    += mainwindow.ui \

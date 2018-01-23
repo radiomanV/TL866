@@ -25,7 +25,6 @@
 #include "ui_advdialog.h"
 #include "editdialog.h"
 #include "mainwindow.h"
-#include "tl866_global.h"
 
 
 AdvDialog::AdvDialog(QWidget *parent) :
@@ -59,9 +58,9 @@ void AdvDialog::SetInfo(QString info)
 
 void AdvDialog::SetUi(bool cp, int type)
 {
-  if(type == VERSION_TL866A)
+  if(type == Firmware::VERSION_TL866A)
       ui->radioA->setChecked(true);
-  if(type == VERSION_TL866CS)
+  if(type == Firmware::VERSION_TL866CS)
       ui->radioCS->setChecked(true);
     ui->optionCP->setChecked(cp);
 }
@@ -95,7 +94,7 @@ void AdvDialog::on_btnClone_clicked()
 
 void AdvDialog::on_btnWriteBootloader_clicked()
 {
-    emit WriteBootloader(ui->radioA->isChecked() ? A_BOOTLOADER : CS_BOOTLOADER);
+    emit WriteBootloader(ui->radioA->isChecked() ? Firmware::A_BOOTLOADER : Firmware::CS_BOOTLOADER);
 }
 
 void AdvDialog::on_btnWriteConfig_clicked()
