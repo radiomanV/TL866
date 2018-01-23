@@ -24,8 +24,7 @@
 #include "ui_mainwindow.h"
 #include "editdialog.h"
 #include "hexwriter.h"
-#include "crc16.h"
-#include "crc32.h"
+#include "crc.h"
 #include <QWidget>
 #include <QFileDialog>
 #include <QMessageBox>
@@ -863,7 +862,7 @@ uint MainWindow::BootloaderCRC()
             return 0;
         }
     }
-    CRC32 crc;
+    CRC crc;
     return ~crc.crc32(buffer, sizeof(buffer), 0xFFFFFFFF);
 }
 

@@ -22,8 +22,7 @@
 
 
 #include "firmware.h"
-#include "crc16.h"
-#include "crc32.h"
+#include "crc.h"
 #include <QFile>
 #include<QTime>
 #include <QDebug>
@@ -71,9 +70,9 @@ int Firmware::open(const QString &filename)
         m_firmwareA[i]   = upd.A_Firmware[i]  ^ upd.A_Xortable2[(i+upd.A_Index)&0x3FF]   ^ upd.A_Xortable1[(i/80)&0xFF];
         m_firmwareCS[i]  = upd.CS_Firmware[i] ^ upd.CS_Xortable2[(i+upd.CS_Index)&0x3FF] ^ upd.CS_Xortable1[(i/80)&0xFF];
     }
-    CRC32 crc32;
+    CRC crc;
     //Check if decryption is ok
-    if((upd.A_CRC32!=~crc32.crc32(m_firmwareA,sizeof(m_firmwareA), 0xFFFFFFFF))||(upd.CS_CRC32!=~crc32.crc32(m_firmwareCS,sizeof(m_firmwareCS), 0xFFFFFFFF)))
+    if((upd.A_CRC32!=~crc.crc32(m_firmwareA,sizeof(m_firmwareA), 0xFFFFFFFF))||(upd.CS_CRC32!=~crc.crc32(m_firmwareCS,sizeof(m_firmwareCS), 0xFFFFFFFF)))
         return CRCError;
 
     m_isValid=true;
@@ -237,18 +236,18 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     int i,index=0x0A;
     unsigned char o1,o2;
 
-    CRC16 crc16;
+    CRC crc;
     //compute the right crc16. The last two bytes in the info table is the crc16 in little-endian order and must be max. 0x1FFF, otherwise the decryption will be wrong.
-    while(crc16.crc16(key,BLOCK_SIZE-2, 0) >0x1FFF)//a little brute-force method to match the required CRC;
+    while(crc.crc16(key,BLOCK_SIZE-2, 0) >0x1FFF)//a little brute-force method to match the required CRC;
     {
         for(i=32;i<BLOCK_SIZE-2;i++)
         {
             key[i] = (unsigned char) (qrand() % 0x100);
         }
     }
-    ushort crc = crc16.crc16(key,BLOCK_SIZE-2, 0);
-    key[BLOCK_SIZE-2]=(crc & 0xff);
-    key[BLOCK_SIZE-1]=(crc >> 8);
+    ushort crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
+    key[BLOCK_SIZE-2]=(crc16 & 0xff);
+    key[BLOCK_SIZE-1]=(crc16 >> 8);
 
 
     /*Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
@@ -312,8 +311,8 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
 
 bool Firmware::IsBadCrc(uchar *devcode, uchar *serial)
 {
-    CRC32 crc32;
-    unsigned int crc = crc32.crc32(serial,24,crc32.crc32(devcode, 8, 0xFFFFFFFF));
-    return (crc == BAD_CRC);
+    CRC crc;
+    unsigned int crc32 = crc.crc32(serial,24,crc.crc32(devcode, 8, 0xFFFFFFFF));
+    return (crc32 == BAD_CRC);
 
 }

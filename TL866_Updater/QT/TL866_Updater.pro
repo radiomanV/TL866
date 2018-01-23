@@ -22,17 +22,15 @@ SOURCES += main.cpp\
     firmware.cpp \
     editdialog.cpp \
     hexwriter.cpp \
-    crc16.cpp \
-    crc32.cpp
+    crc.cpp
 
 
 HEADERS  += mainwindow.h \
     advdialog.h \
     firmware.h \
-    crc16.h \
     editdialog.h \
     hexwriter.h \
-    crc32.h
+    crc.h
 
 FORMS    += mainwindow.ui \
     editdialog.ui \

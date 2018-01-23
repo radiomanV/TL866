@@ -118,12 +118,10 @@ private:
         unsigned char CS_Firmware[ENCRYPTED_FIRMWARE_SIZE];//Encrypted CS firmware
     }UpdateDat;
 
-unsigned int crc32(unsigned char *buffer, unsigned int length);
 void encrypt_block(unsigned char *data, unsigned char *xortable, int index);
 void decrypt_block(unsigned char *data, unsigned char *xortable, int index);
 
 
-unsigned int  crc32Table[256];
 unsigned char m_firmwareA[ENCRYPTED_FIRMWARE_SIZE ];
 unsigned char m_firmwareCS[ENCRYPTED_FIRMWARE_SIZE ];
 unsigned char m_eraseA;

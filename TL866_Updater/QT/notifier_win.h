@@ -1,5 +1,5 @@
-#ifndef NOTIFIER_H
-#define NOTIFIER_H
+#ifndef NOTIFIER_WIN_H
+#define NOTIFIER_WIN_H
 
 #include <QWidget>
 
@@ -25,4 +25,4 @@ private:
 
 };
 
-#endif // NOTIFIER_H
+#endif // NOTIFIER_WIN_H

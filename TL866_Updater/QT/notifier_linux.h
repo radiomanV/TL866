@@ -1,5 +1,5 @@
-#ifndef NOTIFIER_H
-#define NOTIFIER_H
+#ifndef NOTIFIER_LINUX_H
+#define NOTIFIER_LINUX_H
 
 #include <libudev.h>
 #include <QWidget>
@@ -27,4 +27,4 @@ private:
     void RegisterUsbNotifications();
 };
 
-#endif // NOTIFIER_H
+#endif // NOTIFIER_LINUX_H
