@@ -97,17 +97,6 @@ private:
     void DoWork(WorkerJob job);
     bool IsBadCrc(const uchar *devcode, const uchar *serial);
 
-    typedef struct
-    {
-        bool N_Led;
-        bool B_Led;
-        bool E_Led;
-        bool W_Led;
-        bool E_Led_Blink;
-        bool W_Led_Blink;
-    } Ledstruct ;
-
-    Ledstruct LedState;
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"

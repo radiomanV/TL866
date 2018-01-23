@@ -75,6 +75,7 @@ MainWindow::MainWindow(QWidget *parent) :
 }
 
 
+//Class destructor
 MainWindow::~MainWindow()
 {
     if(watcher.isRunning())
@@ -101,18 +102,18 @@ void MainWindow::leds_off()
     ui->LedErase->setPalette(pal);
     pal.setColor(QPalette::Background, QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
-    LedState.B_Led = false;
-    LedState.N_Led = false;
-    LedState.E_Led = false;
-    LedState.W_Led = false;
-    LedState.E_Led_Blink = false;
-    LedState.W_Led_Blink =false;
+    ui->LedNorm->setProperty("state",false);
+    ui->LedBoot->setProperty("state",false);
+    ui->LedErase->setProperty("state",false);
+    ui->LedWrite->setProperty("state",false);
+    ui->LedErase->setProperty("blink",false);
+    ui->LedWrite->setProperty("blink",false);
 }
 
 /* LEDs on/off toggle routines */
 void MainWindow::setNled(bool state)
 {
-    LedState.N_Led = state;
+    ui->LedNorm->setProperty("state", state);
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedNorm->setPalette(pal);
@@ -120,7 +121,7 @@ void MainWindow::setNled(bool state)
 
 void MainWindow::setBled(bool state)
 {
-    LedState.B_Led = state;
+    ui->LedBoot->setProperty("state", state);
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedBoot->setPalette(pal);
@@ -128,7 +129,7 @@ void MainWindow::setBled(bool state)
 
 void MainWindow::setEled(bool state)
 {
-    LedState.E_Led = state;
+    ui->LedErase->setProperty("state", state);
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,255,0) :  QColor::fromRgb(64,64,0));
     ui->LedErase->setPalette(pal);
@@ -136,19 +137,20 @@ void MainWindow::setEled(bool state)
 
 void MainWindow::setWled(bool state)
 {
-    LedState.W_Led = state;
+    ui->LedWrite->setProperty("state", state);
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,0,0) :  QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
 }
 
 
+//Led blinking fired by timer event.
 void MainWindow::on_timerUpdate()
 {
-    if(LedState.E_Led_Blink)
-        setEled(!LedState.E_Led);
-    if(LedState.W_Led_Blink)
-        setWled(!LedState.W_Led);
+    if(ui->LedErase->property("blink").toBool())
+        setEled(!ui->LedErase->property("state").toBool());
+    if(ui->LedWrite->property("blink").toBool())
+        setWled(!ui->LedWrite->property("state").toBool());
 }
 
 
@@ -607,8 +609,8 @@ void MainWindow::dump_finished(QString result)
 //Gui update SLOT
 void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 {
-    LedState.E_Led_Blink = eraseLed;
-    LedState.W_Led_Blink = writeLed;
+    ui->LedErase->setProperty("blink", eraseLed);
+    ui->LedWrite->setProperty("blink", writeLed);
     if(eraseLed || writeLed)
         timer->start(300);
     else
