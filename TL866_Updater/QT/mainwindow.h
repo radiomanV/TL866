@@ -11,6 +11,7 @@
 #include <QFutureWatcher>
 #include <QDebug>
 #include <QLineEdit>
+#include <QTimer>
 #include "advdialog.h"
 #include "firmware.h"
 
@@ -51,6 +52,7 @@ private slots:
     void dump_finished(QString succes);
     void DeviceChanged(bool arrived);
     void gui_updated(QString message, bool eraseLed, bool writeLed);
+    void on_timerUpdate();
 
     void set_default(QLineEdit *devcode, QLineEdit *serial);
     void Refresh();
@@ -76,6 +78,7 @@ private:
     QList<WorkerJob> job_list;
     QFutureWatcher<void> watcher;
     QByteArray get_resource(QString resource_path, int size);
+    QTimer *timer;
     bool reset_flag;
 
     void leds_off();
@@ -83,7 +86,6 @@ private:
     void setBled(bool state);
     void setEled(bool state);
     void setWled(bool state);
-    void wait_ms(unsigned long time);
     void SetBlank();
     bool CheckDevices(QWidget *parent);
     bool AdvQuestion();
@@ -94,6 +96,18 @@ private:
     bool wait_for_device();
     void DoWork(WorkerJob job);
     bool IsBadCrc(const uchar *devcode, const uchar *serial);
+
+    typedef struct
+    {
+        bool N_Led;
+        bool B_Led;
+        bool E_Led;
+        bool W_Led;
+        bool E_Led_Blink;
+        bool W_Led_Blink;
+    } Ledstruct ;
+
+    Ledstruct LedState;
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"

@@ -26,6 +26,7 @@
 #include "hexwriter.h"
 #include "crc.h"
 #include <QWidget>
+#include <QThread>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QResource>
@@ -44,6 +45,7 @@ MainWindow::MainWindow(QWidget *parent) :
     advdlg = new AdvDialog(this);
     usbNotifier = new Notifier();
     usb_device = new USB();
+    timer = new QTimer(this);
 
     //initialise used signals
     connect(usbNotifier,SIGNAL(deviceChange(bool)),this,SLOT(DeviceChanged(bool)));
@@ -51,6 +53,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, SIGNAL(reflash_status(bool)), this, SLOT(reflash_finished(bool)));
     connect(this, SIGNAL(dump_status(QString)), this, SLOT(dump_finished(QString)));
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
+    connect(timer,SIGNAL(timeout()),this,SLOT(on_timerUpdate()));
 
     connect(advdlg,SIGNAL(Refresh()),this,SLOT(Refresh()));
     connect(advdlg,SIGNAL(set_default(QLineEdit*,QLineEdit*)),this,SLOT(set_default(QLineEdit*,QLineEdit*)));
@@ -79,6 +82,7 @@ MainWindow::~MainWindow()
         watcher.cancel();
         watcher.waitForFinished();
     }
+    delete timer;
     delete usb_device;
     delete usbNotifier;
     delete advdlg;
@@ -97,11 +101,18 @@ void MainWindow::leds_off()
     ui->LedErase->setPalette(pal);
     pal.setColor(QPalette::Background, QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
+    LedState.B_Led = false;
+    LedState.N_Led = false;
+    LedState.E_Led = false;
+    LedState.W_Led = false;
+    LedState.E_Led_Blink = false;
+    LedState.W_Led_Blink =false;
 }
 
 /* LEDs on/off toggle routines */
 void MainWindow::setNled(bool state)
 {
+    LedState.N_Led = state;
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedNorm->setPalette(pal);
@@ -109,6 +120,7 @@ void MainWindow::setNled(bool state)
 
 void MainWindow::setBled(bool state)
 {
+    LedState.B_Led = state;
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedBoot->setPalette(pal);
@@ -116,6 +128,7 @@ void MainWindow::setBled(bool state)
 
 void MainWindow::setEled(bool state)
 {
+    LedState.E_Led = state;
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,255,0) :  QColor::fromRgb(64,64,0));
     ui->LedErase->setPalette(pal);
@@ -123,19 +136,19 @@ void MainWindow::setEled(bool state)
 
 void MainWindow::setWled(bool state)
 {
+    LedState.W_Led = state;
     QPalette pal;
     pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,0,0) :  QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
 }
 
 
-//simple wait routine
-void MainWindow::wait_ms(unsigned long time)
+void MainWindow::on_timerUpdate()
 {
-    QWaitCondition wc;
-    QMutex mutex;
-    QMutexLocker locker(&mutex);
-    wc.wait(&mutex, time);
+    if(LedState.E_Led_Blink)
+        setEled(!LedState.E_Led);
+    if(LedState.W_Led_Blink)
+        setWled(!LedState.W_Led);
 }
 
 
@@ -406,7 +419,7 @@ bool MainWindow::wait_for_device()
     int cnt = 50;//5 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
-        wait_ms(100);
+        QThread::msleep(100);
         if(! --cnt)
             return false;//reset error
     }
@@ -414,7 +427,7 @@ bool MainWindow::wait_for_device()
     cnt = 50;//5 seconds
     while(! usb_device->get_devices_count())//wait for device to arrive
     {
-        wait_ms(100);
+        QThread::msleep(100);
         if(! --cnt)
             return false;//reset error
     }
@@ -442,7 +455,7 @@ bool MainWindow::reflash()
         if(!wait_for_device())
             return false;//reset failed
     }
-    wait_ms(500);
+    QThread::msleep(500);
 
     //read the device again to see the true device version as reported by the bootloader
     memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
@@ -464,7 +477,7 @@ bool MainWindow::reflash()
 
     //Write device.
     emit update_gui(QString("<erasing...>"), false, false);
-    wait_ms(500);
+    QThread::msleep(500);
     emit update_gui(QString("<writing...>"), false, true);
 
 
@@ -511,7 +524,7 @@ bool MainWindow::reflash()
 
     //Reset the device back in normal working mode
     emit update_gui(QString("<writing...>"), false, false);
-    wait_ms(500);
+    QThread::msleep(500);
     emit update_gui(QString("<resetting...>"), false, false);
     reset();
     if (! wait_for_device())
@@ -572,9 +585,9 @@ void MainWindow::reflash_finished(bool success)
 {
     Refresh();
     if(success)
-        QMessageBox::information(this, "TL866", "Reflash OK!");
+        QMessageBox::information(this, "TL866", "          Reflash OK!          ");
     else
-        QMessageBox::critical(this, "TL866", "Reflash Failed!");
+        QMessageBox::critical(this, "TL866", "     Reflash Failed!     ");
     emit update_progress(0);
 }
 
@@ -594,8 +607,15 @@ void MainWindow::dump_finished(QString result)
 //Gui update SLOT
 void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 {
+    LedState.E_Led_Blink = eraseLed;
+    LedState.W_Led_Blink = writeLed;
+    if(eraseLed || writeLed)
+        timer->start(300);
+    else
+        timer->stop();
     setEled(eraseLed);
     setWled(writeLed);
+
     QStringList list(ui->txtInfo->toPlainText().split("\n"));
     list.removeAt(1);
     list.insert(1,"Device status: Bootloader mode " + message);
@@ -858,7 +878,7 @@ uint MainWindow::BootloaderCRC()
         usb_device->usb_write(w, sizeof(w));
         if(usb_device->usb_read(&buffer[i],64) != 64)
         {
-            QMessageBox::warning(advdlg, "TL866", "USB read error!");
+            QMessageBox::warning(advdlg, "TL866", "    USB read error!    ");
             return 0;
         }
     }
