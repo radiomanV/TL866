@@ -52,7 +52,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, SIGNAL(reflash_status(bool)), this, SLOT(reflash_finished(bool)));
     connect(this, SIGNAL(dump_status(QString)), this, SLOT(dump_finished(QString)));
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
-    connect(timer,SIGNAL(timeout()),this,SLOT(on_timerUpdate()));
+    connect(timer,SIGNAL(timeout()),this,SLOT(TimerUpdate()));
 
     connect(advdlg,SIGNAL(Refresh()),this,SLOT(Refresh()));
     connect(advdlg,SIGNAL(WriteBootloader(Firmware::BootloaderType)),SLOT(WriteBootloader(Firmware::BootloaderType)));
@@ -153,7 +153,7 @@ void MainWindow::wait_ms(unsigned long time)
 
 
 //Led blinking fired by timer event.
-void MainWindow::on_timerUpdate()
+void MainWindow::TimerUpdate()
 {
     if(ui->LedErase->property("blink").toBool())
         setEled(!ui->LedErase->property("state").toBool());

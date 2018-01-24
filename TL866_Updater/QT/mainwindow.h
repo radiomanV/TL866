@@ -52,7 +52,7 @@ private slots:
     void dump_finished(QString succes);
     void DeviceChanged(bool arrived);
     void gui_updated(QString message, bool eraseLed, bool writeLed);
-    void on_timerUpdate();
+    void TimerUpdate();
 
     void Refresh();
     void WriteBootloader(Firmware::BootloaderType type);
