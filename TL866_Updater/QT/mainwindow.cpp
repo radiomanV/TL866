@@ -26,7 +26,6 @@
 #include "hexwriter.h"
 #include "crc.h"
 #include <QWidget>
-#include <QThread>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QResource>
@@ -56,7 +55,6 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(timer,SIGNAL(timeout()),this,SLOT(on_timerUpdate()));
 
     connect(advdlg,SIGNAL(Refresh()),this,SLOT(Refresh()));
-    connect(advdlg,SIGNAL(set_default(QLineEdit*,QLineEdit*)),this,SLOT(set_default(QLineEdit*,QLineEdit*)));
     connect(advdlg,SIGNAL(WriteBootloader(Firmware::BootloaderType)),SLOT(WriteBootloader(Firmware::BootloaderType)));
     connect(advdlg,SIGNAL(WriteConfig(bool)),this,SLOT(WriteConfig(bool)));
     connect(advdlg,SIGNAL(WriteInfo(QString,QString)),this,SLOT(WriteInfo(QString,QString)));
@@ -144,6 +142,16 @@ void MainWindow::setWled(bool state)
 }
 
 
+//simple wait routine
+void MainWindow::wait_ms(unsigned long time)
+{
+    QWaitCondition wc;
+    QMutex mutex;
+    QMutexLocker locker(&mutex);
+    wc.wait(&mutex, time);
+}
+
+
 //Led blinking fired by timer event.
 void MainWindow::on_timerUpdate()
 {
@@ -216,18 +224,8 @@ void MainWindow::on_btnEdit_clicked()
 //set default device code and serial number
 void MainWindow::on_btnDefault_clicked()
 {
-    set_default(ui->txtDevcode, ui->txtSerial);
-}
-
-//public helper function to set default serial and device code
-void MainWindow::set_default(QLineEdit *devcode, QLineEdit *serial)
-{
-    unsigned char key[BLOCK_SIZE];
-    QByteArray res = get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
-    memcpy(key,res.data()+SERIAL_OFFSET,BLOCK_SIZE);
-    firmware.decrypt_serial(key, (uchar*)res.data());
-    devcode->setText(QString::fromLatin1((const char*)&key[0],8));
-    serial->setText(QString::fromLatin1((const char*)&key[8],24));
+    ui->txtDevcode->setText("00000000");
+    ui->txtSerial->setText("000000000000000000000000");
 }
 
 
@@ -421,7 +419,7 @@ bool MainWindow::wait_for_device()
     int cnt = 50;//5 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
-        QThread::msleep(100);
+        wait_ms(100);
         if(! --cnt)
             return false;//reset error
     }
@@ -429,7 +427,7 @@ bool MainWindow::wait_for_device()
     cnt = 50;//5 seconds
     while(! usb_device->get_devices_count())//wait for device to arrive
     {
-        QThread::msleep(100);
+        wait_ms(100);
         if(! --cnt)
             return false;//reset error
     }
@@ -457,7 +455,7 @@ bool MainWindow::reflash()
         if(!wait_for_device())
             return false;//reset failed
     }
-    QThread::msleep(500);
+    wait_ms(500);
 
     //read the device again to see the true device version as reported by the bootloader
     memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
@@ -479,7 +477,7 @@ bool MainWindow::reflash()
 
     //Write device.
     emit update_gui(QString("<erasing...>"), false, false);
-    QThread::msleep(500);
+    wait_ms(500);
     emit update_gui(QString("<writing...>"), false, true);
 
 
@@ -526,7 +524,7 @@ bool MainWindow::reflash()
 
     //Reset the device back in normal working mode
     emit update_gui(QString("<writing...>"), false, false);
-    QThread::msleep(500);
+    wait_ms(500);
     emit update_gui(QString("<resetting...>"), false, false);
     reset();
     if (! wait_for_device())

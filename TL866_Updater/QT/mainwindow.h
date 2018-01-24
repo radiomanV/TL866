@@ -54,7 +54,6 @@ private slots:
     void gui_updated(QString message, bool eraseLed, bool writeLed);
     void on_timerUpdate();
 
-    void set_default(QLineEdit *devcode, QLineEdit *serial);
     void Refresh();
     void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
@@ -86,6 +85,7 @@ private:
     void setBled(bool state);
     void setEled(bool state);
     void setWled(bool state);
+    void wait_ms(unsigned long time);
     void SetBlank();
     bool CheckDevices(QWidget *parent);
     bool AdvQuestion();

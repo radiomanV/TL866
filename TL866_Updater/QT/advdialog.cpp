@@ -46,8 +46,8 @@ void AdvDialog::SetSerial(QString devcode, QString serial)
    ui->txtSerial->clear();
    ui->txtDevcode->setText(devcode);
    ui->txtSerial->setText(serial);
-   device_code = devcode;
-   serial_number = serial;
+   this->setProperty("device_code",devcode);
+   this->setProperty("serial_number",serial);
 }
 
 void AdvDialog::SetInfo(QString info)
@@ -82,14 +82,15 @@ void AdvDialog::on_btnEdit_clicked()
 
 void AdvDialog::on_btnDefault_clicked()
 {
-    emit set_default(ui->txtDevcode, ui->txtSerial);
+    ui->txtDevcode->setText("00000000");
+    ui->txtSerial->setText("000000000000000000000000");
 }
 
 void AdvDialog::on_btnClone_clicked()
 {
     emit Refresh();
-    ui->txtDevcode->setText(device_code);
-    ui->txtSerial->setText(serial_number);
+    ui->txtDevcode->setText(this->property("device_code").toString());
+    ui->txtSerial->setText(this->property("serial_number").toString());
 }
 
 void AdvDialog::on_btnWriteBootloader_clicked()

@@ -23,7 +23,6 @@ public:
 
 
 signals:
-    void set_default(QLineEdit *devcode, QLineEdit *serial);
     void Refresh();
     void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
@@ -40,8 +39,6 @@ private slots:
 
 private:
     Ui::AdvDialog *ui;
-    QString device_code;
-    QString serial_number;
 
 };
 
