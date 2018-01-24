@@ -112,7 +112,7 @@ bool USB::isOpen()
 size_t USB::usb_read(unsigned char *data, DWORD size)
 {
     DWORD bytes_read;
-    uchar buffer[4];
+    uchar buffer[6];
     if (hDriver == INVALID_HANDLE_VALUE)
         return 0;
     EnterCriticalSection(&lock);
