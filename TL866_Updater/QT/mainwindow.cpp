@@ -595,7 +595,6 @@ void MainWindow::reflash_finished(bool success)
 //Dump finished SLOT
 void MainWindow::dump_finished(QString result)
 {
-    Refresh();
     if(result.isEmpty())
         QMessageBox::information(this, "TL866", "Firmware dump complete!");
     else
