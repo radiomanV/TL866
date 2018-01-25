@@ -50,8 +50,8 @@ private slots:
     void on_btnReset_clicked();
     void on_btnSave_clicked();
     void on_btnDump_clicked();
-    void reflash_finished(bool success);
-    void dump_finished(QString succes);
+    void reflash_finished(QString result);
+    void dump_finished(QString result);
     void DeviceChanged(bool arrived);
     void gui_updated(QString message, bool eraseLed, bool writeLed);
     void TimerUpdate();
@@ -63,7 +63,7 @@ private slots:
 
 
 signals:
-    void reflash_status(bool success);
+    void reflash_status(QString result);
     void dump_status(QString result);
     void update_gui(QString message, bool eraseLed, bool writeLed);
     void update_progress(int value);

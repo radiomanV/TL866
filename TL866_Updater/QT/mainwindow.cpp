@@ -48,7 +48,7 @@ MainWindow::MainWindow(QWidget *parent) :
     //initialise used signals
     connect(usbNotifier,SIGNAL(deviceChange(bool)),this,SLOT(DeviceChanged(bool)));
     connect(this, SIGNAL(update_gui(QString, bool, bool)),this,SLOT(gui_updated(QString, bool, bool)));
-    connect(this, SIGNAL(reflash_status(bool)), this, SLOT(reflash_finished(bool)));
+    connect(this, SIGNAL(reflash_status(QString)), this, SLOT(reflash_finished(QString)));
     connect(this, SIGNAL(dump_status(QString)), this, SLOT(dump_finished(QString)));
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
     connect(timer,SIGNAL(timeout()),this,SLOT(TimerUpdate()));
@@ -248,12 +248,7 @@ void MainWindow::on_btnReset_clicked()
 
     if(!CheckDevices(this))
         return;
-
-    if(usb_device->open_device(0))
-    {
-        reset();
-        usb_device->close_device();
-    }
+    worker = QtConcurrent::run(this, &MainWindow::reset);
 }
 
 
@@ -368,17 +363,21 @@ QByteArray MainWindow::get_resource(QString resource_path, int size)
 //Send the Reset command to the TL866.
 void MainWindow::reset()
 {
-
-    uchar data[4] = {RESET_COMMAND, 0, 0, 0};
-    reset_flag=true;
-    usb_device->usb_write(data, 4);
+    usb_device->close_device();
+    if(usb_device->open_device(0))
+    {
+        uchar data[4] = {RESET_COMMAND, 0, 0, 0};
+        reset_flag=true;
+        usb_device->usb_write(data, 4);
+        usb_device->close_device();
+    }
 }
 
 
 //wait for device to reset
 bool MainWindow::wait_for_device()
 {
-    int cnt = 50;//5 seconds
+    int cnt = 100;//10 seconds
     while(usb_device->get_devices_count())//wait for device to leave
     {
         wait_ms(100);
@@ -386,7 +385,7 @@ bool MainWindow::wait_for_device()
             return false;//reset error
     }
 
-    cnt = 50;//5 seconds
+    cnt = 100;//10 seconds
     while(! usb_device->get_devices_count())//wait for device to arrive
     {
         wait_ms(100);
@@ -405,9 +404,10 @@ void MainWindow::reflash(uint firmware_type)
 
     Firmware::TL866_REPORT report;
 
+    usb_device->close_device();
     if(!usb_device->open_device(0))
     {
-        emit reflash_status(false);
+        emit reflash_status("   USB device error!    ");
         return;
     }
 
@@ -423,12 +423,12 @@ void MainWindow::reflash(uint firmware_type)
         if(!wait_for_device())
         {
             usb_device->close_device();
-            emit reflash_status(false);
+            emit reflash_status("   Reset failed!   ");
             return;//reset failed
         }
         if(!usb_device->open_device(0))
         {
-            emit reflash_status(false);
+            emit reflash_status("   USB device error!    ");
             return;
         }
     }
@@ -453,7 +453,7 @@ void MainWindow::reflash(uint firmware_type)
     if(data[0] != ERASE_COMMAND)
     {
         usb_device->close_device();
-        emit reflash_status(false);
+        emit reflash_status("   Erase failed!   ");
         return;//erase failed
     }
 
@@ -501,7 +501,7 @@ void MainWindow::reflash(uint firmware_type)
         if (usb_device->usb_write(buffer, sizeof(buffer)) != sizeof(buffer))
         {
             usb_device->close_device();
-            emit reflash_status(false);
+            emit reflash_status("   Reflash failed!   ");
             return;//write failed
         }
         address+=64;//next data block
@@ -516,13 +516,13 @@ void MainWindow::reflash(uint firmware_type)
     if (! wait_for_device())
     {
         usb_device->close_device();
-        emit reflash_status(false);
+        emit reflash_status("   Reset failed!   ");
         return;//reset failed
     }
 
     if(!usb_device->open_device(0))
     {
-        emit reflash_status(false);
+        emit reflash_status("   USB device error!    ");
         return;
 
     }
@@ -536,12 +536,12 @@ void MainWindow::reflash(uint firmware_type)
     if(report.device_status != Firmware::NORMAL_MODE)
     {
         usb_device->close_device();
-        emit reflash_status(false);
+        emit reflash_status("   Reflash failed!   ");
         return;//reflash failed
     }
 
     usb_device->close_device();
-    emit reflash_status(true);
+    emit reflash_status("");
     return;//reflash ok
 
 }
@@ -559,6 +559,7 @@ void MainWindow::dump(QString fileName, uint device_type)
         return;// file.errorString();
     }
 
+    usb_device->close_device();
     if(!usb_device->open_device(0))
     {
         emit dump_status("USB device error!");
@@ -597,13 +598,13 @@ void MainWindow::dump(QString fileName, uint device_type)
 
 
 //Reflash finished SLOT
-void MainWindow::reflash_finished(bool success)
+void MainWindow::reflash_finished(QString result)
 {
     Refresh();
-    if(success)
-        QMessageBox::information(this, "TL866", "          Reflash OK!          ");
+    if(result.isEmpty())
+        QMessageBox::information(this, "TL866", "     Reflash OK!          ");
     else
-        QMessageBox::critical(this, "TL866", "     Reflash Failed!     ");
+        QMessageBox::critical(this, "TL866", result);
     emit update_progress(0);
 }
 
