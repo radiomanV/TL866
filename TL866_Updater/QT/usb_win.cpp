@@ -111,24 +111,26 @@ bool USB::isOpen()
 
 size_t USB::usb_read(unsigned char *data, DWORD size)
 {
-    DWORD bytes_read;
-    uchar buffer[6];
     if (hDriver == INVALID_HANDLE_VALUE)
         return 0;
+    DWORD bytes_read;
+    uchar *buffer = new uchar[5];
     EnterCriticalSection(&lock);
-    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_READ, buffer, sizeof(buffer), data, size, &bytes_read, NULL);
+    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_READ, buffer, 5, data, size, &bytes_read, NULL);
     LeaveCriticalSection(&lock);
+    delete buffer;
     return (ret ? bytes_read : 0);
 }
 
 size_t USB::usb_write(unsigned char *data, DWORD size)
 {
-    DWORD bytes_written;
-    uchar buffer[4096];
     if (hDriver == INVALID_HANDLE_VALUE)
         return 0;
+    DWORD bytes_written;
+    uchar *buffer = new uchar[256];
     EnterCriticalSection(&lock);
-    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_WRITE, data, size, buffer, sizeof(buffer), &bytes_written, NULL);
+    bool ret = DeviceIoControl(hDriver, TL866_IOCTL_WRITE, data, size, buffer, 256, &bytes_written, NULL);
     LeaveCriticalSection(&lock);
+    delete buffer;
     return (ret ? bytes_written : 0);
 }

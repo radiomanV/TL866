@@ -5,10 +5,12 @@
 
 #if QT_VERSION >= 0x050000
     #include <QtConcurrent/QtConcurrentMap>
+    #include <QtConcurrent/QtConcurrentRun>
 #else
-     #include <QtConcurrentMap>
+    #include <QtConcurrentMap>
+    #include <QtConcurrentRun>
 #endif
-#include <QFutureWatcher>
+
 #include <QDebug>
 #include <QLineEdit>
 #include <QTimer>
@@ -74,10 +76,9 @@ private:
     AdvDialog* advdlg;
     Firmware firmware;
     Notifier *usbNotifier;
-    QList<WorkerJob> job_list;
-    QFutureWatcher<void> watcher;
     QByteArray get_resource(QString resource_path, int size);
     QTimer *timer;
+    QFuture<void> worker;
     bool reset_flag;
 
     void leds_off();
@@ -90,27 +91,16 @@ private:
     bool CheckDevices(QWidget *parent);
     bool AdvQuestion();
     uint BootloaderCRC();
-    bool reflash();
-    QString dump();
+    void reflash(uint firmware_type);
+    void dump(QString fileName, uint device_type);
     void reset();
     bool wait_for_device();
-    void DoWork(WorkerJob job);
     bool IsBadCrc(const uchar *devcode, const uchar *serial);
 
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"
 #define DUMPER_RESOURCE         ":/firmware/dumper.bin"
-
-    struct WorkerWrapper
-    {
-        MainWindow *instance;
-        WorkerWrapper(MainWindow *w): instance(w) {}
-        void operator()(WorkerJob job) {
-            instance->DoWork(job);
-        }
-    };
-
 };
 
 #endif // MAINWINDOW_H

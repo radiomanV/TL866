@@ -20,16 +20,15 @@
 * USA.
 */
 
+#include <QWidget>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QResource>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "editdialog.h"
 #include "hexwriter.h"
 #include "crc.h"
-#include <QWidget>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QResource>
-#include <QFuture>
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -76,11 +75,6 @@ MainWindow::MainWindow(QWidget *parent) :
 //Class destructor
 MainWindow::~MainWindow()
 {
-    if(watcher.isRunning())
-    {
-        watcher.cancel();
-        watcher.waitForFinished();
-    }
     delete timer;
     delete usb_device;
     delete usbNotifier;
@@ -249,9 +243,9 @@ void MainWindow::on_btnClone_clicked()
 //reset device button
 void MainWindow::on_btnReset_clicked()
 {
-
-    if(watcher.isRunning())
+    if(worker.isRunning())
         return;
+
     if(!CheckDevices(this))
         return;
 
@@ -266,9 +260,8 @@ void MainWindow::on_btnReset_clicked()
 //reflash device button
 void MainWindow::on_btnReflash_clicked()
 {
-    if(watcher.isRunning())
+    if(worker.isRunning())
         return;
-
     if(!CheckDevices(this))
         return;
 
@@ -291,34 +284,30 @@ void MainWindow::on_btnReflash_clicked()
         index = Firmware::FIRMWARE_CUSTOM;
     if(index == -1)
         return;
-    job_list.clear();
-    job_list.append(REFLASH);
-    watcher.setProperty("firmware_version", index);
     ui->progressBar->setMaximum(ENCRYPTED_FIRMWARE_SIZE/BLOCK_SIZE-1);
-    watcher.setFuture(QtConcurrent::map(job_list, WorkerWrapper(this)));
+    worker = QtConcurrent::run(this, &MainWindow::reflash, index);
 }
 
 
 //dump device button
 void MainWindow::on_btnDump_clicked()
 {
-    if(!watcher.isRunning())
-    {
-        if(!firmware.isValid())
-        {
-            QMessageBox::warning(this, "TL866", "No firmware file loaded!\nPlease load the update.dat file.");
-            return;
-        }
+    if(worker.isRunning())
+        return;
+    if(!CheckDevices(this))
+        return;
 
-        QString fileName=QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)");
-        if(!fileName.isEmpty())
-        {
-            job_list.clear();
-            job_list.append(DUMP);
-            watcher.setProperty("hex_path", fileName);
-            ui->progressBar->setMaximum(FLASH_SIZE - 1);
-            watcher.setFuture(QtConcurrent::map(job_list, WorkerWrapper(this)));
-        }
+    if(!firmware.isValid())
+    {
+        QMessageBox::warning(this, "TL866", "No firmware file loaded!\nPlease load the update.dat file.");
+        return;
+    }
+
+    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)");
+    if(!fileName.isEmpty())
+    {
+        ui->progressBar->setMaximum(FLASH_SIZE - 1);
+        worker = QtConcurrent::run(this, &MainWindow::dump, fileName, this->property("device_type").toInt());
     }
 }
 
@@ -376,32 +365,6 @@ QByteArray MainWindow::get_resource(QString resource_path, int size)
 }
 
 
-//Background worker dispatch routine. Notice that this function is executed in a separate thread.
-void MainWindow::DoWork(WorkerJob job)
-{
-    switch(job)
-    {
-    case REFLASH:
-        if(usb_device->open_device(0))
-        {
-            bool success =reflash();
-            usb_device->close_device();
-            emit reflash_status(success);
-        }
-        break;
-
-    case DUMP:
-        if(usb_device->open_device(0))
-        {
-            QString result = dump();
-            usb_device->close_device();
-            emit dump_status(result);
-        }
-        break;
-    }
-}
-
-
 //Send the Reset command to the TL866.
 void MainWindow::reset()
 {
@@ -435,12 +398,18 @@ bool MainWindow::wait_for_device()
 
 
 //Reflash function. This routine is executed in a separate thread.
-bool MainWindow::reflash()
+void MainWindow::reflash(uint firmware_type)
 {
     uchar buffer[BLOCK_SIZE+7];
     uchar data[ENCRYPTED_FIRMWARE_SIZE];
 
-   Firmware::TL866_REPORT report;
+    Firmware::TL866_REPORT report;
+
+    if(!usb_device->open_device(0))
+    {
+        emit reflash_status(false);
+        return;
+    }
 
     //read the device to determine his satus
     memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
@@ -452,10 +421,19 @@ bool MainWindow::reflash()
         reset();
         emit update_gui(QString("<resetting...>"), false, false);
         if(!wait_for_device())
-            return false;//reset failed
+        {
+            usb_device->close_device();
+            emit reflash_status(false);
+            return;//reset failed
+        }
+        if(!usb_device->open_device(0))
+        {
+            emit reflash_status(false);
+            return;
+        }
     }
-    wait_ms(500);
 
+    wait_ms(500);
     //read the device again to see the true device version as reported by the bootloader
     memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
     report.echo = REPORT_COMMAND;//0 anyway
@@ -470,9 +448,14 @@ bool MainWindow::reflash()
     buffer[7]=firmware.GetEraseParammeter(device_version);
     emit update_gui(QString("<erasing...>"), true, false);
     usb_device->usb_write(buffer, 20);
+    wait_ms(100);
     usb_device->usb_read(data, 32);
     if(data[0] != ERASE_COMMAND)
-        return false;//erase failed
+    {
+        usb_device->close_device();
+        emit reflash_status(false);
+        return;//erase failed
+    }
 
     //Write device.
     emit update_gui(QString("<erasing...>"), false, false);
@@ -481,7 +464,7 @@ bool MainWindow::reflash()
 
 
     //Get the encrypted firmware.
-    switch(watcher.property("firmware_version").toInt())
+    switch(firmware_type)
     {
     case Firmware::FIRMWARE_A:
     default:
@@ -516,7 +499,11 @@ bool MainWindow::reflash()
         memcpy(&buffer[7], &data[i], BLOCK_SIZE);
 
         if (usb_device->usb_write(buffer, sizeof(buffer)) != sizeof(buffer))
-            return false;//write failed
+        {
+            usb_device->close_device();
+            emit reflash_status(false);
+            return;//write failed
+        }
         address+=64;//next data block
         emit update_progress(i/BLOCK_SIZE);
     }
@@ -527,7 +514,18 @@ bool MainWindow::reflash()
     emit update_gui(QString("<resetting...>"), false, false);
     reset();
     if (! wait_for_device())
-        return false;//reset failed
+    {
+        usb_device->close_device();
+        emit reflash_status(false);
+        return;//reset failed
+    }
+
+    if(!usb_device->open_device(0))
+    {
+        emit reflash_status(false);
+        return;
+
+    }
 
     //read the device to determine his satus
     memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
@@ -535,25 +533,39 @@ bool MainWindow::reflash()
     usb_device->usb_write((uchar *)&report, 5);
     usb_device->usb_read((uchar*)&report, sizeof(Firmware::TL866_REPORT));
 
-    if(report.device_status != Firmware::NORMAL_MODE)//reflash failed
-        return false;
+    if(report.device_status != Firmware::NORMAL_MODE)
+    {
+        usb_device->close_device();
+        emit reflash_status(false);
+        return;//reflash failed
+    }
 
-    return true;//reflash ok
+    usb_device->close_device();
+    emit reflash_status(true);
+    return;//reflash ok
 
 }
 
 //Dump function. This function is executed in separate thread.
-QString MainWindow::dump()
+void MainWindow::dump(QString fileName, uint device_type)
 {
     uchar temp[FLASH_SIZE];//128Kbyte buffer
     uchar w[5];
-    QFile file(watcher.property("hex_path").toString());
+    QFile file(fileName);//watcher.property("hex_path").toString());
 
     if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return file.errorString();
+    {
+        emit dump_status(file.errorString());
+        return;// file.errorString();
+    }
+
+    if(!usb_device->open_device(0))
+    {
+        emit dump_status("USB device error!");
+        return;
+    }
 
     QTextStream fileStream(&file);
-
     for(int i = 0; i < FLASH_SIZE; i += 64)
     {
         w[0] = DUMPER_READ_FLASH;
@@ -564,17 +576,22 @@ QString MainWindow::dump()
 
         usb_device->usb_write(w, sizeof(w));
         if(usb_device->usb_read(&temp[i],64) != 64)
-            return QString("USB read error.");
+        {
+            usb_device->close_device();
+            emit dump_status("USB read error.");
+            return;
+        }
         emit update_progress(i);
     }
 
-    firmware.decrypt_firmware(&temp[BOOTLOADER_SIZE], this->property("device_type").toInt());
-
+    firmware.decrypt_firmware(&temp[BOOTLOADER_SIZE], device_type );
     HexWriter *hexwriter = new HexWriter;
     hexwriter->WriteHex(fileStream,temp,sizeof(temp));//write temp array to fileStream in Intel hex format.
     delete hexwriter;
     file.close();
-    return QString("");
+    usb_device->close_device();
+    emit dump_status("");
+    return;
 }
 
 
@@ -723,13 +740,12 @@ void MainWindow::DeviceChanged(bool arrived)
             this->setProperty("serial_number", s_serial);
             ui->txtInfo->append(isDumperActive ? "Firmware version: Firmware dumper" :
                                                  report.device_status == Firmware::NORMAL_MODE ? QString("Firmware version: %1.%2.%3")
-                                                                                                .arg(report.hardware_version)
-                                                                                                .arg(report.firmware_version_major)
-                                                                                                .arg(report.firmware_version_minor):
-                                                                                                "Firmware version: Bootloader");
+                                                                                                 .arg(report.hardware_version)
+                                                                                                 .arg(report.firmware_version_major)
+                                                                                                 .arg(report.firmware_version_minor):
+                                                                                                 "Firmware version: Bootloader");
 
-            if(!watcher.isRunning())
-                usb_device->close_device();//do not close device if an upgrade is in progress.
+            usb_device->close_device();//do not close device if an upgrade is in progress.
         }
         else//error oppening device
             SetBlank();
@@ -748,8 +764,6 @@ void MainWindow::SetBlank()
     leds_off();
     ui->btnAdvanced->setEnabled(false);
     ui->btnDump->setEnabled(false);
-    //ui->txtDevcode->setText("");
-    //ui->txtSerial->setText("");
     this->setProperty("device_code", "");
     this->setProperty("serial_number", "");
     advdlg->SetSerial("", "");
@@ -794,6 +808,7 @@ void MainWindow::WriteBootloader(Firmware::BootloaderType type)
             usb_device->close_device();
             QMessageBox::warning(advdlg, "TL866",
                                  "The bootloader CRC of your device version doesn't match!\nAs a safety measure, nothing will be written.");
+            usb_device->close_device();
             return;
         }
         uchar b[2]={DUMPER_WRITE_BOOTLOADER, (uchar) (type ==  Firmware::A_BOOTLOADER ? Firmware::VERSION_TL866A : Firmware::VERSION_TL866CS)};
