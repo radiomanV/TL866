@@ -23,11 +23,17 @@
 #include "hexwriter.h"
 
 
-void HexWriter::WriteHex(QTextStream &outStream, const uchar *data, uint size)
+HexWriter::HexWriter(QIODevice *file)
+{
+   outStream.setDevice(file);
+}
+
+void HexWriter::WriteHex(QByteArray data)
 {
     uchar temp[2];
     ushort segment=0;
     ushort address=0;
+    int size = data.size();
 
     while(size>16)
     {
@@ -38,37 +44,34 @@ void HexWriter::WriteHex(QTextStream &outStream, const uchar *data, uint size)
             segment++;
             outStream << GetHexLine(temp,2,0,SEGMENT_RECORD) << endl;
         }
-        outStream << GetHexLine(&data[(segment-1)*0x10000+address],16,address,DATA_RECORD) << endl;
+        outStream << GetHexLine((uchar*)&data.data()[(segment-1)*0x10000+address],16,address,DATA_RECORD) << endl;
         address+=16;
         size-=16;
     }
-   outStream << GetHexLine(&data[(segment-1)*0x10000+address],size/2,address,DATA_RECORD) << endl;
+   outStream << GetHexLine((uchar*)&data.data()[(segment-1)*0x10000+address],size/2,address,DATA_RECORD) << endl;
    size/=2;
    address+=size;
-   outStream << GetHexLine(&data[(segment-1)*0x10000+address],size,address,DATA_RECORD) << endl;
+   outStream << GetHexLine((uchar*)&data.data()[(segment-1)*0x10000+address],size,address,DATA_RECORD) << endl;
    outStream << GetHexLine(NULL,0,0,EOF_RECORD) << endl;
 }
 
 
-QString HexWriter::GetHexLine(const uchar *data, ushort size, ushort address ,uchar recordtype)
+QString HexWriter::GetHexLine(uchar *data, uchar size, ushort address, uchar recordtype)
 {
     QString s=(QString(":%1%2%3").arg(size & 0xff, 2, 16, QChar('0')).arg(address, 4, 16, QChar('0')).arg(recordtype, 2, 16, QChar('0')).toUpper()).toLocal8Bit();
-    ushort checksum=size;
-    checksum += recordtype;
-    checksum += (address >> 8);
-    checksum += (address & 0xff);
+    uchar cs = size;
+    cs += recordtype;
+    cs += (address >> 8);
+    cs += (address & 0xff);
     if(data!=NULL)
     {
         for(int i=0;i<size;i++)
         {
             s.append(QString("%1").arg(data[i], 2, 16, QChar('0')).toUpper());
-            checksum += data[i];
+            cs += data[i];
         }
     }
-    checksum &=0xff;
-    checksum ^=0xff;
-    checksum ++;
-    checksum &=0xff;
-    s.append(QString("%1").arg(checksum, 2, 16, QChar('0')).toUpper());
+    cs = (~cs + 1) & 0xff;
+    s.append(QString("%1").arg(cs, 2, 16, QChar('0')).toUpper());
     return s;
 }

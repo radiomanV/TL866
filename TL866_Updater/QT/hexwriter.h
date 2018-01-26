@@ -5,10 +5,12 @@
 class HexWriter
 {
 public:
-    void WriteHex(QTextStream &outStream, const uchar *data, uint size);
+    HexWriter(QIODevice *file);
+    void WriteHex(QByteArray data);
 
 private:
-    QString GetHexLine(const uchar *data, ushort size, ushort address ,uchar recordtype);
+    QString GetHexLine(uchar *data, uchar size, ushort address ,uchar recordtype);
+    QTextStream outStream;
 
     enum RECORD_TYPE
     {

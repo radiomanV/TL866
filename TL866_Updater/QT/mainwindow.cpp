@@ -62,6 +62,7 @@ MainWindow::MainWindow(QWidget *parent) :
     this->setProperty("device_code", "");
     this->setProperty("serial_number", "");
     this->setProperty("device_type", 0);
+    ui->btnReset->setProperty("state", false);
 
     //initialise main ui
     ui->btnAdvanced->setEnabled(false);
@@ -75,6 +76,9 @@ MainWindow::MainWindow(QWidget *parent) :
 //Class destructor
 MainWindow::~MainWindow()
 {
+    if(worker.isRunning())
+        worker.cancel();
+    worker.waitForFinished();
     delete timer;
     delete usb_device;
     delete usbNotifier;
@@ -187,7 +191,7 @@ void MainWindow::on_btnInput_clicked()
         break;
     }
     ui->lblVersion->clear();
-
+    ui->txtInput->clear();
 }
 
 
@@ -243,12 +247,15 @@ void MainWindow::on_btnClone_clicked()
 //reset device button
 void MainWindow::on_btnReset_clicked()
 {
+    if(ui->btnReset->property("state").toBool())
+        return;
     if(worker.isRunning())
         return;
 
     if(!CheckDevices(this))
         return;
     worker = QtConcurrent::run(this, &MainWindow::reset);
+    ui->btnReset->setProperty("state", true);
 }
 
 
@@ -313,8 +320,19 @@ void MainWindow::on_btnDump_clicked()
 //save hex button
 void MainWindow::on_btnSave_clicked()
 {
+    //Prepare data to be saved.
+    QByteArray temp = get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
+    if(ui->optionBoot->isChecked())
+        memset(&temp.data()[BOOTLOADER_SIZE], 0xFF, UNENCRYPTED_FIRMWARE_SIZE);//if the option bootloader only is selected then clear the main firmware area(0x1800-0x1FBFF)
+    memset(&temp.data()[SERIAL_OFFSET],' ',32);//add trailing spaces
+    memcpy(&temp.data()[SERIAL_OFFSET], ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size());//copy devcode to key array
+    memcpy(&temp.data()[SERIAL_OFFSET+8], ui->txtSerial->text().toLatin1().data(), ui->txtSerial->text().size());//copy serial to key array
+    firmware.encrypt_serial((uchar*)&temp.data()[SERIAL_OFFSET], (const uchar*)temp.data());//encrypt the devcode and serial
+
+
+    //Open the file save dialog
     QString ext;
-    QString fileName=QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
+    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
         if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
@@ -326,40 +344,18 @@ void MainWindow::on_btnSave_clicked()
             return;
         }
 
-        QByteArray b =get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
-
-        uchar *temp = new uchar[FLASH_SIZE];//128K byte array
-        memcpy(temp,b.data(),FLASH_SIZE);//copy entire firmware to array
-
-        if(ui->optionBoot->isChecked())
-            memset(temp+BOOTLOADER_SIZE, 0xFF, UNENCRYPTED_FIRMWARE_SIZE);//if the option bootloader only is selected then clear the main firmware area(0x1800-0x1FBFF)
-
-        uchar *key = new uchar[BLOCK_SIZE];//for holding serial and dev code
-        firmware.decrypt_serial(key, temp);//decrypt the serial key from temp array to key array
-        memset(key,' ',32);//add trailing spaces
-
-        memcpy(key, ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size());//copy devcode to key array
-        memcpy(key+8, ui->txtSerial->text().toLatin1().data(), ui->txtSerial->text().size());//copy serial to key array
-
-        firmware.encrypt_serial(key, temp);//encrypt the devcode and serial
-        memcpy(temp + SERIAL_OFFSET ,key,BLOCK_SIZE);//copy the new devcode and serial to temp array
-
         if(fileName.endsWith(".hex", Qt::CaseInsensitive))
         {
             //write temp array to fileStream in Intel hex format
-            QTextStream fileStream(&file);
-            HexWriter *hexwriter = new HexWriter;
-            hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);
-            delete hexwriter;
+            HexWriter hexwriter(&file);
+            hexwriter.WriteHex(temp);
         }
         else
         {
             //write temp array to fileStream in binary format
-            file.write((const char*)temp,FLASH_SIZE);
+            file.write(temp);
         }
         file.close();//done!
-        delete[] key;
-        delete[] temp;
     }
 }
 
@@ -502,6 +498,8 @@ void MainWindow::reflash(uint firmware_type)
     quint32 address = BOOTLOADER_SIZE;
     for (int i = 0; i<ENCRYPTED_FIRMWARE_SIZE; i += BLOCK_SIZE)
     {
+        if(worker.isCanceled())
+            return;
         buffer[0] = WRITE_COMMAND;//command LSB
         buffer[1] = 0x00;//command MSB
         buffer[2] = BLOCK_SIZE;//Block size without header(LSB)
@@ -562,16 +560,7 @@ void MainWindow::reflash(uint firmware_type)
 //Dump function. This function is executed in separate thread.
 void MainWindow::dump(QString fileName, uint device_type)
 {
-    uchar *temp = new uchar[FLASH_SIZE];//128Kbyte buffer
-    uchar w[5];
-    QFile file(fileName);//watcher.property("hex_path").toString());
-
-    if(!file.open(fileName.endsWith(".hex",Qt::CaseInsensitive) ? (QIODevice::WriteOnly | QIODevice::Text) : QIODevice::WriteOnly))
-    {
-        emit dump_status(file.errorString());
-        return;// file.errorString();
-    }
-
+    //Try to open the device
     usb_device->close_device();
     if(!usb_device->open_device(0))
     {
@@ -579,8 +568,14 @@ void MainWindow::dump(QString fileName, uint device_type)
         return;
     }
 
+    //Read data from the device.
+    QByteArray temp;
+    temp.resize(FLASH_SIZE);
+    uchar w[5];
     for(int i = 0; i < FLASH_SIZE; i += 64)
     {
+        if(worker.isCanceled())
+            return;
         w[0] = DUMPER_READ_FLASH;
         w[1] = 64;//packet size
         w[2] = i & 0xff;//24bit address in little endian order
@@ -588,33 +583,39 @@ void MainWindow::dump(QString fileName, uint device_type)
         w[4] = (i & 0xff0000)>>16;
 
         usb_device->usb_write(w, sizeof(w));
-        if(usb_device->usb_read(&temp[i],64) != 64)
+        if(usb_device->usb_read((uchar*)&temp.data()[i],64) != 64)
         {
             usb_device->close_device();
             emit dump_status("USB read error.");
             return;
         }
         emit update_progress(i);
+        usb_device->close_device();
     }
+    //Because the region 0x1800-0x1FBFF contains the dumper we overwrite the it with the normal firmware from the update.dat file.
+    firmware.decrypt_firmware((uchar*)&temp.data()[BOOTLOADER_SIZE], device_type );
 
-    firmware.decrypt_firmware(&temp[BOOTLOADER_SIZE], device_type );
+
+    //Write data to file.
+    QFile file(fileName);
+    if(!file.open(fileName.endsWith(".hex",Qt::CaseInsensitive) ? (QIODevice::WriteOnly | QIODevice::Text) : QIODevice::WriteOnly))
+    {
+        emit dump_status(file.errorString());
+        return;
+    }
 
     if(fileName.endsWith(".hex", Qt::CaseInsensitive))
     {
         //write temp array to fileStream in Intel hex format.
-        HexWriter *hexwriter = new HexWriter;
-        QTextStream fileStream(&file);
-        hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);
-        delete hexwriter;
+        HexWriter hexwriter(&file);
+        hexwriter.WriteHex(temp);
     }
     else
     {
         //write temp array to fileStream in binary format
-        file.write((const char*)temp,FLASH_SIZE);
+        file.write(temp);
     }
     file.close();
-    delete[] temp;
-    usb_device->close_device();
     emit dump_status("");
     return;
 }
@@ -719,6 +720,7 @@ void MainWindow::DeviceChanged(bool arrived)
                 setBled(false);
                 ui->txtInfo->append("Device status: Unknown.");
             }
+            ui->btnReset->setProperty("state", false);
             QString s_devcode = (QString::fromLatin1((const char*)&report.device_code,8));
             QString s_serial = (QString::fromLatin1((const char*)&report.serial_number,24));
             bool isDumperActive = (s_devcode.toLower() == "codedump" && s_serial == "000000000000000000000000");
@@ -739,6 +741,7 @@ void MainWindow::DeviceChanged(bool arrived)
                 advdlg->SetSerial(s_devcode, s_serial);
 
                 QString info;
+
                 info.append(QString("Device code: %1\n").arg(s_devcode.trimmed()   + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad device code)" : "")));
                 info.append(QString("Serial number: %1\n").arg(s_serial.trimmed()  + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad serial code)" : "")));
                 info.append(QString("Bootloader version: %1\n").arg((devtype == Firmware::VERSION_TL866A) ? "A" : "CS"));

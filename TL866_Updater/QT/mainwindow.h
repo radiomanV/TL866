@@ -70,17 +70,16 @@ signals:
 
 
 private:
-    enum WorkerJob{REFLASH, DUMP};
     Ui::MainWindow *ui;
     USB *usb_device;
     AdvDialog* advdlg;
     Firmware firmware;
     Notifier *usbNotifier;
-    QByteArray get_resource(QString resource_path, int size);
     QTimer *timer;
     QFuture<void> worker;
     bool reset_flag;
 
+    QByteArray get_resource(QString resource_path, int size);
     void leds_off();
     void setNled(bool state);
     void setBled(bool state);
