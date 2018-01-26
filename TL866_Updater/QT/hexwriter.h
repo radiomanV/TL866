@@ -5,7 +5,7 @@
 class HexWriter
 {
 public:
-    HexWriter(QIODevice *file);
+    explicit HexWriter(QIODevice *file);
     void WriteHex(QByteArray data);
 
 private:
