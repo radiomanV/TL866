@@ -298,9 +298,12 @@ void MainWindow::on_btnDump_clicked()
         return;
     }
 
-    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)");
+    QString ext;
+    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
+        if(ext.contains("hex"))
+            fileName += ".hex";
         ui->progressBar->setMaximum(FLASH_SIZE - 1);
         worker = QtConcurrent::run(this, &MainWindow::dump, fileName, this->property("device_type").toInt());
     }
@@ -310,10 +313,11 @@ void MainWindow::on_btnDump_clicked()
 //save hex button
 void MainWindow::on_btnSave_clicked()
 {
-    QString fileName=QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)");
+    QString ext;
+    QString fileName=QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
-        if(!fileName.endsWith(".hex", Qt::CaseInsensitive))
+        if(ext.contains("hex"))
             fileName += ".hex";
         QFile file(fileName);
         if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
@@ -321,7 +325,6 @@ void MainWindow::on_btnSave_clicked()
             QMessageBox::critical(this,"TL866",QString("Error creating file %1\n%2.").arg(fileName).arg(file.errorString()));
             return;
         }
-        QTextStream fileStream(&file);
 
         QByteArray b =get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
 
@@ -341,12 +344,23 @@ void MainWindow::on_btnSave_clicked()
         firmware.encrypt_serial(key, temp);//encrypt the devcode and serial
         memcpy(temp + SERIAL_OFFSET ,key,BLOCK_SIZE);//copy the new devcode and serial to temp array
 
-        HexWriter *hexwriter = new HexWriter;
-        hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);//write temp array to fileStream in Intel hex format
-        delete hexwriter;
+        if(fileName.endsWith(".hex", Qt::CaseInsensitive))
+        {
+            //write temp array to fileStream in Intel hex format
+            QTextStream fileStream(&file);
+            HexWriter *hexwriter = new HexWriter;
+            hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);
+            delete hexwriter;
+        }
+        else
+        {
+            //write temp array to fileStream in binary format
+            QDataStream fileStream(&file);
+            fileStream.writeRawData((const char*)temp,FLASH_SIZE);
+        }
+        file.close();//done!
         delete[] key;
         delete[] temp;
-        file.close();//done!
     }
 }
 
@@ -549,7 +563,7 @@ void MainWindow::reflash(uint firmware_type)
 //Dump function. This function is executed in separate thread.
 void MainWindow::dump(QString fileName, uint device_type)
 {
-    uchar temp[FLASH_SIZE];//128Kbyte buffer
+    uchar *temp = new uchar[FLASH_SIZE];//128Kbyte buffer
     uchar w[5];
     QFile file(fileName);//watcher.property("hex_path").toString());
 
@@ -566,7 +580,6 @@ void MainWindow::dump(QString fileName, uint device_type)
         return;
     }
 
-    QTextStream fileStream(&file);
     for(int i = 0; i < FLASH_SIZE; i += 64)
     {
         w[0] = DUMPER_READ_FLASH;
@@ -586,10 +599,23 @@ void MainWindow::dump(QString fileName, uint device_type)
     }
 
     firmware.decrypt_firmware(&temp[BOOTLOADER_SIZE], device_type );
-    HexWriter *hexwriter = new HexWriter;
-    hexwriter->WriteHex(fileStream,temp,sizeof(temp));//write temp array to fileStream in Intel hex format.
-    delete hexwriter;
+
+    if(fileName.endsWith(".hex", Qt::CaseInsensitive))
+    {
+        //write temp array to fileStream in Intel hex format.
+        HexWriter *hexwriter = new HexWriter;
+        QTextStream fileStream(&file);
+        hexwriter->WriteHex(fileStream,temp,FLASH_SIZE);
+        delete hexwriter;
+    }
+    else
+    {
+        //write temp array to fileStream in binary format
+        QDataStream fileStream(&file);
+        fileStream.writeRawData((const char*)temp,FLASH_SIZE);
+    }
     file.close();
+    delete[] temp;
     usb_device->close_device();
     emit dump_status("");
     return;

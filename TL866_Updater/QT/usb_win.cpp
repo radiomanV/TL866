@@ -118,7 +118,7 @@ size_t USB::usb_read(unsigned char *data, DWORD size)
     EnterCriticalSection(&lock);
     bool ret = DeviceIoControl(hDriver, TL866_IOCTL_READ, buffer, 5, data, size, &bytes_read, NULL);
     LeaveCriticalSection(&lock);
-    delete buffer;
+    delete[] buffer;
     return (ret ? bytes_read : 0);
 }
 
@@ -131,6 +131,6 @@ size_t USB::usb_write(unsigned char *data, DWORD size)
     EnterCriticalSection(&lock);
     bool ret = DeviceIoControl(hDriver, TL866_IOCTL_WRITE, data, size, buffer, 256, &bytes_written, NULL);
     LeaveCriticalSection(&lock);
-    delete buffer;
+    delete[] buffer;
     return (ret ? bytes_written : 0);
 }
