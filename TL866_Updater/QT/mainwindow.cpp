@@ -302,7 +302,7 @@ void MainWindow::on_btnDump_clicked()
     QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
-        if(ext.contains("hex"))
+        if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
             fileName += ".hex";
         ui->progressBar->setMaximum(FLASH_SIZE - 1);
         worker = QtConcurrent::run(this, &MainWindow::dump, fileName, this->property("device_type").toInt());
@@ -317,10 +317,10 @@ void MainWindow::on_btnSave_clicked()
     QString fileName=QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
-        if(ext.contains("hex"))
+        if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
             fileName += ".hex";
         QFile file(fileName);
-        if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        if(!file.open(ext.contains("hex") ? (QIODevice::WriteOnly | QIODevice::Text) : QIODevice::WriteOnly))
         {
             QMessageBox::critical(this,"TL866",QString("Error creating file %1\n%2.").arg(fileName).arg(file.errorString()));
             return;
@@ -355,8 +355,7 @@ void MainWindow::on_btnSave_clicked()
         else
         {
             //write temp array to fileStream in binary format
-            QDataStream fileStream(&file);
-            fileStream.writeRawData((const char*)temp,FLASH_SIZE);
+            file.write((const char*)temp,FLASH_SIZE);
         }
         file.close();//done!
         delete[] key;
@@ -567,7 +566,7 @@ void MainWindow::dump(QString fileName, uint device_type)
     uchar w[5];
     QFile file(fileName);//watcher.property("hex_path").toString());
 
-    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    if(!file.open(fileName.endsWith(".hex",Qt::CaseInsensitive) ? (QIODevice::WriteOnly | QIODevice::Text) : QIODevice::WriteOnly))
     {
         emit dump_status(file.errorString());
         return;// file.errorString();
@@ -611,8 +610,7 @@ void MainWindow::dump(QString fileName, uint device_type)
     else
     {
         //write temp array to fileStream in binary format
-        QDataStream fileStream(&file);
-        fileStream.writeRawData((const char*)temp,FLASH_SIZE);
+        file.write((const char*)temp,FLASH_SIZE);
     }
     file.close();
     delete[] temp;
