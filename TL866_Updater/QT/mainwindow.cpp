@@ -590,8 +590,9 @@ void MainWindow::dump(QString fileName, uint device_type)
             return;
         }
         emit update_progress(i);
-        usb_device->close_device();
     }
+    usb_device->close_device();
+
     //Because the region 0x1800-0x1FBFF contains the dumper we overwrite it with the normal firmware from the update.dat file.
     firmware.decrypt_firmware((uchar*)&temp.data()[BOOTLOADER_SIZE], device_type );
 
