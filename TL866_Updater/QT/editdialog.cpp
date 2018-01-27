@@ -26,13 +26,15 @@
 #include "firmware.h"
 #include <QMessageBox>
 
-EditDialog::EditDialog(QWidget *parent) :
+EditDialog::EditDialog(QWidget *parent, QString devcode, QString serial) :
     QDialog(parent),
     ui(new Ui::EditDialog)
 {
     ui->setupUi(this);
     connect(ui->buttonBox,SIGNAL(accepted()),this,SLOT(okButton_clicked()));
     setFixedSize(size());
+    ui->txtDevcode->setText(devcode);
+    ui->txtSerial->setText(serial);
 }
 
 EditDialog::~EditDialog()
@@ -40,16 +42,10 @@ EditDialog::~EditDialog()
     delete ui;
 }
 
-void EditDialog::GetResult(QString* devcode, QString* serial)
+void EditDialog::GetResult(QString *devcode, QString *serial)
 {
   *devcode = ui->txtDevcode->text();
   *serial = ui->txtSerial->text();
-}
-
-void EditDialog::SetText(QString devcode, QString serial)
-{
-    ui->txtDevcode->setText(devcode);
-    ui->txtSerial->setText(serial);
 }
 
 void EditDialog::on_btnRndDev_clicked()

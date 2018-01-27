@@ -17,13 +17,11 @@ class AdvDialog : public QDialog
 public:
     explicit AdvDialog(QWidget *parent = 0);
     ~AdvDialog();
-    void SetSerial(QString devcode, QString serial);
-    void SetInfo(QString info);
-    void SetUi(bool cp, int type);
+    void SetUi(QString info, QString devcode, QString serial,bool cp, int type);
 
 
 signals:
-    void Refresh();
+    void DeviceChange(bool arrived);
     void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
     void WriteInfo(QString device_code, QString serial_number);

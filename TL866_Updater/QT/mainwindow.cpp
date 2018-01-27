@@ -53,15 +53,11 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
     connect(timer,SIGNAL(timeout()),this,SLOT(TimerUpdate()));
 
-    connect(advdlg,SIGNAL(Refresh()),this,SLOT(Refresh()));
+    connect(advdlg, SIGNAL(DeviceChange(bool)),this,SLOT(DeviceChanged(bool)));
     connect(advdlg,SIGNAL(WriteBootloader(Firmware::BootloaderType)),SLOT(WriteBootloader(Firmware::BootloaderType)));
     connect(advdlg,SIGNAL(WriteConfig(bool)),this,SLOT(WriteConfig(bool)));
     connect(advdlg,SIGNAL(WriteInfo(QString,QString)),this,SLOT(WriteInfo(QString,QString)));
 
-    //set used properties
-    this->setProperty("device_code", "");
-    this->setProperty("serial_number", "");
-    this->setProperty("device_type", 0);
     ui->btnReset->setProperty("state", false);
 
     //initialise main ui
@@ -198,7 +194,7 @@ void MainWindow::on_btnInput_clicked()
 //show advanced dialog
 void MainWindow::on_btnAdvanced_clicked()
 {
-    Refresh();
+    DeviceChanged(true);
     advdlg->show();
 }
 
@@ -206,10 +202,9 @@ void MainWindow::on_btnAdvanced_clicked()
 //show edit device code and serial number dialog
 void MainWindow::on_btnEdit_clicked()
 {
-    EditDialog dlg(this);
     QString devcode =ui->txtDevcode->text();
     QString serial =ui->txtSerial->text();
-    dlg.SetText(devcode,serial);
+    EditDialog dlg(this, devcode, serial);
     if(dlg.exec()==QDialog::Accepted)
     {
         dlg.GetResult(&devcode, &serial);
@@ -227,20 +222,12 @@ void MainWindow::on_btnDefault_clicked()
 }
 
 
-//Read device info
-void MainWindow::Refresh()
-{
-    reset_flag=false;
-    DeviceChanged(true);
-}
-
-
 //clone serial and device code from connected device
 void MainWindow::on_btnClone_clicked()
 {
-    Refresh();
-    ui->txtDevcode->setText(this->property("device_code").toString());
-    ui->txtSerial->setText(this->property("serial_number").toString());
+    DeviceInfo info = DeviceChanged(true);
+    ui->txtDevcode->setText(info.device_code);
+    ui->txtSerial->setText(info.device_serial);
 }
 
 
@@ -312,7 +299,8 @@ void MainWindow::on_btnDump_clicked()
         if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
             fileName += ".hex";
         ui->progressBar->setMaximum(FLASH_SIZE - 1);
-        worker = QtConcurrent::run(this, &MainWindow::dump, fileName, this->property("device_type").toInt());
+        DeviceInfo info = DeviceChanged(true);
+        worker = QtConcurrent::run(this, &MainWindow::dump, fileName, info.device_type);
     }
 }
 
@@ -626,7 +614,7 @@ void MainWindow::dump(QString fileName, uint device_type)
 //Reflash finished SLOT
 void MainWindow::reflash_finished(QString result)
 {
-    Refresh();
+    DeviceChanged(true);
     if(result.isEmpty())
         QMessageBox::information(this, "TL866", "     Reflash OK!          ");
     else
@@ -638,7 +626,7 @@ void MainWindow::reflash_finished(QString result)
 //Dump finished SLOT
 void MainWindow::dump_finished(QString result)
 {
-    Refresh();
+    DeviceChanged(true);
     if(result.isEmpty())
         QMessageBox::information(this, "TL866", "Firmware dump complete!");
     else
@@ -667,14 +655,16 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 }
 
 //This procedure is called automatically by the usb device change. Call this function to refresh the info.
-void MainWindow::DeviceChanged(bool arrived)
+ MainWindow::DeviceInfo MainWindow::DeviceChanged(bool arrived)
 {
-    if(!arrived && reset_flag)//ignore unplug event if the device was resetted by us.
-        return;
+     DeviceInfo device_info = {"", "", 0};
+
+    if(!arrived && reset_flag)//ignore unplug events if the device was resetted by us.
+        return device_info;
 
     reset_flag=false;
     ui->txtInfo->clear();
-    int devtype = 0;
+
     int count=usb_device->get_devices_count();
     this->setWindowTitle(QString("TL866 firmware updater (%1 %2 connected)").arg(count).arg(count == 1 ? "device" : "devices"));
 
@@ -692,15 +682,15 @@ void MainWindow::DeviceChanged(bool arrived)
             {
             case Firmware::VERSION_TL866A:
                 ui->txtInfo->append("Device version: TL866A");
-                devtype = Firmware::VERSION_TL866A;
+                device_info.device_type = Firmware::VERSION_TL866A;
                 break;
             case Firmware::VERSION_TL866CS:
                 ui->txtInfo->append("Device version: TL866CS");
-                devtype = Firmware::VERSION_TL866CS;
+                device_info.device_type = Firmware::VERSION_TL866CS;
                 break;
             default:
                 ui->txtInfo->append("Device version: Unknown");
-                devtype = 0;
+                device_info.device_type = 0;
             }
 
 
@@ -722,34 +712,27 @@ void MainWindow::DeviceChanged(bool arrived)
                 ui->txtInfo->append("Device status: Unknown.");
             }
             ui->btnReset->setProperty("state", false);
-            QString s_devcode = (QString::fromLatin1((const char*)&report.device_code,8));
-            QString s_serial = (QString::fromLatin1((const char*)&report.serial_number,24));
-            bool isDumperActive = (s_devcode.toLower() == "codedump" && s_serial == "000000000000000000000000");
+            device_info.device_code = QString::fromLatin1((const char*)&report.device_code,8);
+            device_info.device_serial = QString::fromLatin1((const char*)&report.serial_number,24);
+            bool isDumperActive = (device_info.device_code.toLower() == "codedump" && device_info.device_serial == "000000000000000000000000");
 
 
             if(isDumperActive)
             {
-
                 Firmware::DUMPER_REPORT dumper_report;
                 uchar b[] = {DUMPER_INFO};
                 usb_device->usb_write(b, 1);
                 usb_device->usb_read((uchar*)&dumper_report, sizeof(Firmware::DUMPER_REPORT));
-                devtype = dumper_report.bootloader_version;
+                device_info.device_type = dumper_report.bootloader_version;
 
-                s_devcode = (QString::fromLatin1((const char*)&dumper_report.device_code,8));
-                s_serial = (QString::fromLatin1((const char*)&dumper_report.serial_number,24));
-
-                advdlg->SetSerial(s_devcode, s_serial);
+                device_info.device_code = QString::fromLatin1((const char*)&dumper_report.device_code,8);
+                device_info.device_serial = QString::fromLatin1((const char*)&dumper_report.serial_number,24);
 
                 QString info;
-
-                info.append(QString("Device code: %1\n").arg(s_devcode.trimmed()   + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad device code)" : "")));
-                info.append(QString("Serial number: %1\n").arg(s_serial.trimmed()  + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad serial code)" : "")));
-                info.append(QString("Bootloader version: %1\n").arg((devtype == Firmware::VERSION_TL866A) ? "A" : "CS"));
+                info.append(GetFormatedString(device_info.device_code, device_info.device_serial) + "\n");
+                info.append(QString("Bootloader version: %1\n").arg((device_info.device_type == Firmware::VERSION_TL866A) ? "A" : "CS"));
                 info.append(QString("Code Protection bit: %1\n").arg(dumper_report.cp_bit ? "No" : "Yes"));
-
-                advdlg->SetInfo(info);
-                advdlg->SetUi(dumper_report.cp_bit == 0, devtype);
+                advdlg->SetUi(info, device_info.device_code, device_info.device_serial, dumper_report.cp_bit == 0, device_info.device_type);
 
                 ui->btnAdvanced->setEnabled(true);
                 ui->btnDump->setEnabled(true);
@@ -758,23 +741,17 @@ void MainWindow::DeviceChanged(bool arrived)
             {
                 ui->btnAdvanced->setEnabled(false);
                 ui->btnDump->setEnabled(false);
-                advdlg->SetSerial("", "");
-                advdlg->SetInfo("");
                 advdlg->hide();
             }
 
-            ui->txtInfo->append("Device code: " + s_devcode.trimmed() + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad device code)" : ""));
-            ui->txtInfo->append("Serial number: " + s_serial.trimmed() + (Firmware::IsBadCrc((uchar*)s_devcode.toLatin1().data(), (uchar*)s_serial.toLatin1().data()) ? " (Bad serial code)" : ""));
-            this->setProperty("device_code", s_devcode);
-            this->setProperty("serial_number", s_serial);
+            ui->txtInfo->append(GetFormatedString(device_info.device_code, device_info.device_serial));
             ui->txtInfo->append(isDumperActive ? "Firmware version: Firmware dumper" :
                                                  report.device_status == Firmware::NORMAL_MODE ? QString("Firmware version: %1.%2.%3")
                                                                                                  .arg(report.hardware_version)
                                                                                                  .arg(report.firmware_version_major)
                                                                                                  .arg(report.firmware_version_minor):
                                                                                                  "Firmware version: Bootloader");
-
-            usb_device->close_device();//do not close device if an upgrade is in progress.
+            usb_device->close_device();
         }
         else//error oppening device
             SetBlank();
@@ -782,8 +759,18 @@ void MainWindow::DeviceChanged(bool arrived)
     }
     else//no device connected
         SetBlank();
+    return device_info;
+}
 
-    this->setProperty("device_type", devtype);//save global property for later usage.
+//Helper function to get formated device and serial code
+QString MainWindow::GetFormatedString(QString devcode, QString serial)
+{
+    return QString("Device code: %1\nSerial number: %2").arg(devcode.trimmed() +
+                  (Firmware::IsBadCrc((uchar*)devcode.toLatin1().data(),
+                  (uchar*)serial.toLatin1().data()) ? " (Bad device code)" : ""))
+                  .arg(serial.trimmed() +
+                  (Firmware::IsBadCrc((uchar*)devcode.toLatin1().data(),
+                  (uchar*)serial.toLatin1().data()) ? " (Bad serial code)" : ""));
 }
 
 
@@ -793,10 +780,6 @@ void MainWindow::SetBlank()
     leds_off();
     ui->btnAdvanced->setEnabled(false);
     ui->btnDump->setEnabled(false);
-    this->setProperty("device_code", "");
-    this->setProperty("serial_number", "");
-    advdlg->SetSerial("", "");
-    advdlg->SetInfo("");
     advdlg->hide();
 }
 
@@ -845,7 +828,7 @@ void MainWindow::WriteBootloader(Firmware::BootloaderType type)
         b[0] = 0;
         usb_device->usb_read(b, 1);
         usb_device->close_device();
-        Refresh();
+        DeviceChanged(true);
         if(b[0] == DUMPER_WRITE_BOOTLOADER)
             QMessageBox::information(advdlg, "TL866", "Bootloader was successfully written.");
         else
@@ -868,7 +851,7 @@ void MainWindow::WriteConfig(bool copy_protect)
         b[0] = 0;
         usb_device->usb_read(b, 1);
         usb_device->close_device();
-        Refresh();
+        DeviceChanged(true);
         if(b[0] == DUMPER_WRITE_CONFIG)
             QMessageBox::information(advdlg, "TL866", "Code protection bit was successfully written.");
         else
@@ -895,7 +878,7 @@ void MainWindow::WriteInfo(QString device_code, QString serial_number)
         b[0] = 0;
         usb_device->usb_read(b, 1);
         usb_device->close_device();
-        Refresh();
+        DeviceChanged(true);
         if(b[0] == DUMPER_WRITE_INFO)
             QMessageBox::information(advdlg, "TL866", "Device info was successfully written.");
         else

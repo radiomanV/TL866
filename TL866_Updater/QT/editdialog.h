@@ -12,10 +12,9 @@ class EditDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit EditDialog(QWidget *parent = 0);
+    explicit EditDialog(QWidget *parent = 0, QString devcode = "", QString serial = "");
     ~EditDialog();
-    void GetResult(QString* devcode, QString* serial);
-    void SetText(QString devcode, QString serial);
+    void GetResult(QString *devcode, QString *serial);
 
 public slots:
 

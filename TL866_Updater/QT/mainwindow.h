@@ -40,6 +40,14 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+private:
+    struct DeviceInfo
+    {
+       QString device_code;
+       QString device_serial;
+       uint device_type;
+    };
+
 private slots:
     void on_btnInput_clicked();
     void on_btnAdvanced_clicked();
@@ -52,11 +60,9 @@ private slots:
     void on_btnDump_clicked();
     void reflash_finished(QString result);
     void dump_finished(QString result);
-    void DeviceChanged(bool arrived);
+    DeviceInfo DeviceChanged(bool arrived);
     void gui_updated(QString message, bool eraseLed, bool writeLed);
     void TimerUpdate();
-
-    void Refresh();
     void WriteBootloader(Firmware::BootloaderType type);
     void WriteConfig(bool copy_protect);
     void WriteInfo(QString device_code, QString serial_number);
@@ -87,6 +93,7 @@ private:
     void setWled(bool state);
     void wait_ms(unsigned long time);
     void SetBlank();
+    QString GetFormatedString(QString devcode, QString serial);
     bool CheckDevices(QWidget *parent);
     bool AdvQuestion();
     uint BootloaderCRC();
