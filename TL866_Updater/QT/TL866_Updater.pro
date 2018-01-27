@@ -8,10 +8,6 @@ QT       += core gui
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-equals(QT_MAJOR_VERSION, 5) {
-LIBS += -lQt5Concurrent
-}
-
 TARGET = TL866_Updater
 TEMPLATE = app
 
