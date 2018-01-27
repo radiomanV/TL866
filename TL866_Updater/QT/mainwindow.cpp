@@ -43,6 +43,8 @@ MainWindow::MainWindow(QWidget *parent) :
     advdlg = new AdvDialog(this);
     usbNotifier = new Notifier();
     usb_device = new USB();
+    firmware = new Firmware();
+    worker = new QFuture<void>;
     timer = new QTimer(this);
 
     //initialise used signals
@@ -53,7 +55,7 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(this, SIGNAL(update_progress(int)),ui->progressBar,SLOT(setValue(int)));
     connect(timer,SIGNAL(timeout()),this,SLOT(TimerUpdate()));
 
-    connect(advdlg, SIGNAL(DeviceChange(bool)),this,SLOT(DeviceChanged(bool)));
+    connect(advdlg,SIGNAL(DeviceChange(bool)),this,SLOT(DeviceChanged(bool)));
     connect(advdlg,SIGNAL(WriteBootloader(Firmware::BootloaderType)),SLOT(WriteBootloader(Firmware::BootloaderType)));
     connect(advdlg,SIGNAL(WriteConfig(bool)),this,SLOT(WriteConfig(bool)));
     connect(advdlg,SIGNAL(WriteInfo(QString,QString)),this,SLOT(WriteInfo(QString,QString)));
@@ -72,9 +74,11 @@ MainWindow::MainWindow(QWidget *parent) :
 //Class destructor
 MainWindow::~MainWindow()
 {
-    if(worker.isRunning())
-        worker.cancel();
-    worker.waitForFinished();
+    if(worker->isRunning())
+        worker->cancel();
+    worker->waitForFinished();
+    delete worker;
+    delete firmware;
     delete timer;
     delete usb_device;
     delete usbNotifier;
@@ -163,11 +167,11 @@ void MainWindow::on_btnInput_clicked()
     if(fileName.isEmpty())
         return;
 
-    int ret=firmware.open(fileName);
+    int ret=firmware->open(fileName);
     if(ret == Firmware::NoError)
     {
         ui->txtInput->setText(fileName);
-        ui->lblVersion->setText(QString("[V:%1]").arg(firmware.GetFirmwareVersion()));
+        ui->lblVersion->setText(QString("[V:%1]").arg(firmware->GetFirmwareVersion()));
         return;
     }
 
@@ -236,12 +240,12 @@ void MainWindow::on_btnReset_clicked()
 {
     if(ui->btnReset->property("state").toBool())
         return;
-    if(worker.isRunning())
+    if(worker->isRunning())
         return;
 
     if(!CheckDevices(this))
         return;
-    worker = QtConcurrent::run(this, &MainWindow::reset);
+    *worker = QtConcurrent::run(this, &MainWindow::reset);
     ui->btnReset->setProperty("state", true);
 }
 
@@ -249,12 +253,12 @@ void MainWindow::on_btnReset_clicked()
 //reflash device button
 void MainWindow::on_btnReflash_clicked()
 {
-    if(worker.isRunning())
+    if(worker->isRunning())
         return;
     if(!CheckDevices(this))
         return;
 
-    if(!firmware.isValid())
+    if(!firmware->isValid())
     {
         QMessageBox::warning(this, "TL866", "No firmware file loaded!\nPlease load the update.dat file.");
         return;
@@ -274,19 +278,19 @@ void MainWindow::on_btnReflash_clicked()
     if(index == -1)
         return;
     ui->progressBar->setMaximum(ENCRYPTED_FIRMWARE_SIZE/BLOCK_SIZE-1);
-    worker = QtConcurrent::run(this, &MainWindow::reflash, index);
+    *worker = QtConcurrent::run(this, &MainWindow::reflash, index);
 }
 
 
 //dump device button
 void MainWindow::on_btnDump_clicked()
 {
-    if(worker.isRunning())
+    if(worker->isRunning())
         return;
     if(!CheckDevices(this))
         return;
 
-    if(!firmware.isValid())
+    if(!firmware->isValid())
     {
         QMessageBox::warning(this, "TL866", "No firmware file loaded!\nPlease load the update.dat file.");
         return;
@@ -300,7 +304,7 @@ void MainWindow::on_btnDump_clicked()
             fileName += ".hex";
         ui->progressBar->setMaximum(FLASH_SIZE - 1);
         DeviceInfo info = DeviceChanged(true);
-        worker = QtConcurrent::run(this, &MainWindow::dump, fileName, info.device_type);
+        *worker = QtConcurrent::run(this, &MainWindow::dump, fileName, info.device_type);
     }
 }
 
@@ -315,7 +319,7 @@ void MainWindow::on_btnSave_clicked()
     memset(&temp.data()[SERIAL_OFFSET],' ',32);//add trailing spaces
     memcpy(&temp.data()[SERIAL_OFFSET], ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size());//copy devcode to key array
     memcpy(&temp.data()[SERIAL_OFFSET+8], ui->txtSerial->text().toLatin1().data(), ui->txtSerial->text().size());//copy serial to key array
-    firmware.encrypt_serial((uchar*)&temp.data()[SERIAL_OFFSET], (const uchar*)temp.data());//encrypt the devcode and serial
+    firmware->encrypt_serial((uchar*)&temp.data()[SERIAL_OFFSET], (const uchar*)temp.data());//encrypt the devcode and serial
 
 
     //Open the file save dialog
@@ -442,7 +446,7 @@ void MainWindow::reflash(uint firmware_type)
     //Erase device first
     memset(buffer,0,sizeof(buffer));
     buffer[0]=ERASE_COMMAND;
-    buffer[7]=firmware.GetEraseParammeter(device_version);
+    buffer[7]=firmware->GetEraseParammeter(device_version);
     emit update_gui(QString("<erasing...>"), true, false);
     usb_device->usb_write(buffer, 20);
     wait_ms(100);
@@ -465,14 +469,14 @@ void MainWindow::reflash(uint firmware_type)
     {
     case Firmware::FIRMWARE_A:
     default:
-        firmware.get_firmware(data, device_version, Firmware::A_KEY);
+        firmware->get_firmware(data, device_version, Firmware::A_KEY);
         break;
     case Firmware::FIRMWARE_CS:
-        firmware.get_firmware(data, device_version, Firmware::CS_KEY);
+        firmware->get_firmware(data, device_version, Firmware::CS_KEY);
         break;
     case Firmware::FIRMWARE_CUSTOM:
         QByteArray b = get_resource(DUMPER_RESOURCE, UNENCRYPTED_FIRMWARE_SIZE);
-        firmware.encrypt_firmware((const uchar*)b.data(), data, device_version);
+        firmware->encrypt_firmware((const uchar*)b.data(), data, device_version);
     }
 
 
@@ -486,7 +490,7 @@ void MainWindow::reflash(uint firmware_type)
     quint32 address = BOOTLOADER_SIZE;
     for (int i = 0; i<ENCRYPTED_FIRMWARE_SIZE; i += BLOCK_SIZE)
     {
-        if(worker.isCanceled())
+        if(worker->isCanceled())
             return;
         buffer[0] = WRITE_COMMAND;//command LSB
         buffer[1] = 0x00;//command MSB
@@ -562,7 +566,7 @@ void MainWindow::dump(QString fileName, uint device_type)
     uchar w[5];
     for(int i = 0; i < FLASH_SIZE; i += 64)
     {
-        if(worker.isCanceled())
+        if(worker->isCanceled())
             return;
         w[0] = DUMPER_READ_FLASH;
         w[1] = 64;//packet size
@@ -582,7 +586,7 @@ void MainWindow::dump(QString fileName, uint device_type)
     usb_device->close_device();
 
     //Because the region 0x1800-0x1FBFF contains the dumper we overwrite it with the normal firmware from the update.dat file.
-    firmware.decrypt_firmware((uchar*)&temp.data()[BOOTLOADER_SIZE], device_type );
+    firmware->decrypt_firmware((uchar*)&temp.data()[BOOTLOADER_SIZE], device_type );
 
 
     //Write data to file.

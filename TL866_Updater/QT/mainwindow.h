@@ -79,10 +79,10 @@ private:
     Ui::MainWindow *ui;
     USB *usb_device;
     AdvDialog* advdlg;
-    Firmware firmware;
+    Firmware *firmware;
     Notifier *usbNotifier;
     QTimer *timer;
-    QFuture<void> worker;
+    QFuture<void> *worker;
     bool reset_flag;
 
     QByteArray get_resource(QString resource_path, int size);
