@@ -181,10 +181,10 @@ void MainWindow::on_btnInput_clicked()
         QMessageBox::warning(this,"TL866",QString("Cannot read file %1").arg(fileName));
         break;
     case Firmware::FilesizeError:
-        QMessageBox::warning(this,"TL866",QString("%1\n\nFilesize error!").arg(fileName));
+        QMessageBox::warning(this,"TL866",QString("%1\n\nFile size error!").arg(fileName));
         break;
     case Firmware::CRCError:
-        QMessageBox::warning(this,"TL866",QString("%1\n\nData CRC error!").arg(fileName));
+        QMessageBox::warning(this,"TL866",QString("%1\n\nCorrupted updated.dat file!").arg(fileName));
         break;
     case Firmware::DecryptionError:
         QMessageBox::warning(this,"TL866","Firmware decryption error!");
