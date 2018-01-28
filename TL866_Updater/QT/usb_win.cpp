@@ -80,7 +80,8 @@ int USB::get_devices_count()
                     devices.append(QString::fromWCharArray(deviceinterfacedetaildata->DevicePath));
 #else
                     devices.append(deviceinterfacedetaildata->DevicePath);
-#endif             free(deviceinterfacedetaildata);
+                    free(deviceinterfacedetaildata);
+#endif
             }
         }
         else

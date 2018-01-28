@@ -49,8 +49,8 @@ HEADERS += usb_win.h \
         notifier_win.h
 SOURCES += usb_win.cpp \
         notifier_win.cpp
-LIBS += user32.lib \
-        Setupapi.lib
+LIBS += -luser32 \
+        -lsetupapi
 RC_FILE = win_resources.rc
 }
 
