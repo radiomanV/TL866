@@ -14,13 +14,9 @@ signals:
     void deviceChange(bool arrived);
 
 private:
-    void RegisterUsbNotifications();
-
-
-private:
     bool winEvent(MSG *message, long *result);
 #if QT_VERSION >= 0x050000
-    bool nativeEvent(const QByteArray& eventType, void* message, long* result);
+    bool nativeEvent(const QByteArray& eventType, void* msg, long* result);
 #endif
 
 };

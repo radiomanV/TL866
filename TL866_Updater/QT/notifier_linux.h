@@ -24,7 +24,6 @@ private:
     QSocketNotifier *socket_notifier;
     QStringList nodes;
     udev_monitor *mon;
-    void RegisterUsbNotifications();
 };
 
 #endif // NOTIFIER_LINUX_H

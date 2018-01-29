@@ -29,19 +29,9 @@
 Notifier::Notifier(QWidget *parent) :
     QWidget(parent)
 {
+    //We use a hidden widget class because we need the winId (hwnd) for Windows implementation.
     this->hide();
-    RegisterUsbNotifications();
-}
-
-
-/*
- * We use a hidden widget class because we need the winId (hwnd) for Windows implementation.
- */
-
-const GUID MINIPRO_GUID={0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
-
-void Notifier::RegisterUsbNotifications()
-{
+    const GUID MINIPRO_GUID={0x85980D83,0x32B9,0x4BA1,{0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
     DEV_BROADCAST_DEVICEINTERFACE deviceInterface;
     ZeroMemory(&deviceInterface, sizeof(deviceInterface));
     deviceInterface.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
@@ -58,39 +48,28 @@ void Notifier::RegisterUsbNotifications()
 }
 
 #if QT_VERSION >= 0x050000
-bool Notifier::nativeEvent(const QByteArray& eventType, void* message, long* result)
+bool Notifier::nativeEvent(const QByteArray& eventType, void* msg, long* result)
 {
-    Q_UNUSED( result );
     Q_UNUSED( eventType );
-
-    MSG* msg = reinterpret_cast<MSG*>(message);
-    if(msg->message == WM_DEVICECHANGE)
-    {
-        switch(msg->wParam)
-        {
-        case DBT_DEVICEARRIVAL:
-              emit deviceChange(true);
-            break;
-
-        case DBT_DEVICEREMOVECOMPLETE:
-              emit deviceChange(false);
-            break;
-        }
-    }
-
-    return false;
-}
+    MSG* message = reinterpret_cast<MSG*>(msg);
 #else
 bool Notifier::winEvent(MSG *message, long *result)
 {
-    Q_UNUSED(result);
-    if (message->message==WM_DEVICECHANGE)
-    {
-        if (message->wParam==DBT_DEVICEARRIVAL)
-            emit deviceChange(true);
-        if (message->wParam==DBT_DEVICEREMOVECOMPLETE)
-            emit deviceChange(false);
-    }
-    return false;
-}
 #endif
+Q_UNUSED( result );
+if(message->message == WM_DEVICECHANGE)
+{
+    switch(message->wParam)
+    {
+    case DBT_DEVICEARRIVAL:
+        emit deviceChange(true);
+        break;
+
+    case DBT_DEVICEREMOVECOMPLETE:
+        emit deviceChange(false);
+        break;
+    }
+}
+return false;
+}
+

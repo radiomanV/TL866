@@ -28,59 +28,6 @@
 Notifier::Notifier()
 {
     socket_notifier=NULL;
-    RegisterUsbNotifications();
-}
-
-Notifier::~Notifier()
-{
-    udev_monitor_unref(mon);
-    if(socket_notifier !=NULL)
-        delete socket_notifier;
-}
-
-
-/* Called automatically when a usb device is inserted or removed.
- * Because we can get the idVendor and idProduct only for inserted
- * devices, for remove device notification we don't know if that
- * device was an TL866 or else. So we keep a list of devices to
- * track which device was removed.
- */
-void Notifier::udev_event()
-{
-    udev_device *dev = udev_monitor_receive_device(mon);
-    if(dev)
-    {
-        QString devnode(udev_device_get_devnode(dev));
-        QString vid(udev_device_get_sysattr_value(dev,"idVendor"));
-        QString pid(udev_device_get_sysattr_value(dev,"idProduct"));
-        QString action(udev_device_get_action(dev));
-        if(action.toLower() == "add" && vid.toUShort(0,16) == TL866_VID && pid.toUShort(0,16) == TL866_PID)
-        {
-            if(!nodes.contains(devnode,Qt::CaseInsensitive))
-            {
-                nodes.append(devnode);
-                //qDebug() << devnode <<" added";
-            }
-            emit deviceChange(true);
-        }
-        if(action.toLower() == "remove")
-        {
-            if(nodes.contains(devnode,Qt::CaseInsensitive))
-            {
-
-                //qDebug() << devnode << " removed";
-                nodes.removeOne(devnode);
-                emit deviceChange(false);
-            }
-        }
-
-    }
-    udev_device_unref(dev);
-}
-
-
-void Notifier::RegisterUsbNotifications()
-{
     udev *udev = udev_new();
     if (!udev)
     {
@@ -132,4 +79,51 @@ void Notifier::RegisterUsbNotifications()
     connect(socket_notifier,SIGNAL(activated(int)),this,SLOT(udev_event()));
     udev_unref(udev);
     qDebug() << "Register device notification O.K.";
+}
+
+
+Notifier::~Notifier()
+{
+    udev_monitor_unref(mon);
+    if(socket_notifier !=NULL)
+        delete socket_notifier;
+}
+
+/* Called automatically when a usb device is inserted or removed.
+ * Because we can get the idVendor and idProduct only for inserted
+ * devices, for remove device notification we don't know if that
+ * device was an TL866 or else. So we keep a list of devices to
+ * track which device was removed.
+ */
+void Notifier::udev_event()
+{
+    udev_device *dev = udev_monitor_receive_device(mon);
+    if(dev)
+    {
+        QString devnode(udev_device_get_devnode(dev));
+        QString vid(udev_device_get_sysattr_value(dev,"idVendor"));
+        QString pid(udev_device_get_sysattr_value(dev,"idProduct"));
+        QString action(udev_device_get_action(dev));
+        if(action.toLower() == "add" && vid.toUShort(0,16) == TL866_VID && pid.toUShort(0,16) == TL866_PID)
+        {
+            if(!nodes.contains(devnode,Qt::CaseInsensitive))
+            {
+                nodes.append(devnode);
+                //qDebug() << devnode <<" added";
+            }
+            emit deviceChange(true);
+        }
+        if(action.toLower() == "remove")
+        {
+            if(nodes.contains(devnode,Qt::CaseInsensitive))
+            {
+
+                //qDebug() << devnode << " removed";
+                nodes.removeOne(devnode);
+                emit deviceChange(false);
+            }
+        }
+
+    }
+    udev_device_unref(dev);
 }
