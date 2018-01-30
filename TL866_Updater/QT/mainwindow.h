@@ -102,7 +102,9 @@ private:
     void reset();
     bool wait_for_device();
     bool IsBadCrc(const uchar *devcode, const uchar *serial);
-
+    void dropEvent(QDropEvent *event);
+    void dragEnterEvent(QDragEnterEvent *event);
+    void OpenFile(QString fileName);
 
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"

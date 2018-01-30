@@ -24,11 +24,14 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QResource>
+#include <QDragEnterEvent>
+#include <QMimeData>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "editdialog.h"
 #include "hexwriter.h"
 #include "crc.h"
+
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -68,8 +71,8 @@ MainWindow::MainWindow(QWidget *parent) :
     leds_off();
     reset_flag=false;
     DeviceChanged(true);
+    setAcceptDrops(true);
 }
-
 
 //Class destructor
 MainWindow::~MainWindow()
@@ -166,12 +169,18 @@ void MainWindow::on_btnInput_clicked()
     QString fileName = QFileDialog::getOpenFileName(this, "Update.dat" ,NULL, "dat files (*.dat);;All files (*.*)");
     if(fileName.isEmpty())
         return;
+    OpenFile(fileName);
+}
 
+//Open the file update.dat
+void MainWindow::OpenFile(QString fileName)
+{
     int ret=firmware->open(fileName);
     if(ret == Firmware::NoError)
     {
         ui->txtInput->setText(fileName);
         ui->lblVersion->setText(QString("[V:%1]").arg(firmware->GetFirmwareVersion()));
+        QApplication::beep();
         return;
     }
 
@@ -194,6 +203,20 @@ void MainWindow::on_btnInput_clicked()
     ui->txtInput->clear();
 }
 
+//Drag and drop events
+void MainWindow::dragEnterEvent(QDragEnterEvent *event)
+{
+    if(event->mimeData()->hasUrls())
+        event->acceptProposedAction();
+}
+
+void MainWindow::dropEvent(QDropEvent *event)
+{
+    if(event->mimeData()->urls().size() == 1 && event->mimeData()->urls()[0].isLocalFile())
+    {
+        OpenFile(event->mimeData()->urls()[0].toLocalFile());
+    }
+}
 
 //show advanced dialog
 void MainWindow::on_btnAdvanced_clicked()
@@ -348,6 +371,7 @@ void MainWindow::on_btnSave_clicked()
             file.write(temp);
         }
         file.close();//done!
+        QApplication::beep();
     }
 }
 
