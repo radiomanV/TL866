@@ -15,10 +15,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-/**********************************************REMAPPED VECTORS********************************************************/
-#define REMAPPED_RESET_VECTOR_ADDRESS           0x1800
-#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x1808
-#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x1818
 
 //TL866 Ports settings
 #define INIT_LATA  (0b00010000)
@@ -66,9 +62,6 @@
 #define VERSION_A  1
 #define VERSION_CS 2
 
-#define OVER_HEAD   5 //Overhead: <CMD_CODE><LEN><ADDR:3>
-#define DATA_SIZE   (USBGEN_EP_SIZE - OVER_HEAD)
-
 #define READ_VERSION        0x00
 #define READ_FLASH          0x01
 #define WRITE_BOOTLOADER    0x02
@@ -84,22 +77,13 @@
 #define RESET               0xFF
 
 typedef union {
-    unsigned char _byte[USBGEN_EP_SIZE]; //For Byte Access
+    unsigned char _byte[USBGEN_EP_SIZE]; 
 
     struct {
         unsigned char CMD;
         unsigned char len;
-
-        union {
-            rom far char *pAdr; //Address Pointer
-
-            struct {
-                unsigned char low; //Little-endian order
-                unsigned char high;
-                unsigned char upper;
-            };
-        } ADR;
-        unsigned char data[DATA_SIZE];
+        rom far  char *pAdr;
+        unsigned char data[USBGEN_EP_SIZE - 5];
     };
 } DATA_PACKET;
 
@@ -107,6 +91,11 @@ extern void _startup(void);
 void high_ISR(void);
 void low_ISR(void);
 
+
+/**********************************************REMAPPED VECTORS********************************************************/
+#define REMAPPED_RESET_VECTOR_ADDRESS           0x1800
+#define REMAPPED_HIGH_INTERRUPT_VECTOR_ADDRESS	0x1808
+#define REMAPPED_LOW_INTERRUPT_VECTOR_ADDRESS	0x1818
 
 #pragma code REMAPPED_RESET_VECTOR = REMAPPED_RESET_VECTOR_ADDRESS
 
@@ -527,7 +516,7 @@ void config_io()
 
 void ReadProgMem(void)
 {
-	memcpypgm2ram(&txdatapacket[0], (const far rom void*) rxdatapacket.ADR.pAdr, rxdatapacket.len);
+	memcpypgm2ram(&txdatapacket[0], (const far rom void*) rxdatapacket.pAdr, rxdatapacket.len);
 }
 
 
@@ -870,129 +859,15 @@ void ProcessIo(void)
 	}
 }
 
-
-// USB Callback handling routines -----------------------------------------------------------
-
-// Call back that is invoked when a USB suspend is detected
-
-void USBCBSuspend(void)
-{
-}
-
-// This call back is invoked when a wakeup from USB suspend is detected.
-
-void USBCBWakeFromSuspend(void)
-{
-}
-
-// The USB host sends out a SOF packet to full-speed devices every 1 ms.
-
-void USBCB_SOF_Handler(void)
-{
-	// No need to clear UIRbits.SOFIF to 0 here. Callback caller is already doing that.
-}
-
-// The purpose of this callback is mainly for debugging during development.
-// Check UEIR to see which error causes the interrupt.
-
-void USBCBErrorHandler(void)
-{
-	// No need to clear UEIR to 0 here.
-	// Callback caller is already doing that.
-}
-
-// Check other requests callback
-
-void USBCBCheckOtherReq(void)
-{
-}
-
-// Callback function is called when a SETUP, bRequest: SET_DESCRIPTOR request arrives.
-
-void USBCBStdSetDscHandler(void)
-{
-	// You must claim session ownership if supporting this request
-}
-
-//This function is called when the device becomes initialized
-
-void USBCBInitEP(void)
-{
-	//Enable the application endpoints
-	USBEnableEndpoint(USBGEN_EP_NUM, USB_OUT_ENABLED | USB_IN_ENABLED | USB_HANDSHAKE_ENABLED | USB_DISALLOW_SETUP);
-	USBOutHandle = USBGenRead(USBGEN_EP_NUM, (BYTE*) & rxdatapacket, USBGEN_EP_SIZE);
-}
-
-// Send resume call-back
-
-void USBCBSendResume(void)
-{
-	static WORD delay_count;
-	// Verify that the host has armed us to perform remote wakeup.
-	if (USBGetRemoteWakeupStatus() == TRUE) {
-		// Verify that the USB bus is suspended (before we send remote wakeup signalling).
-		if (USBIsBusSuspended() == TRUE) {
-			USBMaskInterrupts();
-
-			// Bring the clock speed up to normal running state
-			USBCBWakeFromSuspend();
-			USBSuspendControl = 0;
-			USBBusIsSuspended = FALSE;
-
-			// Section 7.1.7.7 of the USB 2.0 specifications indicates a USB
-			// device must continuously see 5ms+ of idle on the bus, before it sends
-			// remote wakeup signalling.  One way to be certain that this parameter
-			// gets met, is to add a 2ms+ blocking delay here (2ms plus at
-			// least 3ms from bus idle to USBIsBusSuspended() == FLAG_TRUE, yeilds
-			// 5ms+ total delay since start of idle).
-			//5ms+ total delay since start of idle).
-			delay_count = 3600U;
-			do {
-				delay_count--;
-			} while (delay_count);
-
-			//Now drive the resume K-state signalling onto the USB bus.
-			USBResumeControl = 1; // Start RESUME signaling
-			delay_count = 1800U; // Set RESUME line for 1-13 ms
-			do {
-				delay_count--;
-			} while (delay_count);
-			USBResumeControl = 0; //Finished driving resume signalling
-
-			USBUnmaskInterrupts();
-		}
-	}
-}
-
 // USB callback function handler
 
 BOOL USER_USB_CALLBACK_EVENT_HANDLER(int event, void *pdata, WORD size)
 {
 	switch (event) {
-	case EVENT_TRANSFER:
-		break;
-	case EVENT_SOF:
-		USBCB_SOF_Handler();
-		break;
-	case EVENT_SUSPEND:
-		USBCBSuspend();
-		break;
-	case EVENT_RESUME:
-		USBCBWakeFromSuspend();
-		break;
 	case EVENT_CONFIGURED:
-		USBCBInitEP();
-		break;
-	case EVENT_SET_DESCRIPTOR:
-		USBCBStdSetDscHandler();
-		break;
-	case EVENT_EP0_REQUEST:
-		USBCBCheckOtherReq();
-		break;
-	case EVENT_BUS_ERROR:
-		USBCBErrorHandler();
-		break;
-	case EVENT_TRANSFER_TERMINATED:
+	//Enable the application endpoints
+	USBEnableEndpoint(USBGEN_EP_NUM, USB_OUT_ENABLED | USB_IN_ENABLED | USB_HANDSHAKE_ENABLED | USB_DISALLOW_SETUP);
+	USBOutHandle = USBGenRead(USBGEN_EP_NUM, (BYTE*) & rxdatapacket, USBGEN_EP_SIZE);
 		break;
 	default:
 		break;

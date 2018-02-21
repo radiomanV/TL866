@@ -139,20 +139,9 @@
 //------------------------------------------------------------------------------------------------------------------
 
 #define USB_SUPPORT_DEVICE
-
 #define USB_NUM_STRING_DESCRIPTORS 3
-
-//#define USB_INTERRUPT_LEGACY_CALLBACKS
 #define USB_ENABLE_ALL_HANDLERS
-//#define USB_ENABLE_SUSPEND_HANDLER
-//#define USB_ENABLE_WAKEUP_FROM_SUSPEND_HANDLER
-//#define USB_ENABLE_SOF_HANDLER
-//#define USB_ENABLE_ERROR_HANDLER
-//#define USB_ENABLE_OTHER_REQUEST_HANDLER
-//#define USB_ENABLE_SET_DESCRIPTOR_HANDLER
-//#define USB_ENABLE_INIT_EP_HANDLER
-//#define USB_ENABLE_EP0_DATA_HANDLER
-//#define USB_ENABLE_TRANSFER_COMPLETE_HANDLER
+
 
 /** DEVICE CLASS USAGE *********************************************/
 #define USB_USE_GEN
