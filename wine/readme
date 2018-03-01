@@ -1,5 +1,5 @@
-Simple low level winelib usb wrapper for Minipro V6.0/V6.10/V6.13/V6.16/V6.17/V6.50/V6.60
-This version will autodetect the MiniPro.exe version and it should be compatible with future versions.
+Simple low level winelib usb wrapper for Minipro V6.xx
+This version will autodetect the MiniPro.exe version.
 
 Add the following rule to the udev subsystem:
 open terminal and as root type:
@@ -12,8 +12,6 @@ How to install:
 2. Copy the provided setupapi.dll file in the minipro folder
 3. Run the Minipro.exe
 
-
-Also be sure to add a rule to the udev subsystem (see above) to permit libusb access to usb interface from an regular user.
 
 How to compile:
 1. Install wine, wine-devel, libusb-devel, libudev-devel packages
