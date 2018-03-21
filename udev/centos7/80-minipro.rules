@@ -1,0 +1,5 @@
+BUS!="usb", ACTION!="add", SUBSYSTEM!=="usb_device", GOTO="minipro_rules_end"
+
+ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="e11c", MODE="0666"
+
+LABEL="minipro_rules_end"
