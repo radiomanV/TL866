@@ -20,6 +20,7 @@
 * USA.
 */
 
+#include <QUrl>
 #include <QWidget>
 #include <QFileDialog>
 #include <QMessageBox>
