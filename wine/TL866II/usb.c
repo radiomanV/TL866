@@ -30,7 +30,7 @@ PULONG LengthTransferred;
 LPOVERLAPPED Overlapped;
 }Args;
 
-//replacement functions for minipro. Function prototypes and calling convention must be the same as in Xgpro.exe, otherwise the application will crash.
+//replacement functions for Xgpro. Function prototypes and calling convention must be the same as in Xgpro.exe, otherwise the application will crash.
 int  open_devices(int *error);
 void close_devices();
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient, LPVOID NotificationFilter, DWORD Flags);
@@ -38,7 +38,7 @@ BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID, ULONG 
 BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID, PUCHAR Buffer, ULONG BufferLength, PULONG LengthTransferred, LPOVERLAPPED Overlapped);
 
 //helper functions
-BOOL patch_minipro();
+BOOL patch_xgpro();
 BOOL patch_function(char *library, char *func, void *funcaddress);
 void async_transfer(Args *args);
 void  notifier_function();
@@ -123,7 +123,7 @@ BOOL patch_function(char *library, char *func, void *funcaddress)
 
 
 //Patcher function. Called from DllMain. Return TRUE if patch was ok and continue with program loading or FALSE to exit with error.
-BOOL patch_minipro()
+BOOL patch_xgpro()
 {
 
 	//Get the BaseAddress, NT Header and Image Import Descriptor
@@ -154,7 +154,7 @@ BOOL patch_minipro()
 	//check if all pointers are o.k.
 	if (!p_opendevices)
 	{
-		printf("Functions signature not found! Unknown MiniPro version.\n");
+		printf("Functions signature not found! Unknown Xgpro version.\n");
 		return FALSE;//nope, exit with error.
 	}
 
@@ -171,7 +171,7 @@ BOOL patch_minipro()
 	printf("Devices count found at  0x%08X\n", (DWORD)p_devicescount);
 
 
-	//Patch all low level functions in MiniPro.exe to point to our custom functions.
+	//Patch all low level functions in Xgpro.exe to point to our custom functions.
 	BYTE t[] = { 0x68, 0, 0, 0, 0, 0xc3 };// push xxxx, ret; an absolute Jump replacement.
 	DWORD *p_func = (DWORD*)&t[1];
     	DWORD dwOldProtection;
@@ -196,7 +196,7 @@ BOOL patch_minipro()
 
 
 
-//Minipro replacement functions
+//Xgpro replacement functions
 int open_devices(int *error)
 {
 	printf("Open devices.\n");
@@ -485,7 +485,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	case DLL_PROCESS_ATTACH:
 		DisableThreadLibraryCalls(hinstDLL);
 		printf("Dll Loaded.\n");
-		if (!patch_minipro())
+		if (!patch_xgpro())
 		{
 			printf("Dll Unloaded.\n");
 			return FALSE;
