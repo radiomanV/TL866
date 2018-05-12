@@ -270,7 +270,7 @@ void close_devices()
 		{
 			if (device_handle[i] != NULL)
 			{
-				//libusb_release_interface(device_handle[i], 0);
+				libusb_release_interface(device_handle[i], 0);
 				libusb_close(device_handle[i]);
 				device_handle[i] = NULL;
 			}
