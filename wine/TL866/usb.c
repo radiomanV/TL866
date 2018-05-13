@@ -333,7 +333,7 @@ unsigned int  uread(HANDLE hDevice, unsigned char *data, size_t size)
 	size_t bytes_read;
 	if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
 		return 0;
-	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1, data, size, &bytes_read, 3000);
+	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1, data, size, &bytes_read, 10000);
 	libusb_release_interface(device_handle[(int)hDevice], 0);
 	return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
 }
@@ -348,7 +348,7 @@ BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size)
 	size_t bytes_writen;
 	if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
 		return 0;
-	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1, data, size, &bytes_writen, 3000);
+	int ret = libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1, data, size, &bytes_writen, 10000);
 	libusb_release_interface(device_handle[(int)hDevice], 0);
 	return (ret == LIBUSB_SUCCESS);
 }
