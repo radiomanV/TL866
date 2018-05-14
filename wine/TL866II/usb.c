@@ -223,7 +223,7 @@ int open_devices(int *error)
 	
 	*devices_count = 0;
 
-	int devices_found = 0, i, ret;
+	int devices_found = 0, ret;
 	struct libusb_device_descriptor desc;
 	int count = libusb_get_device_list(ctx, &devs);
 
@@ -232,7 +232,7 @@ int open_devices(int *error)
 	}
 
 
-	for (i = 0; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		ret = libusb_get_device_descriptor(devs[i], &desc);
 		if (ret !=   LIBUSB_SUCCESS)
 		{
@@ -265,8 +265,7 @@ BOOL close_devices()
 	if (devs != NULL)
 	{
 
-		int i;;
-		for (i = 0; i < 4; i++)
+		for (int i = 0; i < 4; i++)
 		{
 			if (device_handle[i] != NULL)
 			{
