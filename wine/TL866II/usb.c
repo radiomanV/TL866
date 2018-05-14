@@ -32,7 +32,7 @@ LPOVERLAPPED Overlapped;
 
 //replacement functions for Xgpro. Function prototypes and calling convention must be the same as in Xgpro.exe, otherwise the application will crash.
 int  open_devices(int *error);
-BOOL close_devices();
+void close_devices();
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient, LPVOID NotificationFilter, DWORD Flags);
 BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID, ULONG PolicyType, ULONG ValueLength, PVOID Value);
 BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID, PUCHAR Buffer, ULONG BufferLength, PULONG LengthTransferred, LPOVERLAPPED Overlapped);
@@ -259,7 +259,7 @@ int open_devices(int *error)
 
 
 
-BOOL close_devices()
+void close_devices()
 {
 	printf("Close devices.\n");
 	if (devs != NULL)
@@ -278,7 +278,6 @@ BOOL close_devices()
 		libusb_exit(ctx);//close session
 		devs = NULL;;
 	}
-	return TRUE;
 }
 
 
