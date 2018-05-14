@@ -214,7 +214,7 @@ int open_devices(GUID *guid, int *error)
 	usb_handle[2] = INVALID_HANDLE_VALUE;
 	usb_handle[3] = INVALID_HANDLE_VALUE;
 
-	int devices_found = 0, i, ret;
+	int devices_found = 0, ret;
 	struct libusb_device_descriptor desc;
 	int count = libusb_get_device_list(ctx, &devs);
 
@@ -223,7 +223,7 @@ int open_devices(GUID *guid, int *error)
 	}
 
 
-	for (i = 0; i < count; i++) {
+	for (int i = 0; i < count; i++) {
 		ret = libusb_get_device_descriptor(devs[i], &desc);
 		if (ret !=   LIBUSB_SUCCESS)
 		{
@@ -252,10 +252,8 @@ void close_devices()
 	printf("Close devices.\n");
 	if (devs != NULL)
 	{
-
-		int i;
 		EnterCriticalSection(&lock);
-		for (i = 0; i < 4; i++)
+		for (int i = 0; i < 4; i++)
 		{
 			if (device_handle[i] != NULL)
 			{
