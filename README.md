@@ -6,7 +6,7 @@ itself.  It includes software for dumping, reprogramming, and
 manipulating the firmware.  Schematics and discussion of internal 
 operations are also here.
 
-Here you can find a linux USB wrapper for TL866 and TL866II which make these programmers
+Also here you can find a linux USB wrapper for TL866 and TL866II which make these programmers
 native software to work with Wine. The wrapper is located in wine folder.  
 
 
