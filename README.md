@@ -6,8 +6,8 @@ itself.  It includes software for dumping, reprogramming, and
 manipulating the firmware.  Schematics and discussion of internal 
 operations are also here.
 
-These programs are not for using the TL866 to read and write chips.  Use 
-https://github.com/vdudouyt/minipro for that.
+Here you can find a linux USB wrapper for TL866 and TL866II which make these programmers
+native software to work with Wine. The wrapper is located in wine folder.  
 
 
 ## Installation of the TL866 Updater on Linux
