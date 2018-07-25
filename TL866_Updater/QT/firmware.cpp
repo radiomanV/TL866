@@ -235,17 +235,21 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
 {
     int i,index=0x0A;
     unsigned char o1,o2;
-
+    ushort crc16;
     CRC crc;
     //compute the right crc16. The last two bytes in the info table is the crc16 in little-endian order and must be max. 0x1FFF, otherwise the decryption will be wrong.
-    while(crc.crc16(key,BLOCK_SIZE-2, 0) >0x1FFF)//a little brute-force method to match the required CRC;
+    //a little brute-force method to match the required CRC;
+    do
     {
         for(i=32;i<BLOCK_SIZE-2;i++)
         {
             key[i] = (unsigned char) (qrand() % 0x100);
         }
-    }
-    ushort crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
+        key[34] = 0;
+        for (i = 5; i < 34; i++)
+            key[34] += key[i];
+        crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
+    }while(crc16 > 0x1FFF);
     key[BLOCK_SIZE-2]=(crc16 & 0xff);
     key[BLOCK_SIZE-1]=(crc16 >> 8);
 

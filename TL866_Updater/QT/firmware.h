@@ -61,6 +61,10 @@ public:
         uchar   device_code[8];
         uchar   serial_number[24];
         uchar   hardware_version;
+        uchar   b0;
+        uchar   b1;
+        uchar   b2;
+        uchar   b3;
     }TL866_REPORT;
 
 
