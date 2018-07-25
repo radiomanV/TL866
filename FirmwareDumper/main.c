@@ -204,9 +204,8 @@ unsigned long int reset_switch;//Here is the RAM context switch location
 
 //Used function prototypes
 unsigned short crc16(unsigned char *data, unsigned short len);
-void make_crc(void);
-void decrypt(unsigned char version);
-void encrypt(unsigned char version);
+void decrypt_serial(unsigned char version);
+void encrypt_serial(unsigned char version);
 void FlashErase(unsigned long address);
 void WriteBlock(unsigned long address, unsigned char* buffer);
 void WriteBuffer(unsigned long address);
@@ -260,85 +259,81 @@ unsigned short crc16(unsigned char *data, unsigned short len)
 	return crc;
 }
 
-
-//Fill the info array[32-77] with random values until the crc16 match the criteria crc<0x2000
-
-void make_crc(void)
-{
-	int i;
-	unsigned short crc;
-	while (crc16(info, sizeof(info) - 2) > 0x1FFF) {
-		for (i = 0; i < 46; i++) {
-			info[i + 32] = (unsigned char) rand() % 0x100;
-		}
-	}
-	crc = crc16(info, sizeof(info) - 2);
-	info[sizeof(info) - 1] = crc >> 8 & 0x1F; //yes, 0x1F
-	info[sizeof(info) - 2] = crc & 0xFF;
-}
-
-
 //decrypt info array
 
-void decrypt(unsigned char version)
+void decrypt_serial(unsigned char version)
 {
 	int i, index = 0x0A;
-	int s = sizeof(info);
 	unsigned char o1, o2;
 	const far rom unsigned char* xorTableptr = (version == VERSION_A ? &A_Table[0] : &CS_Table[0]);
 	//first step, xoring each element from table with a random value from xortable. Starting index is 0x0A. Index is incremented modulo 256
-	for (i = 0; i < s; i++) {
+	for (i = 0; i < sizeof(info); i++) {
 		info[i] ^= xorTableptr[index++];
 		index &= 0xFF;
 	}
 	/*next step, right shift whole array by 3 bits. Because anding with 0x1F, the last byte from info table must be always <0x20 in the encryption step, greater values will be trimmed at decryption step;
 	 this is why the crc16 must be 0x1FFF max., the last byte from info table is MSB of crc16.
 	 */
-	for (i = 0; i < s - 1; i++) {
-		o1 = (info[s - i - 1] >> 3) & 0x1F;
-		o2 = info[s - i - 2] << 5;
-		info[s - i - 1] = o1 | o2;
+	for (i = 0; i < sizeof(info) - 1; i++) {
+		o1 = (info[sizeof(info) - i - 1] >> 3) & 0x1F;
+		o2 = info[sizeof(info) - i - 2] << 5;
+		info[sizeof(info) - i - 1] = o1 | o2;
 	}
 	info[0] >>= 3;
 	info[0] &= 0x1F;
 	//Last step, descrambling data; we put each element in the right position. At the end we have the decrypted serial and devcode ;)
-	for (i = 0; i < s / 2; i += 4) {
+	for (i = 0; i < sizeof(info) / 2; i += 4) {
 		o1 = info[i];
-		info[i] = info[s - i - 1];
-		info[s - i - 1] = o1;
+		info[i] = info[sizeof(info) - i - 1];
+		info[sizeof(info) - i - 1] = o1;
 	}
 }
 
 //encrypt the info array, ready to be inserted in TL866 firmware.
  
-void encrypt(unsigned char version)
+void encrypt_serial(unsigned char version)
 {
 	int i, index = 0x0A;
-	int s = sizeof(info);
 	unsigned char o1, o2;
+    unsigned short crc;
 	const far rom unsigned char* xorTableptr = (version == VERSION_A ? A_Table : CS_Table);
-	make_crc(); //compute the right crc16. The last two bytes in the info table is the crc16 in little-endian and must be max. 0x1FFF otherwise decryption will be wrong.
-
+    
+	/*  compute the right crc16. The last two bytes in the info table is the crc16 in little-endian order
+     *  and must be max. 0x1FFF otherwise the decryption will be wrong.
+     */
+	do {
+        //Fill the info array[32-77] with random values until the crc16 match the criteria crc<0x2000
+		for (i = 32; i < 78; i++) {
+			info[i] = (unsigned char) rand() % 0x100;
+		}
+        info[34] = 0;
+        for (i = 5; i < 34; i++)
+            info[34] += info[i];
+    crc = crc16(info, sizeof(info) - 2);
+	} while (crc > 0x1FFF);
+	info[sizeof(info) - 1] = crc >> 8 & 0x1F; //yes, 0x1F
+	info[sizeof(info) - 2] = crc & 0xFF;
+    
 	/*Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
 	 So we have the following 10 swaps:(0-79),(4-75),(8-71),(12-67),(16-63),(20-59),(24-55),(28-51),(32-47),(36-43).
 	 */
-	for (i = 0; i < s / 2; i += 4) {
+	for (i = 0; i < sizeof(info) / 2; i += 4) {
 		o1 = info[i];
-		info[i] = info[s - i - 1];
-		info[s - i - 1] = o1;
+		info[i] = info[sizeof(info) - i - 1];
+		info[sizeof(info) - i - 1] = o1;
 		//printf("(%d-%d),",i,s-i-1);
 	}
 	//Next step, left shift whole array by 3 bits .
-	for (i = 0; i < s - 1; i++) {
+	for (i = 0; i < sizeof(info) - 1; i++) {
 		o1 = (info[i] << 3) & 0xF8;
 		o2 = info[i + 1] >> 5;
 		info[i] = o2 | o1;
 	}
-	info[s - 1] <<= 3;
-	info[s - 1] &= 0xF8;
+	info[sizeof(info) - 1] <<= 3;
+	info[sizeof(info) - 1] &= 0xF8;
 
 	//Last step, xoring each info table value with a random number from xortable. The start index in this table is 0x0A. Index is incremented modulo 256
-	for (i = 0; i < s; i++) {
+	for (i = 0; i < sizeof(info); i++) {
 		info[i] ^= xorTableptr[index++];
 		index &= 0xFF;
 	}
@@ -419,8 +414,8 @@ void WriteConfig(unsigned char version)
 	memcpypgm2ram(buffer, (const far rom void*) addr, 0x400); //copy 1024bytes from flash to buffer
 	memcpypgm2ram(&t, (const far rom void*) DEVICE_TYPE_LOCATION, 1);
 	memcpypgm2ram(&info[0], infoTable, 80);
-	decrypt(t);
-	encrypt(version);
+	decrypt_serial(t);
+	encrypt_serial(version);
 	memcpy(buffer + 0x100, (void*) &info[0], 80); //copy the info array to buffer
 	memcpypgm2ram(buffer, xorTableptr, 0x100); //copy xortable to buffer
 	FlashErase(addr); //erase data block
@@ -435,7 +430,7 @@ void WriteInfo(unsigned char *info_ptr)
 	memcpypgm2ram(&t, (const far rom void*) DEVICE_TYPE_LOCATION, 1);
 	memcpypgm2ram(buffer, (const far rom void*) addr, 0x400); //copy 1024bytes from flash to buffer
 	memcpy(&info[0], (void*) info_ptr, 32); //copy device and serial code received over the usb to info array
-	encrypt(t); //encrypt the info array with (t) version of the key
+	encrypt_serial(t); //encrypt the info array with (t) version of the key
 	memcpy(buffer + 0x100, (void*) &info[0], 80); //copy the info array to buffer
 	FlashErase(addr); //erase data block
 	WriteBuffer(addr); //write data block
@@ -607,7 +602,7 @@ void ProcessIo(void)
 			memcpypgm2ram(&txdatapacket[32], (const far rom void*) DEVICE_TYPE_LOCATION, 1); //get the bootloader version
 			memcpypgm2ram(&txdatapacket[33], (const far rom void*) DEVICE_COPY_PROTECT, 1); //get the copy protect byte
 			memcpypgm2ram(&info[0], infoTable, 80); //copy the encrypted info array
-			decrypt(txdatapacket[32]); //decrypt the info array
+			decrypt_serial(txdatapacket[32]); //decrypt the info array
 			memcpy(txdatapacket, (void*) info, 32);
 			txdatapacket[33] &= 0x4;
 			count = 34;
