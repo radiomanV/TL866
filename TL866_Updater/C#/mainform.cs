@@ -739,6 +739,10 @@ namespace TL866
                 }
                 else
                 {
+                    byte[] info = new byte[Firmware.BLOCK_SIZE];
+                    Array.Copy(buffer, Firmware.SERIAL_OFFSET, info, 0, info.Length);
+                    firmware.DecryptSerial(info, buffer);
+                    File.WriteAllBytes(filepath+"_info", info);
                     File.WriteAllBytes(filepath, buffer);
                 }
                 MessageBox.Show("Firmware dump complete!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Information);
