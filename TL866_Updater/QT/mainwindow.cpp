@@ -780,20 +780,20 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
                                                                                                  .arg(report.firmware_version_major)
                                                                                                  .arg(report.firmware_version_minor):
                                                                                                  "Firmware version: Bootloader");
-            if (report.b3 !=0)
+            uchar cs = 0;
+            for (int i = 5; i < 8; i++)
+                cs += report.device_code[i];
+            for(int i = 0; i < 24; i++)
+                cs+= report.serial_number[i];
+            cs += report.b0;
+            cs += report.b1;
+
+            if (report.firmware_version_minor > 82 && cs != report.b2 && report.b3 == 0)
             {
-                uchar cs = 0;
-                for (int i = 5; i < 8; i++)
-                    cs += report.device_code[i];
-                for(int i = 0; i < 24; i++)
-                    cs+= report.serial_number[i];
-                cs += report.b0;
-                cs += report.b1;
-                if (cs != report.b2)
-                     ui->txtInfo->append("Bad serial checksum.");
-                else
-                     ui->txtInfo->append("Bad serial.");
+                ui->txtInfo->append("Bad serial checksum.");
             }
+            if (report.firmware_version_minor > 82 && report.b3 != 0)
+                ui->txtInfo->append("Bad serial.");
             usb_device->close_device();
         }
         else//error oppening device
@@ -803,7 +803,7 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
     else//no device connected
         SetBlank();
     return device_info;
-}
+ }
 
 //Helper function to get formated device and serial code
 QString MainWindow::GetFormatedString(QString devcode, QString serial)
