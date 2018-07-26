@@ -73,14 +73,11 @@ namespace TL866
         private byte m_eraseCS;
         private byte[] m_firmwareA;
         private byte[] m_firmwareCS;
-        private byte[] m_xortableA;
-        private byte[] m_xortableCS;
-
 
         public byte Version { get; private set; }
         public bool IsValid { get; private set; }
 
-        /*
+        
                 private byte[] m_xortableA = {
             0xA4, 0x1E, 0x42, 0x8C, 0x3C, 0x76, 0x14, 0xC7, 0xB8, 0xB5, 0x81, 0x4A, 0x13, 0x37, 0x7C, 0x0A,
             0xFE, 0x3B, 0x63, 0xC1, 0xD5, 0xFD, 0x8C, 0x39, 0xD1, 0x1F, 0x22, 0xC7, 0x7F, 0x4D, 0x2F, 0x15,
@@ -118,7 +115,7 @@ namespace TL866
             0x86, 0xF3, 0x2D, 0xEF, 0x8C, 0x7E, 0xF9, 0x81, 0x34, 0xAA, 0x48, 0x5A, 0x93, 0x0A, 0xF2, 0x43,
             0x62, 0x42, 0x97, 0xAF, 0x53, 0x10, 0x8D, 0xE6, 0xA1, 0x8E, 0x1C, 0x62, 0xEB, 0xB1, 0xEE, 0x79
         };
-        */
+        
         public void Open(string UpdateDat_Path)
         {
             IsValid = false;
@@ -163,31 +160,12 @@ namespace TL866
                                           inbuffer[0x51C + ((i / 80) & 0xFF)]);
             }
 
-            //extract xor table arrays          
-            byte[] ta = new byte[ENCRYPTED_FIRMWARE_SIZE];
-            byte[] tcs = new byte[ENCRYPTED_FIRMWARE_SIZE];
-            Array.Copy(m_firmwareA, ta, ENCRYPTED_FIRMWARE_SIZE);
-            Array.Copy(m_firmwareCS, tcs, ENCRYPTED_FIRMWARE_SIZE);
-            m_xortableA = new byte[XOR_TABLE_SIZE];
-            m_xortableCS = new byte[XOR_TABLE_SIZE];
-            for (uint i = 0; i < ENCRYPTED_FIRMWARE_SIZE; i++)
-            {
-                ta[i] = (byte)~ta[i];
-                tcs[i] = (byte)~tcs[i];
-            }
-            for (uint i = 0; i < 16; i++)
-            {
-                Array.Copy(ta, XOR_TABLE_START + i * 320, m_xortableA, i * 16, 16);
-                Array.Copy(tcs, XOR_TABLE_START + i * 320, m_xortableCS, i * 16, 16);
-            }
-
             //Check if decryption was O.K.
             CRC32 crc32 = new CRC32();
             uint crca = ~crc32.GetCRC32(m_firmwareA, 0xFFFFFFFF);
             uint crccs = ~crc32.GetCRC32(m_firmwareCS, 0xFFFFFFFF);
             if (crca != BitConverter.ToUInt32(inbuffer, 4) || crccs != BitConverter.ToUInt32(inbuffer, 12))
                 throw new Exception(UpdateDat_Path + "\nData CRC error!");
-
             //Check if decrypted firmware signatures are O.K.
             if (BitConverter.ToUInt32(GetUnencryptedFirmware((int)FIRMWARE_TYPE.FIRMWARE_A),
                     FIRMWARE_SIGNATURE_OFFSET) != FIRMWARE_SIGNATURE ||
@@ -221,13 +199,12 @@ namespace TL866
         {
             byte[] data = new byte[UNENCRYPTED_FIRMWARE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
-            byte index = 0x15;
+            byte index = (byte)(type == (int)FIRMWARE_TYPE.FIRMWARE_A ? m_eraseA : m_eraseCS);
             int block = 0;
             //Decrypt each data block
             for (uint i = 0; i < ENCRYPTED_FIRMWARE_SIZE; i += BLOCK_SIZE)
             {
-                Array.Copy(type == (int)FIRMWARE_TYPE.FIRMWARE_A ? m_firmwareA : m_firmwareCS, i, buffer, 0,
-                    BLOCK_SIZE);
+                Array.Copy(type == (int)FIRMWARE_TYPE.FIRMWARE_A ? m_firmwareA : m_firmwareCS, i, buffer, 0, BLOCK_SIZE);
                 Decrypt_Block(buffer, type == (int)FIRMWARE_TYPE.FIRMWARE_A ? m_xortableA : m_xortableCS, index);
                 Array.Copy(buffer, 0, data, block, BLOCK_SIZE - 16);
                 block += BLOCK_SIZE - 16;
@@ -240,7 +217,7 @@ namespace TL866
         {
             byte[] data = new byte[ENCRYPTED_FIRMWARE_SIZE];
             byte[] buffer = new byte[BLOCK_SIZE];
-            byte index = 0x15;
+            byte index = (byte)(type == (int)FIRMWARE_TYPE.FIRMWARE_A ? m_eraseA : m_eraseCS);
             int block = 0;
             //Encrypt each data block
             for (uint i = 0; i < firmware.Length; i += BLOCK_SIZE - 16)
@@ -406,6 +383,7 @@ namespace TL866
         {
             get { return buffer[39]; }
         }
+       
     }
 
     public class Dumper_Report

@@ -312,16 +312,28 @@ namespace TL866
                     Firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
                 TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", serial,
                     Firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
-                TxtInfo.AppendText(string.Format("Firmware version: {0}",
+                TxtInfo.AppendText(string.Format("Firmware version: {0}\n",
                     isDumperActive
                         ? "Firmware dumper"
                         : tl866_report.Device_Status == (byte) Firmware.DEVICE_STATUS.NORMAL_MODE
                             ? string.Format("{0}.{1}.{2}", tl866_report.hardware_version,
                                 tl866_report.firmware_version_major,
                                 tl866_report.firmware_version_minor)
-                            : "Bootloader"));
+                            : "Bootloader\n"));
                 BtnDump.Enabled = isDumperActive;
                 BtnAdvanced.Enabled = isDumperActive;
+                if (tl866_report.buffer[43] !=0)
+                {
+                    byte cs = 0;
+                    for (int i = 12; i < 39; i++)
+                        cs += tl866_report.buffer[i];
+                    cs += tl866_report.buffer[40];
+                    cs += tl866_report.buffer[41];
+                    if (cs != tl866_report.buffer[42])
+                        TxtInfo.AppendText("Bad serial checksum.");
+                    else
+                        TxtInfo.AppendText("Bad serial.");
+                }
             }
             else
             {
@@ -742,7 +754,7 @@ namespace TL866
                     byte[] info = new byte[Firmware.BLOCK_SIZE];
                     Array.Copy(buffer, Firmware.SERIAL_OFFSET, info, 0, info.Length);
                     firmware.DecryptSerial(info, buffer);
-                    File.WriteAllBytes(filepath+"_info", info);
+                    File.WriteAllBytes(filepath+"_info.bin", info);
                     File.WriteAllBytes(filepath, buffer);
                 }
                 MessageBox.Show("Firmware dump complete!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Information);
