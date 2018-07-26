@@ -194,7 +194,7 @@ void MainWindow::OpenFile(QString fileName)
         QMessageBox::warning(this,"TL866",QString("%1\n\nFile size error!").arg(fileName));
         break;
     case Firmware::CRCError:
-        QMessageBox::warning(this,"TL866",QString("%1\n\nCorrupted updated.dat file!").arg(fileName));
+        QMessageBox::warning(this,"TL866",QString("%1\n\nData CRC error!").arg(fileName));
         break;
     case Firmware::DecryptionError:
         QMessageBox::warning(this,"TL866","Firmware decryption error!");
@@ -780,6 +780,20 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
                                                                                                  .arg(report.firmware_version_major)
                                                                                                  .arg(report.firmware_version_minor):
                                                                                                  "Firmware version: Bootloader");
+            if (report.b3 !=0)
+            {
+                uchar cs = 0;
+                for (int i = 5; i < 8; i++)
+                    cs += report.device_code[i];
+                for(int i = 0; i < 24; i++)
+                    cs+= report.serial_number[i];
+                cs += report.b0;
+                cs += report.b1;
+                if (cs != report.b2)
+                     ui->txtInfo->append("Bad serial checksum.");
+                else
+                     ui->txtInfo->append("Bad serial.");
+            }
             usb_device->close_device();
         }
         else//error oppening device

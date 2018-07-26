@@ -75,6 +75,16 @@ int Firmware::open(const QString &filename)
     if((upd.A_CRC32!=~crc.crc32(m_firmwareA,sizeof(m_firmwareA), 0xFFFFFFFF))||(upd.CS_CRC32!=~crc.crc32(m_firmwareCS,sizeof(m_firmwareCS), 0xFFFFFFFF)))
         return CRCError;
 
+    //Check if decrypted firmware signatures are O.K.
+    unsigned char ta [UNENCRYPTED_FIRMWARE_SIZE];
+    unsigned char tcs [UNENCRYPTED_FIRMWARE_SIZE];
+    decrypt_firmware(ta,VERSION_TL866A);
+    decrypt_firmware(tcs,VERSION_TL866CS);
+    unsigned int sa = (ta[FIRMWARE_SIGNATURE_OFFSET+3] << 24) | (ta[FIRMWARE_SIGNATURE_OFFSET+2] << 16) | (ta[FIRMWARE_SIGNATURE_OFFSET+1] << 8) | ta[FIRMWARE_SIGNATURE_OFFSET];
+    unsigned int scs = (tcs[FIRMWARE_SIGNATURE_OFFSET+3] << 24) | (tcs[FIRMWARE_SIGNATURE_OFFSET+2] << 16) | (tcs[FIRMWARE_SIGNATURE_OFFSET+1] << 8) | tcs[FIRMWARE_SIGNATURE_OFFSET];
+    if(sa != (unsigned int)FIRMWARE_SIGNATURE || scs != (unsigned int)FIRMWARE_SIGNATURE)
+        return DecryptionError;
+
     m_isValid=true;
     return NoError;
 }
@@ -97,7 +107,6 @@ bool Firmware::isValid()
     return m_isValid;
 }
 
-
 //Get encrypted firmware
 void Firmware::get_firmware(unsigned char *data_out, int type, int key)
 {
@@ -115,21 +124,12 @@ void Firmware::get_firmware(unsigned char *data_out, int type, int key)
 //Encrypt firmware
 void Firmware::encrypt_firmware(const unsigned char *data_in, unsigned char *data_out, int key)
 {
-    unsigned char xortable[256], data[80];
-    int i,j,index=0x15;
-    unsigned char* pEnc = key == A_KEY ? m_firmwareA : m_firmwareCS;
+    unsigned char data[BLOCK_SIZE];
+    int index = key == VERSION_TL866A ? m_eraseA : m_eraseCS;
+    unsigned char* xortable = key == VERSION_TL866A ? m_xortableA : m_xortableCS;
 
-    //extracting the xortable right from the encrypted firmware ;)
-    for(i=0;i<16;i++)
-    {
-        for(j=0;j<16;j++)
-        {
-            xortable[16 * i + j] =  ~(pEnc[320 * i + j + XOR_TABLE_START]);//try to understand this ;)
-        }
-    }
     //encrypt firmware
-
-    for(i=0;i<UNENCRYPTED_FIRMWARE_SIZE;i+=BLOCK_SIZE-16)
+    for(int i=0;i<UNENCRYPTED_FIRMWARE_SIZE;i+=BLOCK_SIZE-16)
     {
         memcpy(data,data_in+i,BLOCK_SIZE-16);
         encrypt_block(data,xortable,index);
@@ -143,21 +143,14 @@ void Firmware::encrypt_firmware(const unsigned char *data_in, unsigned char *dat
 //decrypt firmware
 void Firmware::decrypt_firmware(unsigned char *data_out, int type)
 {
-    unsigned char xortable[XOR_TABLE_SIZE], data[BLOCK_SIZE];
-    int i,j,index=0x15;
-    unsigned char* pEnc = type == VERSION_TL866A ? m_firmwareA : m_firmwareCS;
+    unsigned char data[BLOCK_SIZE];
+    int index = type == VERSION_TL866A ? m_eraseA : m_eraseCS;
+    unsigned char* xortable = type == VERSION_TL866A ? m_xortableA : m_xortableCS;
+    unsigned char* pEnc = type == A_KEY ? m_firmwareA : m_firmwareCS;
 
-    //extracting xortable right from the encrypted firmware ;)
-    for(i=0;i<16;i++)
-    {
-        for(j=0;j<16;j++)
-        {
-            xortable[16 * i + j] =  ~(pEnc[320 * i + j + XOR_TABLE_START]);
-        }
-    }
     //decrypt firmware
 
-    for(i=0;i<ENCRYPTED_FIRMWARE_SIZE;i+=BLOCK_SIZE)
+    for(int i=0;i<ENCRYPTED_FIRMWARE_SIZE;i+=BLOCK_SIZE)
     {
         memcpy(data,pEnc+i,BLOCK_SIZE);
         decrypt_block(data,xortable,index);
@@ -171,23 +164,22 @@ void Firmware::decrypt_firmware(unsigned char *data_out, int type)
 //encrypt a block of 80 bytes
 void Firmware::encrypt_block(unsigned char *data, unsigned char *xortable, int index)
 {
-    int i;
     unsigned char o1,o2;
     //First step, fill the last 16 bytes of data buffer with random generated values.
-    for(i=0;i<16;i++){
+    for(int i=0;i<16;i++){
         data[i+64]=(unsigned char) qrand() % 0x100;
     }
 
     /* Second step, data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
     So, we have the following 10 swaps:(0-79),(4-75),(8-71),(12-67),(16-63),(20-59),(24-55),(28-51),(32-47),(36-43).
     */
-    for(i=0;i<BLOCK_SIZE/2;i+=4){
+    for(int i=0;i<BLOCK_SIZE/2;i+=4){
         o1=data[i];
         data[i]=data[BLOCK_SIZE-i-1];
         data[BLOCK_SIZE-i-1]=o1;
     }
     //Next step, left shifting whole array by 3 bits.
-    for(i=0;i<BLOCK_SIZE-1;i++){
+    for(int i=0;i<BLOCK_SIZE-1;i++){
         o1=(data[i]<<3) & 0xF8;
         o2=data[i+1]>>5;
         data[i]=o2 | o1;
@@ -196,7 +188,7 @@ void Firmware::encrypt_block(unsigned char *data, unsigned char *xortable, int i
     data[BLOCK_SIZE-1]&=0xF8;
 
     //Last step, xoring each data value with a random number from xortable. Index is incremented modulo 256
-    for(i=0;i<BLOCK_SIZE;i++){
+    for(int i=0;i<BLOCK_SIZE;i++){
         data[i]^=xortable[index++];
         index&=0xFF;
     }
@@ -205,16 +197,15 @@ void Firmware::encrypt_block(unsigned char *data, unsigned char *xortable, int i
 //decrypt a block of 80 bytes
 void Firmware::decrypt_block(unsigned char *data, unsigned char *xortable, int index)
 {
-    int i;
     unsigned char o1,o2;
     //first step, xoring each element with a random value from xortable. Index is incremented modulo 256
-    for(i=0;i<BLOCK_SIZE;i++){
+    for(int i=0;i<BLOCK_SIZE;i++){
         data[i]^=xortable[index++];
         index&=0xFF;
     }
 
     //next step, right shifting whole array by 3 bits.
-    for(i=0;i<BLOCK_SIZE-1;i++){
+    for(int i=0;i<BLOCK_SIZE-1;i++){
         o1=(data[BLOCK_SIZE-i-1]>>3) & 0x1F;
         o2=data[BLOCK_SIZE-i-2]<<5;
         data[BLOCK_SIZE-i-1]=o1 | o2;
@@ -223,7 +214,7 @@ void Firmware::decrypt_block(unsigned char *data, unsigned char *xortable, int i
     data[0]&=0x1F;
 
     //Last step, descrambling data; put each element in the right position. At the end we have the decrypted data block ;)
-    for(i=0;i<BLOCK_SIZE/2;i+=4){
+    for(int i=0;i<BLOCK_SIZE/2;i+=4){
         o1=data[i];
         data[i]=data[BLOCK_SIZE-i-1];
         data[BLOCK_SIZE-i-1]=o1;
@@ -233,7 +224,7 @@ void Firmware::decrypt_block(unsigned char *data, unsigned char *xortable, int i
 //Encrypt 80 bytes data block containing dev code and serial
 void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
 {
-    int i,index=0x0A;
+    int index=0x0A;
     unsigned char o1,o2;
     ushort crc16;
     CRC crc;
@@ -241,12 +232,12 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     //a little brute-force method to match the required CRC;
     do
     {
-        for(i=32;i<BLOCK_SIZE-2;i++)
+        for(int i=32;i<BLOCK_SIZE-2;i++)
         {
             key[i] = (unsigned char) (qrand() % 0x100);
         }
         key[34] = 0;
-        for (i = 5; i < 34; i++)
+        for (int i = 5; i < 34; i++)
             key[34] += key[i];
         crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
     }while(crc16 > 0x1FFF);
@@ -257,13 +248,13 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     /*Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
      So we have the following 10 swaps:(0-79),(4-75),(8-71),(12-67),(16-63),(20-59),(24-55),(28-51),(32-47),(36-43).
     */
-    for(i=0;i<BLOCK_SIZE/2;i+=4){
+    for(int i=0;i<BLOCK_SIZE/2;i+=4){
         o1=key[i];
         key[i]=key[BLOCK_SIZE-i-1];
         key[BLOCK_SIZE-i-1]=o1;
     }
     //Next step, left shift whole array by 3 bits .
-    for(i=0;i<BLOCK_SIZE-1;i++){
+    for(int i=0;i<BLOCK_SIZE-1;i++){
         o1=(key[i]<<3) & 0xF8;
         o2=key[i+1]>>5;
         key[i]=o2 | o1;
@@ -272,7 +263,7 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     key[BLOCK_SIZE-1]&=0xF8;
 
     //Last step, xoring each info table value with a random number from xortable. The start index in this table is 0x0A. Index is incremented modulo 256
-    for(i=0;i<BLOCK_SIZE;i++){
+    for(int i=0;i<BLOCK_SIZE;i++){
         key[i]^=firmware[XOR_TABLE_OFFSET+index];
         index++;
         index&=0xFF;
@@ -284,11 +275,11 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
 //Decrypt 80 bytes data block containing dev code and serial
 void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
 {
-    int i,index=0x0A;
+    int index=0x0A;
     unsigned char o1,o2;
 
     //first step, xoring each element from table with a random value from xortable. Starting index is 0x0A. Index is incremented modulo 256
-    for(i=0;i<BLOCK_SIZE;i++){
+    for(int i=0;i<BLOCK_SIZE;i++){
         key[i]^=firmware[XOR_TABLE_OFFSET+index];
         index++;
         index&=0xFF;
@@ -297,7 +288,7 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
     /*next step, right shift whole array by 3 bits. Because anding with 0x1F, the last byte from info table must be always <0x20 in the encryption step, greater values will be trimmed at decryption step;
      this is why the crc16 must be 0x1FFF max., the last byte from info table is MSB of crc16.
      */
-    for(i=0;i<BLOCK_SIZE-1;i++){
+    for(int i=0;i<BLOCK_SIZE-1;i++){
         o1=(key[BLOCK_SIZE-i-1]>>3) & 0x1F;
         o2=key[BLOCK_SIZE-i-2]<<5;
         key[BLOCK_SIZE-i-1]=o1 | o2;
@@ -306,7 +297,7 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
     key[0]&=0x1F;
 
     //Last step, descrambling data; we put each element in the right position. At the end we have the decrypted serial and devcode ;)
-    for(i=0;i<BLOCK_SIZE/2;i+=4){
+    for(int i=0;i<BLOCK_SIZE/2;i+=4){
         o1=key[i];
         key[i]=key[BLOCK_SIZE-i-1];
         key[BLOCK_SIZE-i-1]=o1;
