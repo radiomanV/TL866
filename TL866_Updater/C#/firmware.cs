@@ -40,7 +40,6 @@ namespace TL866
         public const int UPDATE_DAT_SIZE = 312348;
         public const int BLOCK_SIZE = 0x50;
         public const int XOR_TABLE_SIZE = 0x100;
-        public const int XOR_TABLE_START = 0x1EEDF;
         public const int XOR_TABLE_OFFSET = 0x1FC00;
 
         public const int SERIAL_OFFSET = 0x1FD00;
