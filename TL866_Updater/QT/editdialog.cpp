@@ -24,6 +24,7 @@
 #include "editdialog.h"
 #include "ui_editdialog.h"
 #include "firmware.h"
+#include "crc.h"
 #include <QMessageBox>
 
 EditDialog::EditDialog(QWidget *parent, QString devcode, QString serial) :
@@ -57,15 +58,21 @@ void EditDialog::on_btnRndDev_clicked()
         s.append(QString::number( qrand() % 10));
     }
     ui->txtDevcode->setText(s);
+    on_btnRndSer_clicked();
 }
 
 void EditDialog::on_btnRndSer_clicked()
 {
     int i;
     QString s;
-    for(i=0;i<24;i++)
+    CRC crc;
+    ushort crc16 = crc.crc16((uchar*)ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size(),0);
+    s.append(QString::number(crc16 >> 8, 16).toUpper());
+    s.append(QString::number(qrand()%256, 16).toUpper());
+    s.append(QString::number(crc16 & 0xFF, 16).toUpper());
+    for(i=6;i<15;i++)
     {
-        s.append(QString::number(qrand()%16,16).toUpper());
+        s.append(QString::number(qrand()%256,16).toUpper());
     }
     ui->txtSerial->setText(s);
 }
