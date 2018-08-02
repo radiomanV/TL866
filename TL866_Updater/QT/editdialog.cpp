@@ -70,7 +70,7 @@ void EditDialog::on_btnRndSer_clicked()
     s.append(QString::number(crc16 >> 8, 16).toUpper());
     s.append(QString::number(qrand()%256, 16).toUpper());
     s.append(QString::number(crc16 & 0xFF, 16).toUpper());
-    for(i=6;i<15;i++)
+    for(i=0;i<9;i++)
     {
         s.append(QString::number(qrand()%256,16).toUpper());
     }
