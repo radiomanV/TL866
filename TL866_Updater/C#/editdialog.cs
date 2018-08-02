@@ -55,7 +55,7 @@ namespace TL866
             do
             {
                 s = (crc >> 8).ToString("X2") + Utils.Generator.Next(0, 255).ToString("X2") + (crc & 0xFF).ToString("X2");
-                for (int i = 6; i < 15; i++)
+                for (int i = 0; i < 9; i++)
                     s += Utils.Generator.Next(0, 255).ToString("X2");
             } while (Firmware.Calc_CRC(TxtDevcode.Text, s));
             TxtSerial.Text = s;
