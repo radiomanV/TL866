@@ -27,7 +27,7 @@ CRC::CRC()
 {
     const uint   poly32 = 0xEDB88320;
     const ushort poly16 = 0xA001;
-    for (uint i = 0; i < 256; i++)
+    for (ushort i = 0; i < 256; i++)
     {
         uint   t32 = i;
         ushort t16 = i;
@@ -38,7 +38,7 @@ CRC::CRC()
             else
                 t32 >>= 1;
             if ((t16 & 1) == 1)
-                t16 = (ushort)((t16 >> 1) ^ poly16);
+                t16 = static_cast<ushort>((t16 >> 1) ^ poly16);
             else
                 t16 >>= 1;
         }

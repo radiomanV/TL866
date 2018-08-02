@@ -12,7 +12,7 @@ class EditDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit EditDialog(QWidget *parent = 0, QString devcode = "", QString serial = "");
+    explicit EditDialog(QWidget *parent = nullptr, QString devcode = "", QString serial = "");
     ~EditDialog();
     void GetResult(QString *devcode, QString *serial);
 

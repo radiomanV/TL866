@@ -104,7 +104,7 @@ size_t  USB::usb_read(unsigned char *data, size_t size)
     libusb_release_interface(device_handle, 0);
     if(ret !=0)
         return 0;
-    return bytes_read;
+    return static_cast<size_t>(bytes_read);
 }
 
 
@@ -117,5 +117,5 @@ size_t  USB::usb_write(unsigned char *data, size_t size)
     libusb_release_interface(device_handle, 0);
     if(ret !=0)
         return 0;
-    return bytes_writen;
+    return static_cast<size_t>(bytes_writen);
 }

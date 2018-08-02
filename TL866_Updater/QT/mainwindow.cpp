@@ -167,7 +167,7 @@ void MainWindow::TimerUpdate()
 //browse for update.dat file
 void MainWindow::on_btnInput_clicked()
 {
-    QString fileName = QFileDialog::getOpenFileName(this, "Update.dat" ,NULL, "dat files (*.dat);;All files (*.*)");
+    QString fileName = QFileDialog::getOpenFileName(this, "Update.dat" ,nullptr, "dat files (*.dat);;All files (*.*)");
     if(fileName.isEmpty())
         return;
     OpenFile(fileName);
@@ -321,7 +321,7 @@ void MainWindow::on_btnDump_clicked()
     }
 
     QString ext;
-    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
+    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",nullptr,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
         if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
@@ -341,14 +341,14 @@ void MainWindow::on_btnSave_clicked()
     if(ui->optionBoot->isChecked())
         memset(&temp.data()[BOOTLOADER_SIZE], 0xFF, UNENCRYPTED_FIRMWARE_SIZE);//if the option bootloader only is selected then clear the main firmware area(0x1800-0x1FBFF)
     memset(&temp.data()[SERIAL_OFFSET],' ',32);//add trailing spaces
-    memcpy(&temp.data()[SERIAL_OFFSET], ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size());//copy devcode to key array
-    memcpy(&temp.data()[SERIAL_OFFSET+8], ui->txtSerial->text().toLatin1().data(), ui->txtSerial->text().size());//copy serial to key array
-    firmware->encrypt_serial((uchar*)&temp.data()[SERIAL_OFFSET], (const uchar*)temp.data());//encrypt the devcode and serial
+    memcpy(&temp.data()[SERIAL_OFFSET], ui->txtDevcode->text().toLatin1().data(), static_cast<size_t>(ui->txtDevcode->text().size()));//copy devcode to key array
+    memcpy(&temp.data()[SERIAL_OFFSET+8], ui->txtSerial->text().toLatin1().data(), static_cast<size_t>(ui->txtSerial->text().size()));//copy serial to key array
+    firmware->encrypt_serial(reinterpret_cast<uchar*>(&temp.data()[SERIAL_OFFSET]), reinterpret_cast<const uchar*>(temp.data()));//encrypt the devcode and serial
 
 
     //Open the file save dialog
     QString ext;
-    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",NULL,"hex files (*.hex);;All files (*.*)",&ext);
+    QString fileName = QFileDialog::getSaveFileName(this,"Save firmware hex file",nullptr,"hex files (*.hex);;All files (*.*)",&ext);
     if(!fileName.isEmpty())
     {
         if(ext.contains("hex") && !fileName.endsWith(".hex", Qt::CaseInsensitive))
@@ -438,10 +438,10 @@ void MainWindow::reflash(uint firmware_type)
     }
 
     //read the device to determine his satus
-    memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
     report.echo = REPORT_COMMAND;//0 anyway
-    usb_device->usb_write((uchar *)&report, 5);
-    usb_device->usb_read((uchar*)&report, sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
     if(report.device_status == Firmware::NORMAL_MODE)//if the device is not in bootloader mode reset it.
     {
         reset();
@@ -461,10 +461,10 @@ void MainWindow::reflash(uint firmware_type)
 
     wait_ms(500);
     //read the device again to see the true device version as reported by the bootloader
-    memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
     report.echo = REPORT_COMMAND;//0 anyway
-    usb_device->usb_write((uchar *)&report, 5);
-    usb_device->usb_read((uchar*)&report, sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
     int device_version = report.device_version;
 
 
@@ -501,7 +501,7 @@ void MainWindow::reflash(uint firmware_type)
         break;
     case Firmware::FIRMWARE_CUSTOM:
         QByteArray b = get_resource(DUMPER_RESOURCE, UNENCRYPTED_FIRMWARE_SIZE);
-        firmware->encrypt_firmware((const uchar*)b.data(), data, device_version);
+        firmware->encrypt_firmware(reinterpret_cast<uchar*>(b.data()), data, device_version);
     }
 
 
@@ -556,10 +556,10 @@ void MainWindow::reflash(uint firmware_type)
     }
 
     //read the device to determine his satus
-    memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
     report.echo = REPORT_COMMAND;//0 anyway
-    usb_device->usb_write((uchar *)&report, 5);
-    usb_device->usb_read((uchar*)&report, sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
 
     if(report.device_status != Firmware::NORMAL_MODE)
     {
@@ -600,7 +600,7 @@ void MainWindow::dump(QString fileName, uint device_type)
         w[4] = (i & 0xff0000)>>16;
 
         usb_device->usb_write(w, sizeof(w));
-        if(usb_device->usb_read((uchar*)&temp.data()[i],64) != 64)
+        if(usb_device->usb_read(reinterpret_cast<uchar*>(&temp.data()[i]),64) != 64)
         {
             usb_device->close_device();
             emit dump_status("USB read error.");
@@ -611,7 +611,7 @@ void MainWindow::dump(QString fileName, uint device_type)
     usb_device->close_device();
 
     //Because the region 0x1800-0x1FBFF contains the dumper we overwrite it with the normal firmware from the update.dat file.
-    firmware->decrypt_firmware((uchar*)&temp.data()[BOOTLOADER_SIZE], device_type );
+    firmware->decrypt_firmware(reinterpret_cast<uchar*>(&temp.data()[BOOTLOADER_SIZE]), static_cast<int>(device_type));
 
 
     //Write data to file.
@@ -702,10 +702,10 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
         Firmware::TL866_REPORT report;
         if(usb_device->open_device(0))
         {
-            memset((uchar*)&report,0, sizeof(Firmware::TL866_REPORT));
+            memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
             report.echo = REPORT_COMMAND;//0 anyway
-            usb_device->usb_write((uchar *)&report, 5);
-            usb_device->usb_read((uchar*)&report, sizeof(Firmware::TL866_REPORT));
+            usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
+            usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
 
             switch(report.device_version)
             {
@@ -741,8 +741,8 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
                 ui->txtInfo->append("Device status: Unknown.");
             }
             ui->btnReset->setProperty("state", false);
-            device_info.device_code = QString::fromLatin1((const char*)&report.device_code,8);
-            device_info.device_serial = QString::fromLatin1((const char*)&report.serial_number,24);
+            device_info.device_code = QString::fromLatin1(reinterpret_cast<const char*>(&report.device_code),8);
+            device_info.device_serial = QString::fromLatin1(reinterpret_cast<const char*>(&report.serial_number),24);
             bool isDumperActive = (device_info.device_code.toLower() == "codedump" && device_info.device_serial == "000000000000000000000000");
 
 
@@ -751,17 +751,17 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
                 Firmware::DUMPER_REPORT dumper_report;
                 uchar b[] = {DUMPER_INFO};
                 usb_device->usb_write(b, 1);
-                usb_device->usb_read((uchar*)&dumper_report, sizeof(Firmware::DUMPER_REPORT));
+                usb_device->usb_read(reinterpret_cast<uchar*>(&dumper_report), sizeof(Firmware::DUMPER_REPORT));
                 device_info.device_type = dumper_report.bootloader_version;
 
-                device_info.device_code = QString::fromLatin1((const char*)&dumper_report.device_code,8);
-                device_info.device_serial = QString::fromLatin1((const char*)&dumper_report.serial_number,24);
+                device_info.device_code = QString::fromLatin1(reinterpret_cast<const char*>(&dumper_report.device_code),8);
+                device_info.device_serial = QString::fromLatin1(reinterpret_cast<const char*>(&dumper_report.serial_number),24);
 
                 QString info;
                 info.append(GetFormatedString(device_info.device_code, device_info.device_serial) + "\n");
                 info.append(QString("Bootloader version: %1\n").arg((device_info.device_type == Firmware::VERSION_TL866A) ? "A" : "CS"));
                 info.append(QString("Code Protection bit: %1\n").arg(dumper_report.cp_bit ? "No" : "Yes"));
-                advdlg->SetUi(info, device_info.device_code, device_info.device_serial, dumper_report.cp_bit == 0, device_info.device_type);
+                advdlg->SetUi(info, device_info.device_code, device_info.device_serial, dumper_report.cp_bit == 0, static_cast<int>(device_info.device_type));
 
                 ui->btnAdvanced->setEnabled(true);
                 ui->btnDump->setEnabled(true);
@@ -809,11 +809,11 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 QString MainWindow::GetFormatedString(QString devcode, QString serial)
 {
     return QString("Device code: %1\nSerial number: %2").arg(devcode.trimmed() +
-                  (Firmware::IsBadCrc((uchar*)devcode.toLatin1().data(),
-                  (uchar*)serial.toLatin1().data()) ? " (Bad device code)" : ""))
+                  (Firmware::IsBadCrc(reinterpret_cast<uchar*>(devcode.toLatin1().data()),
+                  reinterpret_cast<uchar*>(serial.toLatin1().data())) ? " (Bad device code)" : ""))
                   .arg(serial.trimmed() +
-                  (Firmware::IsBadCrc((uchar*)devcode.toLatin1().data(),
-                  (uchar*)serial.toLatin1().data()) ? " (Bad serial code)" : ""));
+                  (Firmware::IsBadCrc(reinterpret_cast<uchar*>(devcode.toLatin1().data()),
+                  reinterpret_cast<uchar*>(serial.toLatin1().data())) ? " (Bad serial code)" : ""));
 }
 
 
@@ -866,7 +866,7 @@ void MainWindow::WriteBootloader(Firmware::BootloaderType type)
             usb_device->close_device();
             return;
         }
-        uchar b[2]={DUMPER_WRITE_BOOTLOADER, (uchar) (type ==  Firmware::A_BOOTLOADER ? Firmware::VERSION_TL866A : Firmware::VERSION_TL866CS)};
+        uchar b[2]={DUMPER_WRITE_BOOTLOADER, static_cast<uchar>((type ==  Firmware::A_BOOTLOADER ? Firmware::VERSION_TL866A : Firmware::VERSION_TL866CS))};
         usb_device->usb_write(b, 2);
         b[0] = 0;
         usb_device->usb_read(b, 1);
@@ -889,7 +889,7 @@ void MainWindow::WriteConfig(bool copy_protect)
         return;
     if(usb_device->open_device(0))
     {
-        uchar b[2]={DUMPER_WRITE_CONFIG, (uchar)(copy_protect ? 1 : 0)};
+        uchar b[2]={DUMPER_WRITE_CONFIG, static_cast<uchar>((copy_protect ? 1 : 0))};
         usb_device->usb_write(b, 2);
         b[0] = 0;
         usb_device->usb_read(b, 1);
@@ -915,8 +915,8 @@ void MainWindow::WriteInfo(QString device_code, QString serial_number)
         uchar b[34];
         memset(b,' ',34);//add trailing spaces
         b[0] = DUMPER_WRITE_INFO;
-        memcpy(b+1, device_code.toLatin1().data(), device_code.size());//copy devcode to b array
-        memcpy(b+9, serial_number.toLatin1().data(), serial_number.size());//copy serial to key array
+        memcpy(b+1, device_code.toLatin1().data(), static_cast<uint>(device_code.size()));//copy devcode to b array
+        memcpy(b+9, serial_number.toLatin1().data(), static_cast<uint>(serial_number.size()));//copy serial to key array
         usb_device->usb_write(b, 34);
         b[0] = 0;
         usb_device->usb_read(b, 1);

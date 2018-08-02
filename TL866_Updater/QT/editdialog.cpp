@@ -66,13 +66,13 @@ void EditDialog::on_btnRndSer_clicked()
     int i;
     QString s;
     CRC crc;
-    ushort crc16 = crc.crc16((uchar*)ui->txtDevcode->text().toLatin1().data(), ui->txtDevcode->text().size(),0);
-    s.append(QString::number(crc16 >> 8, 16).toUpper());
-    s.append(QString::number(qrand()%256, 16).toUpper());
-    s.append(QString::number(crc16 & 0xFF, 16).toUpper());
+    ushort crc16 = crc.crc16(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()),static_cast<uint>(ui->txtDevcode->text().size()),0);
+    s.append(QString("%1").arg(crc16 >> 8, 2, 16, QLatin1Char('0')).toUpper());
+    s.append(QString("%1").arg(qrand()%256, 2, 16, QLatin1Char('0')).toUpper());
+    s.append(QString("%1").arg(crc16 & 0xFF, 2, 16, QLatin1Char('0')).toUpper());
     for(i=0;i<9;i++)
     {
-        s.append(QString::number(qrand()%256,16).toUpper());
+        s.append(QString("%1").arg(qrand()%256, 2, 16, QLatin1Char('0')).toUpper());
     }
     ui->txtSerial->setText(s);
 }
@@ -84,7 +84,7 @@ void EditDialog::okButton_clicked()
         QMessageBox::warning(this, "TL866", "Please enter another device and serial code!\nThese two are reserved.");
         return;
     }
-    if(Firmware::IsBadCrc((uchar*)ui->txtDevcode->text().toLatin1().data(), (uchar*)ui->txtSerial->text().toLatin1().data()))
+    if(Firmware::IsBadCrc(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()), reinterpret_cast<uchar*>(ui->txtSerial->text().toLatin1().data())))
     {
          QMessageBox::warning(this, "TL866", "Bad Device and serial code!\nPlease try again.");
          return;

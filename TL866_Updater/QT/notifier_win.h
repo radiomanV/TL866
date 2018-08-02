@@ -8,7 +8,7 @@ class Notifier : public QWidget
 {
     Q_OBJECT
 public:
-    explicit Notifier(QWidget *parent = 0);
+    explicit Notifier(QWidget *parent = nullptr);
 
 signals:
     void deviceChange(bool arrived);

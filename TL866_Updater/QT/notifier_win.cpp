@@ -37,8 +37,8 @@ Notifier::Notifier(QWidget *parent) :
     deviceInterface.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE);
     deviceInterface.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
     deviceInterface.dbcc_classguid  = MINIPRO_GUID;
-    HDEVNOTIFY m_notify_handle = RegisterDeviceNotification((HANDLE)this->winId(),&deviceInterface, DEVICE_NOTIFY_WINDOW_HANDLE);
-    if(m_notify_handle==NULL)
+    HDEVNOTIFY m_notify_handle = RegisterDeviceNotification(reinterpret_cast<HANDLE>(this->winId()),&deviceInterface, DEVICE_NOTIFY_WINDOW_HANDLE);
+    if(m_notify_handle==nullptr)
     {
         qDebug() << "Failed to register device notification!";
         return;

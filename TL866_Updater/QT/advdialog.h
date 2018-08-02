@@ -15,7 +15,7 @@ class AdvDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit AdvDialog(QWidget *parent = 0);
+    explicit AdvDialog(QWidget *parent = nullptr);
     ~AdvDialog();
     void SetUi(QString info, QString devcode, QString serial,bool cp, int type);
 
