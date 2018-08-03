@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.Text;
+using System.Globalization;
 
 namespace TL866
 {
@@ -49,9 +50,10 @@ namespace TL866
 
         private void BtnRndSer_Click(object sender, EventArgs e)
         {
+            if (TxtDevcode.Text == string.Empty)
+                BtnRndDev_Click(null, null);
             string s;
-            CRC16 crc16 = new CRC16();
-            ushort crc = crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), 0);
+            ushort crc = get_dev_crc();
             do
             {
                 s = (crc >> 8).ToString("X2") + Utils.Generator.Next(0, 255).ToString("X2") + (crc & 0xFF).ToString("X2");
@@ -64,9 +66,33 @@ namespace TL866
 
         private void TxtDevcode_TextChanged(object sender, EventArgs e)
         {
-            if (Firmware.Calc_CRC(TxtDevcode.Text, TxtSerial.Text))
-                MessageBox.Show("Bad Device and serial code!", "TL866", MessageBoxButtons.OK,
-                    MessageBoxIcon.Exclamation);
+            if (TxtDevcode.Text == string.Empty)
+            { 
+                TxtSerial.Text = string.Empty;
+                return;
+            }
+            if (TxtSerial.Text.Length > 5)
+            {
+                byte msb, lsb;
+                ushort crcdev;
+                if (byte.TryParse(TxtSerial.Text.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out msb) &&
+                   byte.TryParse(TxtSerial.Text.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out lsb))
+                {
+                    crcdev = Convert.ToUInt16(msb << 8 | lsb);
+                    if (get_dev_crc() != crcdev)
+                        BtnRndSer_Click(null, null);
+                }
+            }
+            else
+            {
+                BtnRndSer_Click(null, null);
+            }
+        }
+
+        ushort get_dev_crc()
+        {
+            CRC16 crc16 = new CRC16();
+            return crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), 0);
         }
     }
 }

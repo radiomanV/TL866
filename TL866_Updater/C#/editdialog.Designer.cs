@@ -32,11 +32,11 @@
             this.BtnRndDev = new System.Windows.Forms.Button();
             this.Label5 = new System.Windows.Forms.Label();
             this.Label4 = new System.Windows.Forms.Label();
-            this.TxtSerial = new System.Windows.Forms.TextBox();
             this.TxtDevcode = new System.Windows.Forms.TextBox();
             this.Cancel_Button = new System.Windows.Forms.Button();
             this.OK_Button = new System.Windows.Forms.Button();
             this.TableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
+            this.TxtSerial = new System.Windows.Forms.TextBox();
             this.TableLayoutPanel1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -79,19 +79,6 @@
             this.Label4.Size = new System.Drawing.Size(85, 16);
             this.Label4.TabIndex = 69;
             this.Label4.Text = "Device code";
-            // 
-            // TxtSerial
-            // 
-            this.TxtSerial.BackColor = System.Drawing.SystemColors.Info;
-            this.TxtSerial.Font = new System.Drawing.Font("Lucida Sans", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.TxtSerial.Location = new System.Drawing.Point(132, 30);
-            this.TxtSerial.MaxLength = 24;
-            this.TxtSerial.Name = "TxtSerial";
-            this.TxtSerial.Size = new System.Drawing.Size(324, 30);
-            this.TxtSerial.TabIndex = 68;
-            this.TxtSerial.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
-            this.TxtSerial.WordWrap = false;
-            this.TxtSerial.TextChanged += new System.EventHandler(this.TxtDevcode_TextChanged);
             // 
             // TxtDevcode
             // 
@@ -141,6 +128,18 @@
             this.TableLayoutPanel1.Size = new System.Drawing.Size(146, 29);
             this.TableLayoutPanel1.TabIndex = 66;
             // 
+            // TxtSerial
+            // 
+            this.TxtSerial.BackColor = System.Drawing.SystemColors.Info;
+            this.TxtSerial.Font = new System.Drawing.Font("Lucida Sans", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.TxtSerial.Location = new System.Drawing.Point(132, 30);
+            this.TxtSerial.MaxLength = 24;
+            this.TxtSerial.Name = "TxtSerial";
+            this.TxtSerial.Size = new System.Drawing.Size(324, 30);
+            this.TxtSerial.TabIndex = 68;
+            this.TxtSerial.TextAlign = System.Windows.Forms.HorizontalAlignment.Center;
+            this.TxtSerial.WordWrap = false;
+            // 
             // EditDialog
             // 
             this.AcceptButton = this.OK_Button;
@@ -174,10 +173,10 @@
         internal System.Windows.Forms.Button BtnRndDev;
         internal System.Windows.Forms.Label Label5;
         internal System.Windows.Forms.Label Label4;
-        internal System.Windows.Forms.TextBox TxtSerial;
         internal System.Windows.Forms.TextBox TxtDevcode;
         internal System.Windows.Forms.Button Cancel_Button;
         internal System.Windows.Forms.Button OK_Button;
         internal System.Windows.Forms.TableLayoutPanel TableLayoutPanel1;
+        internal System.Windows.Forms.TextBox TxtSerial;
     }
 }

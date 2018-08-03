@@ -38,8 +38,8 @@ namespace TL866
             firmware = new Firmware();
             usbdevice = new UsbDevice();
             reset_flag = false;
-            devcode = "";
-            serial = "";
+            devcode = string.Empty;
+            serial = string.Empty;
             usbdevice.UsbDeviceChanged += UsbDeviceChanged;
             usbdevice.RegisterForDeviceChange(true, this);
             worker = new BackgroundWorker();
@@ -69,7 +69,7 @@ namespace TL866
             dlg.CheckFileExists = true;
             if (dlg.ShowDialog() == DialogResult.OK)
             {
-                TxtInput.Text = "";
+                TxtInput.Text = string.Empty;
                 try
                 {
                     firmware.Open(dlg.FileName);
@@ -77,7 +77,7 @@ namespace TL866
                 catch (Exception ex)
                 {
                     MessageBox.Show(ex.Message, "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
-                    lblVersion.Text = "";
+                    lblVersion.Text = string.Empty;
                     return;
                 }
                 lblVersion.Text = string.Format("[V:{0}]", firmware.Version);
@@ -295,8 +295,8 @@ namespace TL866
                     }
                     else
                     {
-                        devcode = "";
-                        serial = "";
+                        devcode = string.Empty;
+                        serial = string.Empty;
                     }
                 }
                 else
@@ -309,9 +309,9 @@ namespace TL866
                 if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
                     GetInfo();
                 TxtInfo.AppendText(string.Format("Device code: {0}{1}\n", devcode,
-                    Firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : ""));
+                    Firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : string.Empty));
                 TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", serial,
-                    Firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : ""));
+                    Firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : string.Empty));
                 TxtInfo.AppendText(string.Format("Firmware version: {0}\n",
                     isDumperActive
                         ? "Firmware dumper"
@@ -339,8 +339,8 @@ namespace TL866
                 BtnAdvanced.Enabled = false;
                 Leds_Off();
                 TxtInfo.Clear();
-                devcode = "";
-                serial = "";
+                devcode = string.Empty;
+                serial = string.Empty;
                 if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
                     GetInfo();
             }
@@ -363,12 +363,12 @@ namespace TL866
                         AdvancedWindow.TxtDevcode.Text,
                         Firmware.Calc_CRC(AdvancedWindow.TxtDevcode.Text, AdvancedWindow.TxtSerial.Text)
                             ? "(Bad device code)"
-                            : ""));
+                            : string.Empty));
                     AdvancedWindow.TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n",
                         AdvancedWindow.TxtSerial.Text,
                         Firmware.Calc_CRC(AdvancedWindow.TxtDevcode.Text, AdvancedWindow.TxtSerial.Text)
                             ? "(Bad serial code)"
-                            : ""));
+                            : string.Empty));
                     AdvancedWindow.TxtInfo.AppendText(string.Format("Bootloader version: {0}\n",
                         dumper_report.bootloader_version == 1 ? "A" : "CS"));
                     AdvancedWindow.TxtInfo.AppendText(string.Format("Code Protection bit: {0}",
