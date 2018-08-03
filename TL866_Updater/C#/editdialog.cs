@@ -63,6 +63,11 @@ namespace TL866
             TxtSerial.Text = s;
         }
 
+        ushort get_dev_crc()
+        {
+            CRC16 crc16 = new CRC16();
+            return crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), 0);
+        }
 
         private void TxtDevcode_TextChanged(object sender, EventArgs e)
         {
@@ -71,28 +76,19 @@ namespace TL866
                 TxtSerial.Text = string.Empty;
                 return;
             }
+            if(TxtDevcode.Text.Length > 0 && TxtSerial.Text.Length < 24)
+                BtnRndSer_Click(null, null);
             if (TxtSerial.Text.Length > 5)
             {
                 byte msb, lsb;
-                ushort crcdev;
                 if (byte.TryParse(TxtSerial.Text.Substring(0, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out msb) &&
                    byte.TryParse(TxtSerial.Text.Substring(4, 2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out lsb))
                 {
-                    crcdev = Convert.ToUInt16(msb << 8 | lsb);
+                   ushort crcdev = Convert.ToUInt16(msb << 8 | lsb);
                     if (get_dev_crc() != crcdev)
                         BtnRndSer_Click(null, null);
                 }
             }
-            else
-            {
-                BtnRndSer_Click(null, null);
-            }
-        }
-
-        ushort get_dev_crc()
-        {
-            CRC16 crc16 = new CRC16();
-            return crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), 0);
         }
     }
 }
