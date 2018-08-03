@@ -55,7 +55,7 @@ void EditDialog::on_btnRndDev_clicked()
     QString s;
     for(i=0;i<8;i++)
     {
-        s.append(QString::number( qrand() % 10));
+        s.append(QString::number(qrand() % 10));
     }
     ui->txtDevcode->setText(s);
     on_btnRndSer_clicked();
@@ -63,6 +63,8 @@ void EditDialog::on_btnRndDev_clicked()
 
 void EditDialog::on_btnRndSer_clicked()
 {
+    if(ui->txtDevcode->text().isEmpty())
+        on_btnRndDev_clicked();
     int i;
     QString s;
     CRC crc;
