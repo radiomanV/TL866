@@ -23,8 +23,11 @@ private slots:
     void on_btnRndSer_clicked();
     void okButton_clicked();
 
+    void on_txtDevcode_textChanged(const QString &arg1);
+
 private:
     Ui::EditDialog *ui;
+    ushort get_dev_crc();
 };
 
 #endif // EDITDIALOG_H

@@ -45,8 +45,8 @@ EditDialog::~EditDialog()
 
 void EditDialog::GetResult(QString *devcode, QString *serial)
 {
-  *devcode = ui->txtDevcode->text();
-  *serial = ui->txtSerial->text();
+    *devcode = ui->txtDevcode->text();
+    *serial = ui->txtSerial->text();
 }
 
 void EditDialog::on_btnRndDev_clicked()
@@ -67,8 +67,7 @@ void EditDialog::on_btnRndSer_clicked()
         on_btnRndDev_clicked();
     int i;
     QString s;
-    CRC crc;
-    ushort crc16 = crc.crc16(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()),static_cast<uint>(ui->txtDevcode->text().size()),0);
+    ushort crc16 = get_dev_crc();
     s.append(QString("%1").arg(crc16 >> 8, 2, 16, QLatin1Char('0')).toUpper());
     s.append(QString("%1").arg(qrand()%256, 2, 16, QLatin1Char('0')).toUpper());
     s.append(QString("%1").arg(crc16 & 0xFF, 2, 16, QLatin1Char('0')).toUpper());
@@ -88,10 +87,36 @@ void EditDialog::okButton_clicked()
     }
     if(Firmware::IsBadCrc(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()), reinterpret_cast<uchar*>(ui->txtSerial->text().toLatin1().data())))
     {
-         QMessageBox::warning(this, "TL866", "Bad Device and serial code!\nPlease try again.");
-         return;
+        QMessageBox::warning(this, "TL866", "Bad Device and serial code!\nPlease try again.");
+        return;
     }
-  accept();
+    accept();
 }
 
+ushort EditDialog::get_dev_crc()
+{
+    CRC crc;
+    return crc.crc16(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()),static_cast<uint>(ui->txtDevcode->text().size()),0);
+}
 
+void EditDialog::on_txtDevcode_textChanged(const QString &arg1)
+{
+    Q_UNUSED(arg1);
+    if (ui->txtDevcode->text().isEmpty())
+    {
+        ui->txtSerial->clear();
+        return;
+    }
+    if(ui->txtDevcode->text().length() && ui->txtSerial->text().length()<24)
+        on_btnRndSer_clicked();
+    if(ui->txtSerial->text().length()>5)
+    {
+        ushort crc;
+        bool ok;
+        crc = static_cast<ushort>(ui->txtSerial->text().left(2).toUShort(&ok,16) << 8);
+        if(ok)
+            crc += ui->txtSerial->text().mid(4,2).toUShort(&ok,16);
+        if(ok && get_dev_crc() != crc)
+           on_btnRndSer_clicked();
+    }
+}
