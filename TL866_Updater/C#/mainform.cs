@@ -222,6 +222,11 @@ namespace TL866
             {
                 case device_action.reset_device:
                     Reset_Device();
+                    if (!wait_for_device())
+                    {
+                        MessageBox.Show("Reset Error!", "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                        return;
+                    }
                     break;
                 case device_action.reflash_device:
                     Reflash((int)parameters[1]);
