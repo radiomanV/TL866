@@ -60,6 +60,11 @@ namespace TL866
             usbdevice.RegisterForDeviceChange(false, this);
         }
 
+        private void MainForm_SizeChanged(object sender, EventArgs e)
+        {
+            TabPage1.Refresh();
+            TabPage2.Refresh();
+        }
 
         private void BtnInput_Click(object sender, EventArgs e)
         {

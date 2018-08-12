@@ -551,6 +551,10 @@
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "TL866 firmware updater";
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
+            this.SizeChanged += new System.EventHandler(this.MainForm_SizeChanged);
+            this.Resize += new System.EventHandler(this.MainForm_SizeChanged);
+            this.StyleChanged += new System.EventHandler(this.MainForm_SizeChanged);
+            this.SystemColorsChanged += new System.EventHandler(this.MainForm_SizeChanged);
             this.TabPage2.ResumeLayout(false);
             this.GroupBox3.ResumeLayout(false);
             this.GroupBox3.PerformLayout();
