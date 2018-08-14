@@ -381,7 +381,7 @@ QByteArray MainWindow::get_resource(QString resource_path, int size)
 {
     QResource res(resource_path);
     QByteArray ba;
-    ba = (res.isCompressed() ? qUncompress(res.data(), size) : QByteArray((const char*)res.data(), size));
+    ba = (res.isCompressed() ? qUncompress(res.data(), size) : QByteArray(reinterpret_cast<const char*>(res.data()), size));
     return ba;
 }
 
@@ -695,7 +695,7 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
     ui->txtInfo->clear();
 
     int count=usb_device->get_devices_count();
-    this->setWindowTitle(QString("TL866 firmware updater (%1 %2 connected)").arg(count).arg(count == 1 ? "device" : "devices"));
+    this->setWindowTitle(QString("TL866 firmware updater %1 (%2 %3 connected)").arg(VERSION).arg(count).arg(count == 1 ? "device" : "devices"));
 
     if(count)
     {

@@ -109,6 +109,7 @@ private:
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"
 #define DUMPER_RESOURCE         ":/firmware/dumper.bin"
+#define VERSION                 "2.5"
 };
 
 #endif // MAINWINDOW_H

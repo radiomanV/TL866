@@ -123,8 +123,8 @@ private:
         unsigned char CS_Firmware[ENCRYPTED_FIRMWARE_SIZE];//Encrypted CS firmware
     }UpdateDat;
 
-    void encrypt_block(unsigned char *data, const unsigned char *xortable, int index);
-    void decrypt_block(unsigned char *data, const unsigned char *xortable, int index);
+    void encrypt_block(unsigned char *data, const unsigned char *xortable, unsigned char index);
+    void decrypt_block(unsigned char *data, const unsigned char *xortable, unsigned char index);
 
 
     unsigned char m_firmwareA[ENCRYPTED_FIRMWARE_SIZE ];
