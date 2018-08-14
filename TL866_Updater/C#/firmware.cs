@@ -70,8 +70,8 @@ namespace TL866
         public byte Version { get; private set; }
         public bool IsValid { get; private set; }
 
-        
-                private readonly byte[] m_xortableA = {
+
+        private readonly byte[] m_xortableA = {
             0xA4, 0x1E, 0x42, 0x8C, 0x3C, 0x76, 0x14, 0xC7, 0xB8, 0xB5, 0x81, 0x4A, 0x13, 0x37, 0x7C, 0x0A,
             0xFE, 0x3B, 0x63, 0xC1, 0xD5, 0xFD, 0x8C, 0x39, 0xD1, 0x1F, 0x22, 0xC7, 0x7F, 0x4D, 0x2F, 0x15,
             0x71, 0x21, 0xF9, 0x25, 0x33, 0x44, 0x92, 0x93, 0x80, 0xD7, 0xAB, 0x1B, 0xB6, 0x11, 0xA9, 0x5A,
@@ -90,7 +90,7 @@ namespace TL866
             0x8E, 0x96, 0x37, 0x9A, 0x4B, 0x9C, 0xAA, 0xED, 0x8B, 0x6B, 0xD1, 0xFF, 0x08, 0x24, 0x56, 0x9D
         };
 
-                private readonly byte[] m_xortableCS = {
+        private readonly byte[] m_xortableCS = {
             0x0B, 0x08, 0x07, 0x18, 0xEC, 0xC7, 0xDF, 0x8C, 0xD6, 0x76, 0xCE, 0x10, 0x9F, 0x61, 0x7C, 0xF5,
             0x61, 0x09, 0xFB, 0x59, 0xD0, 0x24, 0xB4, 0x4F, 0xCA, 0xE4, 0xA1, 0x3A, 0x30, 0x7C, 0xBD, 0x7A,
             0xF5, 0xE1, 0xB9, 0x4B, 0x74, 0xCD, 0xF1, 0xE9, 0x07, 0x0A, 0x9E, 0xF9, 0xD5, 0xED, 0x4D, 0x24,
@@ -108,7 +108,7 @@ namespace TL866
             0x86, 0xF3, 0x2D, 0xEF, 0x8C, 0x7E, 0xF9, 0x81, 0x34, 0xAA, 0x48, 0x5A, 0x93, 0x0A, 0xF2, 0x43,
             0x62, 0x42, 0x97, 0xAF, 0x53, 0x10, 0x8D, 0xE6, 0xA1, 0x8E, 0x1C, 0x62, 0xEB, 0xB1, 0xEE, 0x79
         };
-        
+
         public void Open(string UpdateDat_Path)
         {
             IsValid = false;
@@ -266,15 +266,17 @@ namespace TL866
 
         public void DecryptSerial(byte[] info, byte[] firmware)
         {
-            //step1
             byte index = 0x0A;
+            //Step1 xoring each element from table with a random value from xortable. Starting index is 0x0A. Index is incremented modulo 256
             for (uint i = 0; i < info.Length; i++)
                 info[i] = (byte)(info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
-            //step2
+            /*Step 2 right rotate the whole array by 3 bits.
+             */
+            byte m = (byte)(info[info.Length - 1] << 5);
             for (int i = info.Length - 1; i > 0; i--)
                 info[i] = (byte)(((info[i] >> 3) & 0x1F) | (info[i - 1] << 5));
-            info[0] = (byte)((info[0] >> 3) & 0x1F);
-            //step3
+            info[0] = (byte)((info[0] >> 3) & 0x1F | m);
+            //Step3 descrambling data; we put each element in the right position. At the end we have the decrypted serial and devcode ;)
             for (int i = 0; i < info.Length / 2; i += 4)
             {
                 byte t = info[i];
@@ -285,45 +287,46 @@ namespace TL866
 
         public void EncryptSerial(byte[] info, byte[] firmware)
         {
-            byte index = 0x0A;
-            Make_CRC(info);
-            //step1
+            //Calculate the checksum and the CRC15 of the info block before the encryption.
+            //Fill the empty info arrary with random values.
+            for (int i = 32; i < info.Length - 2; i++)
+                info[i] = (byte)Utils.Generator.Next(0, 255);
+            //compute the 8Bit checksum of devcode and serial string and store it in the position 34.
+            byte cs = 0;
+            for (int i = 5; i < 34; i++)
+                cs += info[i];
+            info[34] = cs;
+            //compute the CRC16 of the info array and store it in the last two position in little endian order.
+            ushort crc;
+            CRC16 crc16 = new CRC16();
+            crc = crc16.GetCRC16(info, info.Length - 2, 0);
+            info[info.Length - 1] = (byte)((crc >> 8));
+            info[info.Length - 2] = (byte)(crc & 0xFF);
+
+            //Now we encrypt the info block, ready to be inserted in the firmware.
+            /*Step1
+             * Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
+             * So we have the following 10 swaps:(0-79),(4-75),(8-71),(12-67),(16-63),(20-59),(24-55),(28-51),(32-47),(36-43).
+             */
             for (int i = 0; i < info.Length / 2; i += 4)
             {
                 byte t = info[i];
                 info[i] = info[info.Length - i - 1];
                 info[info.Length - i - 1] = t;
             }
-            //step2
+            /*
+             * Step 2, Left rotate the whole array by 3 bits.
+             */
+            byte m = (byte)(info[0] >> 5);
             for (int i = 0; i < info.Length - 1; i++)
                 info[i] = (byte)(((info[i] << 3) & 0xF8) | (info[i + 1] >> 5));
-            info[info.Length - 1] = (byte)((info[info.Length - 1] << 3) & 0xF8);
-            //step3
+            info[info.Length - 1] = (byte)((info[info.Length - 1] << 3) & 0xF8 | m);
+            //step3 xoring each info table value with a random number from xortable. The start index in this table is 0x0A. Index is incremented modulo 256
+            byte index = 0x0A;
             for (int i = 0; i < info.Length; i++)
                 info[i] = (byte)(info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
         }
 
-
-        private void Make_CRC(byte[] data)
-        {
-            byte[] b = new byte[data.Length - 2];
-            ushort crc;
-            CRC16 crc16 = new CRC16();
-            Array.Copy(data, 0, b, 0, b.Length);
-            do
-            {
-                for (int i = 32; i < b.Length; i++)
-                    b[i] = (byte)Utils.Generator.Next(0, 255);
-                byte cs = 0;
-                for (int i = 5; i < 34; i++)
-                    cs += b[i];
-                b[34] = cs;
-                crc = crc16.GetCRC16(b, 0);
-            } while (crc > 0x1FFF);
-            Array.Copy(b, 0, data, 0, b.Length);
-            data[data.Length - 1] = (byte)((crc >> 8) & 0x1F);
-            data[data.Length - 2] = (byte)(crc & 0xFF);
-        }
 
         public static bool Calc_CRC(string DevCode, string Serial)
         {
@@ -376,7 +379,7 @@ namespace TL866
         {
             get { return buffer[39]; }
         }
-       
+
     }
 
     public class Dumper_Report

@@ -49,9 +49,9 @@
             }
         }
 
-        public ushort GetCRC16(byte[] bytes, ushort initial)
+        public ushort GetCRC16(byte[] bytes, int length, ushort initial)
         {
-            for (int i = 0; i < bytes.Length; i++)
+            for (int i = 0; i < length; i++)
                 initial = (ushort)((initial >> 8) ^ table[bytes[i] ^ initial & 0xFF]);
             return initial;
         }

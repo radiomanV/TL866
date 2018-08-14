@@ -784,8 +784,6 @@ namespace TL866
                     data[i] = 0xFF;
             ////Writing serial code
             byte[] info = new byte[Firmware.BLOCK_SIZE];
-            Array.Copy(data, Firmware.SERIAL_OFFSET, info, 0, info.Length);
-            firmware.DecryptSerial(info, data);
             string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
             string s2 = TxtSerial.Text + new string(' ', Firmware.SERIALCODE_LENGHT - TxtSerial.Text.Length);
             Array.Copy(Encoding.ASCII.GetBytes(s1), 0, info, 0, Firmware.DEVCODE_LENGHT);

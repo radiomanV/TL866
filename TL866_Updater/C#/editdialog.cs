@@ -66,7 +66,7 @@ namespace TL866
         ushort get_dev_crc()
         {
             CRC16 crc16 = new CRC16();
-            return crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), 0);
+            return crc16.GetCRC16(Encoding.ASCII.GetBytes(TxtDevcode.Text), TxtDevcode.Text.Length, 0);
         }
 
         private void TxtDevcode_TextChanged(object sender, EventArgs e)
