@@ -270,12 +270,11 @@ namespace TL866
             //Step1 xoring each element from table with a random value from xortable. Starting index is 0x0A. Index is incremented modulo 256
             for (uint i = 0; i < info.Length; i++)
                 info[i] = (byte)(info[i] ^ firmware[XOR_TABLE_OFFSET + index++]);
-            /*Step 2 right rotate the whole array by 3 bits.
-             */
+            //Step 2 right rotate the whole array by 3 bits.
             byte m = (byte)(info[info.Length - 1] << 5);
             for (int i = info.Length - 1; i > 0; i--)
-                info[i] = (byte)(((info[i] >> 3) & 0x1F) | (info[i - 1] << 5));
-            info[0] = (byte)((info[0] >> 3) & 0x1F | m);
+                info[i] = (byte)(info[i] >> 3 & 0x1F | info[i - 1] << 5);
+            info[0] = (byte)(info[0] >> 3 & 0x1F | m);
             //Step3 descrambling data; we put each element in the right position. At the end we have the decrypted serial and devcode ;)
             for (int i = 0; i < info.Length / 2; i += 4)
             {
@@ -287,7 +286,7 @@ namespace TL866
 
         public void EncryptSerial(byte[] info, byte[] firmware)
         {
-            //Calculate the checksum and the CRC15 of the info block before the encryption.
+            //Calculate the checksum and the CRC16 of the info block before the encryption.
             //Fill the empty info arrary with random values.
             for (int i = 32; i < info.Length - 2; i++)
                 info[i] = (byte)Utils.Generator.Next(0, 255);
@@ -314,13 +313,11 @@ namespace TL866
                 info[i] = info[info.Length - i - 1];
                 info[info.Length - i - 1] = t;
             }
-            /*
-             * Step 2, Left rotate the whole array by 3 bits.
-             */
+            //Step 2, Left rotate the whole array by 3 bits.
             byte m = (byte)(info[0] >> 5);
             for (int i = 0; i < info.Length - 1; i++)
-                info[i] = (byte)(((info[i] << 3) & 0xF8) | (info[i + 1] >> 5));
-            info[info.Length - 1] = (byte)((info[info.Length - 1] << 3) & 0xF8 | m);
+                info[i] = (byte)(info[i] << 3 & 0xF8 | info[i + 1] >> 5);
+            info[info.Length - 1] = (byte)(info[info.Length - 1] << 3 & 0xF8 | m);
             //step3 xoring each info table value with a random number from xortable. The start index in this table is 0x0A. Index is incremented modulo 256
             byte index = 0x0A;
             for (int i = 0; i < info.Length; i++)
