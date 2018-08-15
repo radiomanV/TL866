@@ -428,7 +428,7 @@ void MainWindow::reflash(uint firmware_type)
     uchar buffer[BLOCK_SIZE+7];
     uchar data[ENCRYPTED_FIRMWARE_SIZE];
 
-    Firmware::TL866_REPORT report;
+    Firmware::tl866_report report;
 
     usb_device->close_device();
     if(!usb_device->open_device(0))
@@ -438,10 +438,10 @@ void MainWindow::reflash(uint firmware_type)
     }
 
     //read the device to determine his satus
-    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(report));
     report.echo = REPORT_COMMAND;//0 anyway
     usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
-    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(report));
     if(report.device_status == Firmware::NORMAL_MODE)//if the device is not in bootloader mode reset it.
     {
         reset();
@@ -461,10 +461,10 @@ void MainWindow::reflash(uint firmware_type)
 
     wait_ms(500);
     //read the device again to see the true device version as reported by the bootloader
-    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(report));
     report.echo = REPORT_COMMAND;//0 anyway
     usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
-    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(report));
     int device_version = report.device_version;
 
 
@@ -556,10 +556,10 @@ void MainWindow::reflash(uint firmware_type)
     }
 
     //read the device to determine his satus
-    memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
+    memset(reinterpret_cast<uchar*>(&report),0, sizeof(report));
     report.echo = REPORT_COMMAND;//0 anyway
     usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
-    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
+    usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(report));
 
     if(report.device_status != Firmware::NORMAL_MODE)
     {
@@ -699,13 +699,13 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 
     if(count)
     {
-        Firmware::TL866_REPORT report;
+        Firmware::tl866_report report;
         if(usb_device->open_device(0))
         {
-            memset(reinterpret_cast<uchar*>(&report),0, sizeof(Firmware::TL866_REPORT));
+            memset(reinterpret_cast<uchar*>(&report),0, sizeof(report));
             report.echo = REPORT_COMMAND;//0 anyway
             usb_device->usb_write(reinterpret_cast<uchar*>(&report), 5);
-            usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(Firmware::TL866_REPORT));
+            usb_device->usb_read(reinterpret_cast<uchar*>(&report), sizeof(report));
 
             switch(report.device_version)
             {
@@ -748,10 +748,10 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
 
             if(isDumperActive)
             {
-                Firmware::DUMPER_REPORT dumper_report;
+                Firmware::dumper_report dumper_report;
                 uchar b[] = {DUMPER_INFO};
                 usb_device->usb_write(b, 1);
-                usb_device->usb_read(reinterpret_cast<uchar*>(&dumper_report), sizeof(Firmware::DUMPER_REPORT));
+                usb_device->usb_read(reinterpret_cast<uchar*>(&dumper_report), sizeof(dumper_report));
                 device_info.device_type = dumper_report.bootloader_version;
 
                 device_info.device_code = QString::fromLatin1(reinterpret_cast<const char*>(&dumper_report.device_code),8);

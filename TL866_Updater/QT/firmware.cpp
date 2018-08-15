@@ -216,7 +216,7 @@ void Firmware::encrypt_block(unsigned char *data, const unsigned char *xortable,
     }
     //Next step, left shifting whole array by 3 bits.
     for(int i=0;i<BLOCK_SIZE-1;i++){
-    data[i] = ((data[i] << 3) & 0xF8) | data[i + 1] >> 5;
+        data[i] = ((data[i] << 3) & 0xF8) | data[i + 1] >> 5;
     }
     data[BLOCK_SIZE-1] = (data[BLOCK_SIZE-1] << 3) & 0xF8;
 
@@ -236,7 +236,7 @@ void Firmware::decrypt_block(unsigned char *data, const unsigned char *xortable,
 
     //next step, right shifting whole array by 3 bits.
     for(int i=BLOCK_SIZE-1; i > 0; i--){
-    data[i] = static_cast<unsigned char>((data[i] >> 3 & 0x1F) | data[i - 1] << 5);
+        data[i] = static_cast<unsigned char>((data[i] >> 3 & 0x1F) | data[i - 1] << 5);
     }
     data[0] = (data[0] >> 3) & 0x1F;
 
@@ -254,19 +254,20 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     unsigned char index;
     ushort crc16;
     CRC crc;
-        for(int i=32;i<BLOCK_SIZE-2;i++)
-        {
-            key[i] = static_cast<unsigned char>(qrand() % 0x100);
-        }
-        key[34] = 0;
-        for (int i = 5; i < 34; i++)
-            key[34] += key[i];
-        crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
+    for(int i=32;i<BLOCK_SIZE-2;i++)
+    {
+        key[i] = static_cast<unsigned char>(qrand() % 0x100);
+    }
+    key[34] = 0;
+    for (int i = 5; i < 34; i++)
+        key[34] += key[i];
+    crc16 = crc.crc16(key,BLOCK_SIZE-2, 0);
     key[BLOCK_SIZE-2]=(crc16 & 0xff);
     key[BLOCK_SIZE-1]=(crc16 >> 8);
 
 
-    /*Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
+    /*Step 1
+    *Data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
      So we have the following 10 swaps:(0-79),(4-75),(8-71),(12-67),(16-63),(20-59),(24-55),(28-51),(32-47),(36-43).
     */
     for(int i=0;i<BLOCK_SIZE/2;i+=4){
@@ -274,7 +275,7 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
         key[i]=key[BLOCK_SIZE-i-1];
         key[BLOCK_SIZE-i-1]=index;
     }
-    //Next step, left shift whole array by 3 bits.
+    //Step 2 left rotate the whole array by 3 bits.
     index = key[0] >> 5;
     for(int i=0;i<BLOCK_SIZE-1;i++)
         key[i] = (key[i] << 3 & 0xF8) | key[i + 1] >> 5;
@@ -301,10 +302,10 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
     }
 
     //Step 2 right rotate the whole array by 3 bits.
-      index = static_cast<unsigned char>(key[BLOCK_SIZE-1] << 5);
-      for (int i = BLOCK_SIZE-1; i > 0; i--)
-          key[i] = static_cast<unsigned char>((key[i] >> 3 & 0x1F) | key[i - 1] << 5);
-      key[0] = (key[0] >> 3 & 0x1F) | index;
+    index = static_cast<unsigned char>(key[BLOCK_SIZE-1] << 5);
+    for (int i = BLOCK_SIZE-1; i > 0; i--)
+        key[i] = static_cast<unsigned char>((key[i] >> 3 & 0x1F) | key[i - 1] << 5);
+    key[0] = (key[0] >> 3 & 0x1F) | index;
 
     //Last step, descrambling data; we put each element in the right position. At the end we have the decrypted serial and devcode ;)
     for(int i=0;i<BLOCK_SIZE/2;i+=4){

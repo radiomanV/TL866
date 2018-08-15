@@ -52,7 +52,7 @@ public:
     static bool IsBadCrc(uchar *devcode, uchar *serial);
 
 
-    typedef struct {
+    struct tl866_report {
         uchar   echo;
         uchar   device_status;
         ushort  report_size;
@@ -66,15 +66,15 @@ public:
         uchar   b1;
         uchar   b2;
         uchar   b3;
-    }TL866_REPORT;
+    };
 
 
-    typedef struct{
+    struct dumper_report{
         uchar   device_code[8];
         uchar   serial_number[24];
         uchar   bootloader_version;
         uchar   cp_bit;
-    }DUMPER_REPORT;
+    };
 
 
     enum BootloaderType{A_BOOTLOADER, CS_BOOTLOADER};
@@ -101,7 +101,7 @@ public:
 
 private:
 
-    typedef struct {
+    struct UpdateDat {
         unsigned char header[4];//file header
         unsigned int  A_CRC32;//4 bytes
         unsigned char pad1;
@@ -121,7 +121,7 @@ private:
         unsigned char CS_Xortable2[1024];//Second xortable used in CS firmware decryption
         unsigned char A_Firmware[ENCRYPTED_FIRMWARE_SIZE];//Encrypted A firmware
         unsigned char CS_Firmware[ENCRYPTED_FIRMWARE_SIZE];//Encrypted CS firmware
-    }UpdateDat;
+    };
 
     void encrypt_block(unsigned char *data, const unsigned char *xortable, unsigned char index);
     void decrypt_block(unsigned char *data, const unsigned char *xortable, unsigned char index);
