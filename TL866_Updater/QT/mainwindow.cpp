@@ -174,7 +174,7 @@ void MainWindow::on_btnInput_clicked()
 }
 
 //Open the file update.dat
-void MainWindow::OpenFile(QString fileName)
+void MainWindow::OpenFile(const QString &fileName)
 {
     int ret=firmware->open(fileName);
     if(ret == Firmware::NoError)
@@ -235,7 +235,7 @@ void MainWindow::on_btnEdit_clicked()
     EditDialog dlg(this, devcode, serial);
     if(dlg.exec()==QDialog::Accepted)
     {
-        dlg.GetResult(&devcode, &serial);
+        dlg.GetResult(devcode, serial);
         ui->txtDevcode->setText(devcode);
         ui->txtSerial->setText(serial);
     }
@@ -377,7 +377,7 @@ void MainWindow::on_btnSave_clicked()
 }
 
 //Helper function to get a binary resource
-QByteArray MainWindow::get_resource(QString resource_path, int size)
+QByteArray MainWindow::get_resource(const QString &resource_path, int size)
 {
     QResource res(resource_path);
     QByteArray ba;
@@ -575,7 +575,7 @@ void MainWindow::reflash(uint firmware_type)
 }
 
 //Dump function. This function is executed in separate thread.
-void MainWindow::dump(QString fileName, uint device_type)
+void MainWindow::dump(const QString &fileName, uint device_type)
 {
     //Try to open the device
     usb_device->close_device();
@@ -641,7 +641,7 @@ void MainWindow::dump(QString fileName, uint device_type)
 
 
 //Reflash finished SLOT
-void MainWindow::reflash_finished(QString result)
+void MainWindow::reflash_finished(const QString &result)
 {
     DeviceChanged(true);
     if(result.isEmpty())
@@ -653,7 +653,7 @@ void MainWindow::reflash_finished(QString result)
 
 
 //Dump finished SLOT
-void MainWindow::dump_finished(QString result)
+void MainWindow::dump_finished(const QString &result)
 {
     DeviceChanged(true);
     if(result.isEmpty())
@@ -665,7 +665,7 @@ void MainWindow::dump_finished(QString result)
 
 
 //Gui update SLOT
-void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
+void MainWindow::gui_updated(const QString &message, bool eraseLed, bool writeLed)
 {
     ui->LedErase->setProperty("blink", eraseLed);
     ui->LedWrite->setProperty("blink", writeLed);
@@ -788,11 +788,10 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
             cs += report.b0;
             cs += report.b1;
 
-            if (report.firmware_version_minor > 82 && cs != report.b2 && report.b3 == 0)
-            {
+            if (report.firmware_version_minor > 82 && cs != report.checksum && report.bad_serial == 0)
                 ui->txtInfo->append("Bad serial checksum.");
-            }
-            if (report.firmware_version_minor > 82 && report.b3 != 0)
+
+            if (report.firmware_version_minor > 82 && report.bad_serial != 0)
                 ui->txtInfo->append("Bad serial.");
             usb_device->close_device();
         }
@@ -806,14 +805,11 @@ void MainWindow::gui_updated(QString message, bool eraseLed, bool writeLed)
  }
 
 //Helper function to get formated device and serial code
-QString MainWindow::GetFormatedString(QString devcode, QString serial)
+const QString MainWindow::GetFormatedString(const QString &devcode, const QString &serial)
 {
     return QString("Device code: %1\nSerial number: %2").arg(devcode.trimmed() +
-                  (Firmware::IsBadCrc(reinterpret_cast<uchar*>(devcode.toLatin1().data()),
-                  reinterpret_cast<uchar*>(serial.toLatin1().data())) ? " (Bad device code)" : ""))
-                  .arg(serial.trimmed() +
-                  (Firmware::IsBadCrc(reinterpret_cast<uchar*>(devcode.toLatin1().data()),
-                  reinterpret_cast<uchar*>(serial.toLatin1().data())) ? " (Bad serial code)" : ""));
+                  (Firmware::IsBadCrc(devcode, serial) ? " (Bad device code)" : "")) .arg(serial.trimmed() +
+                  (Firmware::IsBadCrc(devcode, serial) ? " (Bad serial code)" : ""));
 }
 
 
@@ -904,7 +900,7 @@ void MainWindow::WriteConfig(bool copy_protect)
 }
 
 //write serial number and device code
-void MainWindow::WriteInfo(QString device_code, QString serial_number)
+void MainWindow::WriteInfo(const QString &device_code, const QString &serial_number)
 {
     if(!CheckDevices(advdlg))
         return;

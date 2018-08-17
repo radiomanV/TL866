@@ -60,7 +60,7 @@ void AdvDialog::on_btnEdit_clicked()
     EditDialog dlg(this, devcode, serial);
     if(dlg.exec()==QDialog::Accepted)
     {
-        dlg.GetResult(&devcode, &serial);
+        dlg.GetResult(devcode, serial);
         ui->txtDevcode->setText(devcode);
         ui->txtSerial->setText(serial);
     }

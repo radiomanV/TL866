@@ -43,10 +43,10 @@ EditDialog::~EditDialog()
     delete ui;
 }
 
-void EditDialog::GetResult(QString *devcode, QString *serial)
+void EditDialog::GetResult(QString& devcode, QString& serial)
 {
-    *devcode = ui->txtDevcode->text();
-    *serial = ui->txtSerial->text();
+    devcode = ui->txtDevcode->text();
+    serial = ui->txtSerial->text();
 }
 
 void EditDialog::on_btnRndDev_clicked()
@@ -85,7 +85,7 @@ void EditDialog::okButton_clicked()
         QMessageBox::warning(this, "TL866", "Please enter another device and serial code!\nThese two are reserved.");
         return;
     }
-    if(Firmware::IsBadCrc(reinterpret_cast<uchar*>(ui->txtDevcode->text().toLatin1().data()), reinterpret_cast<uchar*>(ui->txtSerial->text().toLatin1().data())))
+    if(Firmware::IsBadCrc(ui->txtDevcode->text(), ui->txtSerial->text()))
     {
         QMessageBox::warning(this, "TL866", "Bad Device and serial code!\nPlease try again.");
         return;

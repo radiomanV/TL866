@@ -49,7 +49,7 @@ public:
     void get_firmware(unsigned char *data_out, int type, int key);
     void encrypt_serial(unsigned char *key, const unsigned char *firmware);
     void decrypt_serial(unsigned char *key, const unsigned char *firmware);
-    static bool IsBadCrc(uchar *devcode, uchar *serial);
+    static bool IsBadCrc(const QString &devcode, const QString &serial);
 
 
     struct tl866_report {
@@ -64,8 +64,9 @@ public:
         uchar   hardware_version;
         uchar   b0;
         uchar   b1;
-        uchar   b2;
-        uchar   b3;
+        uchar   checksum;
+        uchar   bad_serial;
+        unsigned char buffer[20];//Increased the buffer size like in C# version for future autoelectric expansion.
     };
 
 
@@ -129,13 +130,12 @@ private:
 
     unsigned char m_firmwareA[ENCRYPTED_FIRMWARE_SIZE ];
     unsigned char m_firmwareCS[ENCRYPTED_FIRMWARE_SIZE ];
+    static const unsigned char XortableA[XOR_TABLE_SIZE];
+    static const unsigned char XortableCS[XOR_TABLE_SIZE];
     unsigned char m_eraseA;
     unsigned char m_eraseCS;
     unsigned char m_version;
     bool m_isValid;
-    static const unsigned char XortableA[XOR_TABLE_SIZE];
-    static const unsigned char XortableCS[XOR_TABLE_SIZE];
-
 };
 
 #endif // FIRMWARE_H

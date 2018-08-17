@@ -315,10 +315,11 @@ void Firmware::decrypt_serial(unsigned char *key, const unsigned char *firmware)
     }
 }
 
-bool Firmware::IsBadCrc(uchar *devcode, uchar *serial)
+bool Firmware::IsBadCrc(const QString &devcode, const QString &serial)
 {
     CRC crc;
-    unsigned int crc32 = crc.crc32(serial,24,crc.crc32(devcode, 8, 0xFFFFFFFF));
+    unsigned int crc32 = crc.crc32(reinterpret_cast<uchar*>(serial.toLatin1().data()),24,
+                          crc.crc32(reinterpret_cast<uchar*>(devcode.toLatin1().data()), 8, 0xFFFFFFFF));
     return (crc32 == BAD_CRC);
 
 }

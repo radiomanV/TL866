@@ -14,7 +14,7 @@ class EditDialog : public QDialog
 public:
     explicit EditDialog(QWidget *parent = nullptr, QString devcode = "", QString serial = "");
     ~EditDialog();
-    void GetResult(QString *devcode, QString *serial);
+    void GetResult(QString &devcode, QString &serial);
 
 public slots:
 
