@@ -586,8 +586,7 @@ void MainWindow::dump(const QString &fileName, uint device_type)
     }
 
     //Read data from the device.
-    QByteArray temp;
-    temp.resize(FLASH_SIZE);
+    QByteArray temp(FLASH_SIZE, 0);
     uchar w[5];
     for(int i = 0; i < FLASH_SIZE; i += 64)
     {
