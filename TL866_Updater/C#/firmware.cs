@@ -376,7 +376,25 @@ namespace TL866
         {
             get { return buffer[39]; }
         }
+        public byte b0
+        {
+            get { return buffer[40]; }
+        }
 
+        public byte b1
+        {
+            get { return buffer[41]; }
+        }
+
+        public byte checksum
+        {
+            get { return buffer[42]; }
+        }
+
+        public byte bad_serial
+        {
+            get { return buffer[43]; }
+        }
     }
 
     public class Dumper_Report

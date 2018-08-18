@@ -333,14 +333,16 @@ namespace TL866
                 BtnDump.Enabled = isDumperActive;
                 BtnAdvanced.Enabled = isDumperActive;
                 byte cs = 0;
-                for (int i = 12; i < 39; i++)
-                    cs += tl866_report.buffer[i];
-                cs += tl866_report.buffer[40];
-                cs += tl866_report.buffer[41];
-                if (tl866_report.firmware_version_minor > 82 && cs != tl866_report.buffer[42] && tl866_report.buffer[43] == 0)
+                for (int i = 5; i < 8; i++)
+                    cs += (byte)tl866_report.DeviceCode[i];
+                for (int i = 0; i < 24; i++)
+                    cs += (byte)tl866_report.SerialCode[i];
+                cs += tl866_report.b0;
+                cs += tl866_report.b1;
+                if (tl866_report.firmware_version_minor > 82 && cs != tl866_report.checksum && tl866_report.bad_serial == 0)
                     TxtInfo.AppendText("Bad serial checksum.");
 
-                if (tl866_report.firmware_version_minor > 82 && tl866_report.buffer[43] != 0)
+                if (tl866_report.firmware_version_minor > 82 && tl866_report.bad_serial != 0)
                     TxtInfo.AppendText("Bad serial.");
             }
             else
