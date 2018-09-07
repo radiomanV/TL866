@@ -403,7 +403,7 @@ fuses = {18}",
     .opts5 = 0x{14:x2},
     .opts6 = 0x{15:x2},
     .opts7 = 0x{16:x2},
-    .package_details = 0x{17:x8}
+    .package_details = 0x{17:x8},
     .fuses = {18}
 }},",
             devstruct.name.Trim(), devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
