@@ -59,6 +59,8 @@ namespace InfoIcDump
             this.label_devs = new System.Windows.Forms.Label();
             this.label6 = new System.Windows.Forms.Label();
             this.button2 = new System.Windows.Forms.Button();
+            this.checkBox5 = new System.Windows.Forms.CheckBox();
+            this.checkBox6 = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.LogoImage)).BeginInit();
             this.GroupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -359,11 +361,39 @@ namespace InfoIcDump
             this.button2.UseVisualStyleBackColor = true;
             this.button2.Click += new System.EventHandler(this.button2_Click);
             // 
+            // checkBox5
+            // 
+            this.checkBox5.AutoSize = true;
+            this.checkBox5.Checked = true;
+            this.checkBox5.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox5.Font = new System.Drawing.Font("Arial", 9.75F);
+            this.checkBox5.Location = new System.Drawing.Point(587, 395);
+            this.checkBox5.Name = "checkBox5";
+            this.checkBox5.Size = new System.Drawing.Size(170, 20);
+            this.checkBox5.TabIndex = 18;
+            this.checkBox5.Text = "Remove duplicates(slow)";
+            this.checkBox5.UseVisualStyleBackColor = true;
+            // 
+            // checkBox6
+            // 
+            this.checkBox6.AutoSize = true;
+            this.checkBox6.Checked = true;
+            this.checkBox6.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.checkBox6.Font = new System.Drawing.Font("Arial", 9.75F);
+            this.checkBox6.Location = new System.Drawing.Point(774, 395);
+            this.checkBox6.Name = "checkBox6";
+            this.checkBox6.Size = new System.Drawing.Size(98, 20);
+            this.checkBox6.TabIndex = 19;
+            this.checkBox6.Text = "Sort by type";
+            this.checkBox6.UseVisualStyleBackColor = true;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(977, 430);
+            this.Controls.Add(this.checkBox6);
+            this.Controls.Add(this.checkBox5);
             this.Controls.Add(this.button2);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.label_devs);
@@ -421,5 +451,7 @@ namespace InfoIcDump
         private Label label_devs;
         private Label label6;
         private Button button2;
+        private CheckBox checkBox5;
+        private CheckBox checkBox6;
 	}
 }
