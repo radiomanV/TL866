@@ -250,11 +250,12 @@ namespace InfoIcDump
         //device list selection was changed
         private void DeviceList_SelectedIndexChanged(System.Object sender, System.EventArgs e)
         {
-            DevStruct device = new DevStruct();
+            DevStruct devstruct = new DevStruct();
             uint[] tag1 = (uint[])MfcList.Tag;
             uint[] tag2 = (uint[])DeviceList.Tag;
-            GetIcStru(tag1[MfcList.SelectedIndex], tag2[DeviceList.SelectedIndex], ref device);
-            txt_info.Text = get_ic_string_ini(device).ToString();
+            GetIcStru(tag1[MfcList.SelectedIndex], tag2[DeviceList.SelectedIndex], ref devstruct);
+            devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_size);
+            txt_info.Text = get_ic_string_ini(devstruct).ToString();
             label_devs.Text = "Devices:" + DeviceList.Items.Count.ToString();
         }
 
@@ -351,7 +352,6 @@ namespace InfoIcDump
         //Get device info in ini format
         private string get_ic_string_ini(DevStruct devstruct)
         {
-            devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_size);
             return string.Format(
 @"[{0}]
 protocol = 0x{1:x2}
@@ -383,7 +383,6 @@ fuses = {18}",
         //Get device info in c header format
         private string get_ic_string_c(DevStruct devstruct)
         {
-            devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_size);
             return string.Format(
 @"{{
     .name = ""{0}"",
@@ -418,7 +417,6 @@ fuses = {18}",
         //Get device info in xml format
         private device get_ic_xml(DevStruct devstruct)
         {
-            devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_size);
             device xml_chip = new device();
             xml_chip.icname = devstruct.name.Trim();
             xml_chip.protocol = "0x" + devstruct.protocol.ToString("x2");
@@ -505,6 +503,7 @@ fuses = {18}",
 
                     //Remove spaces
                     devstruct.name = devstruct.name.Replace(" ", "");
+                    devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_size);
 
                     //If not duplicate process the chip
                     if (checkBox5.Checked == false || !is_duplicate(devices_list, devstruct))
@@ -527,7 +526,6 @@ fuses = {18}",
                                     break;
                             }
                         }
-
                         devices_list.Add(devstruct);
                     }
                     else
