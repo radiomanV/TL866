@@ -372,12 +372,12 @@ opts6 = 0x{15:x2}
 opts7 = 0x{16:x2}
 package_details = 0x{17:x8}
 fuses = {18}",
-            devstruct.name.Trim(), devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
+            devstruct.name, devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_size, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct.name.Trim()));
+            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct.name));
         }
 
         //Get device info in c header format
@@ -405,12 +405,12 @@ fuses = {18}",
     .package_details = 0x{17:x8},
     .fuses = {18}
 }},",
-            devstruct.name.Trim(), devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
+            devstruct.name, devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_size, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details,get_fuse_name(devstruct.name.Trim()));
+            devstruct.opts6, devstruct.opts7, devstruct.package_details,get_fuse_name(devstruct.name));
         }
 
 
@@ -418,7 +418,7 @@ fuses = {18}",
         private device get_ic_xml(DevStruct devstruct)
         {
             device xml_chip = new device();
-            xml_chip.icname = devstruct.name.Trim();
+            xml_chip.icname = devstruct.name;
             xml_chip.protocol = "0x" + devstruct.protocol.ToString("x2");
             xml_chip.type = "0x" + devstruct.type.ToString("x2");
             xml_chip.read_buffer_size = "0x" + devstruct.read_buffer_size.ToString("x2");
@@ -436,13 +436,18 @@ fuses = {18}",
             xml_chip.opts6 = "0x" + devstruct.opts6.ToString("x2");
             xml_chip.opts7 = "0x" + devstruct.opts7.ToString("x2");
             xml_chip.package_details = "0x" + devstruct.package_details.ToString("x8");
-            xml_chip.fuses = get_fuse_name(devstruct.name.Trim());
+            xml_chip.fuses = get_fuse_name(devstruct.name);
             return xml_chip;
         }
 
         bool compare_devices(DevStruct device1, DevStruct device2)
         {
-            return (string.Compare(device1.name.Split('@')[0], device2.name.Split('@')[0], true) == 0) &&
+            string d1 = device1.name.Split('@')[0];
+            d1 = d1.Split('(')[0];
+            string d2 = device2.name.Split('@')[0];
+            d2 = d2.Split('(')[0];
+            bool name_eq =  (d1.Length == d2.Length ? d1.Equals(d2, StringComparison.OrdinalIgnoreCase) : false);
+            return (name_eq) &&
              (device1.protocol == device2.protocol) &&
              (device1.type == device2.type) &&
              (device1.read_buffer_size == device2.read_buffer_size) &&
@@ -514,9 +519,11 @@ fuses = {18}",
                         else
                             total.Add(devstruct.protocol, devstruct.name + Environment.NewLine);
 
+                        /*Rename specific adapter to generic
                         if (checkBox5.Checked == true)
                         {
-                            //Rename specific adapter to generic
+                            
+
                             switch (devstruct.package_details & 0xFF)
                             {
                                 case 1:
@@ -525,7 +532,9 @@ fuses = {18}",
                                     devstruct.name = devstruct.name.Split('@')[0] + "@TSOP";
                                     break;
                             }
+                             
                         }
+                         */
                         devices_list.Add(devstruct);
                     }
                     else
@@ -556,6 +565,10 @@ fuses = {18}",
                         devstruct.chip_id = atmel_csv_list[key].DeviceID;
                     }
                 }
+                devstruct.name = devstruct.name.Replace("1.8v", "(1.8v)");
+                devstruct.name = devstruct.name.Replace("((1.8v))", "(1.8v)");
+                devstruct.name = devstruct.name.Replace("1.8V", "(1.8V)");
+                devstruct.name = devstruct.name.Replace("((1.8V))", "(1.8V)");
                 tmp_list.Add(devstruct);
             }
             devices_list = tmp_list;
