@@ -340,11 +340,11 @@ namespace InfoIcDump
 
         private string get_fuse_name(string name)
         {
-            string key = name.Split('@')[0];
-                    key = key.Split('(')[0];
+            string key = name.Split('@')[0].Trim();
+                    key = key.Split('(')[0].Trim();
                     if (microchip_csv_list.ContainsKey(key))
                         return microchip_csv_list[key].fuses;
-                    if (atmel_csv_list.ContainsKey(key))
+                    else if (atmel_csv_list.ContainsKey(key))
                         return atmel_csv_list[key].fuses;
                     return "NULL";
         }
