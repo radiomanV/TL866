@@ -119,7 +119,7 @@ namespace InfoIcDump
             public string opts7;
             [XmlAttribute("package_details")]
             public string package_details;
-            [XmlAttribute("fuses")]
+            [XmlAttribute("config")]
             public string fuses;
         }
 
@@ -371,7 +371,7 @@ opts5 = 0x{14:x2}
 opts6 = 0x{15:x2}
 opts7 = 0x{16:x2}
 package_details = 0x{17:x8}
-fuses = {18}",
+config = {18}",
             devstruct.name, devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
             devstruct.data_memory_size, devstruct.data_memory2_size,
@@ -403,7 +403,7 @@ fuses = {18}",
     .opts6 = 0x{15:x2},
     .opts7 = 0x{16:x2},
     .package_details = 0x{17:x8},
-    .fuses = {18}
+    .config = {18}
 }},",
             devstruct.name, devstruct.protocol, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
@@ -468,6 +468,8 @@ fuses = {18}",
 
         bool is_duplicate(List<DevStruct> devices_list, DevStruct device)
         {
+            if (device.protocol == 0)
+                return false;
             foreach (DevStruct d in devices_list)
             {
                 if (compare_devices(d, device) &&
