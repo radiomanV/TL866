@@ -338,15 +338,33 @@ namespace InfoIcDump
                 >> (int)(8 * (4 - size));
         }
 
-        private string get_fuse_name(string name)
+        private string get_fuse_name(DevStruct devstruct)
         {
-            string key = name.Split('@')[0].Trim();
-                    key = key.Split('(')[0].Trim();
-                    if (microchip_csv_list.ContainsKey(key))
-                        return microchip_csv_list[key].fuses;
-                    else if (atmel_csv_list.ContainsKey(key))
-                        return atmel_csv_list[key].fuses;
-                    return "NULL";
+            string key = devstruct.name.Split('@')[0].Trim();
+            key = key.Split('(')[0].Trim();
+
+            switch (devstruct.protocol)
+            {
+                case 0xe0:
+                    if (devstruct.type == 1)
+                        return "gal1_acw";
+                    else if (devstruct.type == 2)
+                        return "gal2_acw";
+                    break;
+                case 0xe1:
+                    if (devstruct.type == 4)
+                        return "gal3_acw";
+                    else if (devstruct.type == 5)
+                        return "gal4_acw";
+                    break;
+                case 0xe2:
+                    return "gal5_acw";
+            }
+            if (microchip_csv_list.ContainsKey(key))
+                return microchip_csv_list[key].fuses;
+            else if (atmel_csv_list.ContainsKey(key))
+                return atmel_csv_list[key].fuses;
+            return "NULL";
         }
 
         //Get device info in ini format
@@ -377,7 +395,7 @@ config = {18}",
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_size, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct.name));
+            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct));
         }
 
         //Get device info in c header format
@@ -410,7 +428,7 @@ config = {18}",
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_size, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details,get_fuse_name(devstruct.name));
+            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct));
         }
 
 
@@ -436,7 +454,7 @@ config = {18}",
             xml_chip.opts6 = "0x" + devstruct.opts6.ToString("x2");
             xml_chip.opts7 = "0x" + devstruct.opts7.ToString("x2");
             xml_chip.package_details = "0x" + devstruct.package_details.ToString("x8");
-            xml_chip.fuses = get_fuse_name(devstruct.name);
+            xml_chip.fuses = get_fuse_name(devstruct);
             return xml_chip;
         }
 
@@ -446,7 +464,7 @@ config = {18}",
             d1 = d1.Split('(')[0];
             string d2 = device2.name.Split('@')[0];
             d2 = d2.Split('(')[0];
-            bool name_eq =  (d1.Length == d2.Length ? d1.Equals(d2, StringComparison.OrdinalIgnoreCase) : false);
+            bool name_eq = (d1.Length == d2.Length ? d1.Equals(d2, StringComparison.OrdinalIgnoreCase) : false);
             return (name_eq) &&
              (device1.protocol == device2.protocol) &&
              (device1.type == device2.type) &&
@@ -560,7 +578,7 @@ config = {18}",
                     if (microchip_csv_list.ContainsKey(key))
                     {
                         devstruct.chip_id = microchip_csv_list[key].DeviceID;
-                        devstruct.opts3 = microchip_csv_list[key].DeviceIDMask;
+                        //devstruct.opts3 = microchip_csv_list[key].DeviceIDMask;
                     }
                     else if (atmel_csv_list.ContainsKey(key))
                     {
