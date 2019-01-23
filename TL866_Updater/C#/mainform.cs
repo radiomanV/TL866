@@ -261,31 +261,31 @@ namespace TL866
                 switch (tl866_report.Device_Version)
                 {
                     case 1:
-                        TxtInfo.AppendText("Device version: TL866A\n");
+                        TxtInfo.AppendText("Device version: TL866A\r\n");
                         devtype = (int)Firmware.PROGRAMMER_TYPE.TL866A;
                         break;
                     case 2:
-                        TxtInfo.AppendText("Device version: TL866CS\n");
+                        TxtInfo.AppendText("Device version: TL866CS\r\n");
                         devtype = (int)Firmware.PROGRAMMER_TYPE.TL866CS;
                         break;
                     default:
-                        TxtInfo.AppendText("Device version: Unknown\n");
+                        TxtInfo.AppendText("Device version: Unknown\r\n");
                         break;
                 }
                 switch ((Firmware.DEVICE_STATUS)tl866_report.Device_Status)
                 {
                     case Firmware.DEVICE_STATUS.NORMAL_MODE:
-                        TxtInfo.AppendText("Device status: Normal working mode.\n");
+                        TxtInfo.AppendText("Device status: Normal working mode.\r\n");
                         LedNorm.BackColor = LightGreen;
                         LedBoot.BackColor = DarkGreen;
                         break;
                     case Firmware.DEVICE_STATUS.BOOTLOADER_MODE:
-                        TxtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\n");
+                        TxtInfo.AppendText("Device status: Bootloader mode <waiting for update.>\r\n");
                         LedNorm.BackColor = DarkGreen;
                         LedBoot.BackColor = LightGreen;
                         break;
                     default:
-                        TxtInfo.AppendText("Device status: Unknown\n");
+                        TxtInfo.AppendText("Device status: Unknown\r\n");
                         LedNorm.BackColor = DarkGreen;
                         LedBoot.BackColor = DarkGreen;
                         break;
@@ -318,18 +318,18 @@ namespace TL866
 
                 if (AdvancedWindow != null && !AdvancedWindow.IsDisposed)
                     GetInfo();
-                TxtInfo.AppendText(string.Format("Device code: {0}{1}\n", devcode,
+                TxtInfo.AppendText(string.Format("Device code: {0}{1}\r\n", devcode,
                     Firmware.Calc_CRC(devcode, serial) ? "(Bad device code)" : string.Empty));
-                TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n", serial,
+                TxtInfo.AppendText(string.Format("Serial number: {0}{1}\r\n", serial,
                     Firmware.Calc_CRC(devcode, serial) ? "(Bad serial code)" : string.Empty));
-                TxtInfo.AppendText(string.Format("Firmware version: {0}\n",
+                TxtInfo.AppendText(string.Format("Firmware version: {0}\r\n",
                     isDumperActive
                         ? "Firmware dumper"
                         : tl866_report.Device_Status == (byte)Firmware.DEVICE_STATUS.NORMAL_MODE
                             ? string.Format("{0}.{1}.{2}", tl866_report.hardware_version,
                                 tl866_report.firmware_version_major,
                                 tl866_report.firmware_version_minor)
-                            : "Bootloader\n"));
+                            : "Bootloader\r\n"));
                 BtnDump.Enabled = isDumperActive;
                 BtnAdvanced.Enabled = isDumperActive;
                 byte cs = 0;
@@ -371,17 +371,17 @@ namespace TL866
                     AdvancedWindow.TxtDevcode.Text = dumper_report.DeviceCode;
                     AdvancedWindow.TxtSerial.Text = dumper_report.SerialCode;
 
-                    AdvancedWindow.TxtInfo.AppendText(string.Format("Device code: {0}{1}\n",
+                    AdvancedWindow.TxtInfo.AppendText(string.Format("Device code: {0}{1}\r\n",
                         AdvancedWindow.TxtDevcode.Text,
                         Firmware.Calc_CRC(AdvancedWindow.TxtDevcode.Text, AdvancedWindow.TxtSerial.Text)
                             ? "(Bad device code)"
                             : string.Empty));
-                    AdvancedWindow.TxtInfo.AppendText(string.Format("Serial number: {0}{1}\n",
+                    AdvancedWindow.TxtInfo.AppendText(string.Format("Serial number: {0}{1}\r\n",
                         AdvancedWindow.TxtSerial.Text,
                         Firmware.Calc_CRC(AdvancedWindow.TxtDevcode.Text, AdvancedWindow.TxtSerial.Text)
                             ? "(Bad serial code)"
                             : string.Empty));
-                    AdvancedWindow.TxtInfo.AppendText(string.Format("Bootloader version: {0}\n",
+                    AdvancedWindow.TxtInfo.AppendText(string.Format("Bootloader version: {0}\r\n",
                         dumper_report.bootloader_version == 1 ? "A" : "CS"));
                     AdvancedWindow.TxtInfo.AppendText(string.Format("Code Protection bit: {0}",
                         dumper_report.cp_bit > 0 ? "No" : "Yes"));
@@ -561,7 +561,7 @@ namespace TL866
                         }
                         else
                         {
-                            MessageBox.Show("Bootloader CRC error!\nAs a safety measure, nothing will be written.",
+                            MessageBox.Show("Bootloader CRC error!\r\nAs a safety measure, nothing will be written.",
                                 "TL866", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                         }
                     }
