@@ -1,4 +1,4 @@
-Simple low level winelib usb wrapper for Xgpro V7.xx
+Simple low level winelib usb wrapper for Xgpro V7.xx upwards
 This version will autodetect the Xgpro.exe version.
 
 Add the following rule to the udev subsystem:
