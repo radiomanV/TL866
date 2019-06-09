@@ -321,7 +321,7 @@ namespace InfoIc2PlusDump
             {
                 foreach (Control control in this.Controls)
                 {
-                      control.Enabled = false;
+                    control.Enabled = false;
                 }
             }
         }
@@ -468,51 +468,6 @@ config = {18}",
             return xml_chip;
         }
 
-        bool compare_devices(DevStruct device1, DevStruct device2)
-        {
-            device1.type &= 0xff;
-            device2.type &= 0xff;
-            string d1 = device1.name.Split('@')[0];
-            d1 = d1.Split('(')[0];
-            string d2 = device2.name.Split('@')[0];
-            d2 = d2.Split('(')[0];
-            return (d1 == d2) &&
-             (device1.protocol_id == device2.protocol_id) &&
-             (device1.type == device2.type) &&
-             (device1.read_buffer_size == device2.read_buffer_size) &&
-             (device1.write_buffer_size == device2.write_buffer_size) &&
-             (device1.code_memory_size == device2.code_memory_size) &&
-             (device1.data_memory_size == device2.data_memory_size) &&
-             (device1.data_memory2_size == device2.data_memory2_size) &&
-             (device1.chip_id == device2.chip_id) &&
-             (device1.chip_id_bytes_count == device2.chip_id_bytes_count) &&
-             (device1.opts1 == device2.opts1) &&
-             (device1.opts2 == device2.opts2) &&
-             (device1.opts3 == device2.opts3) &&
-             (device1.opts4 == device2.opts4) &&
-             (device1.opts5 == device2.opts5) &&
-             (device1.opts6 == device2.opts6) &&
-             (device1.opts7 == device2.opts7);
-        }
-
-        bool is_duplicate(List<DevStruct> devices_list, DevStruct device)
-        {
-            if (device.protocol_id == 0)
-                return false;
-            foreach (DevStruct d in devices_list)
-            {
-                if (compare_devices(d, device) &&
-                    (((device.package_details & 0X80000000) != 0) &&
-                    ((device.package_details & 0X7FFFFFFF) == (d.package_details & 0X7FFFFFFF))) ||
-                    (compare_devices(d, device) &&
-                    ((device.package_details & 0X00FFFF00) == (d.package_details & 0X00FFFF00)))
-                    )
-                    return true;
-            }
-            return false;
-        }
-
-
         //Perform the infoic.dll dump
         private void dump_database()
         {
@@ -526,8 +481,6 @@ config = {18}",
             List<string> device_list_c = new List<string>();
             SortedDictionary<uint, string> total = new SortedDictionary<uint, string>();
 
-            progressBar.Maximum = (int)GetIcMFC("", manufacturers, 0);
-
             //Iterate over the entire manufacturers
             for (uint i = 0; i < GetIcMFC("", manufacturers, 0); i++)
             {
@@ -538,47 +491,47 @@ config = {18}",
                     GetIcStru(manufacturers[i], devices[k], ref devstruct);
 
                     //Remove spaces
+                    devstruct.type &= 0xff;
                     devstruct.name = devstruct.name.Replace(" ", "");
                     devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_bytes_count);
 
-                    //If not duplicate process the chip
-                    if (checkBox5.Checked == false || !is_duplicate(devices_list, devstruct))
-                    {
-                        //Log the device
-                        if (total.ContainsKey(devstruct.protocol_id))
-                            total[devstruct.protocol_id] += devstruct.name + Environment.NewLine;
-                        else
-                            total.Add(devstruct.protocol_id, devstruct.name + Environment.NewLine);
-
-                        /*Rename specific adapter to generic
-                        if (checkBox5.Checked == true)
-                        {
-                            
-
-                            switch (devstruct.package_details & 0xFF)
-                            {
-                                case 1:
-                                case 2:
-                                case 6:
-                                    devstruct.name = devstruct.name.Split('@')[0] + "@TSOP";
-                                    break;
-                            }
-                             
-                        }
-                         */
-                        devices_list.Add(devstruct);
-                    }
+                    //Add device to list
+                    devices_list.Add(devstruct);
+                    //Log the device
+                    if (total.ContainsKey(devstruct.protocol_id))
+                        total[devstruct.protocol_id] += devstruct.name + Environment.NewLine;
                     else
-                        duplicates.Add(devstruct.name);
+                        total.Add(devstruct.protocol_id, devstruct.name + Environment.NewLine);
+
                 }
-                progressBar.Value += 1;
-                Application.DoEvents();
             }
-            progressBar.Value = progressBar.Maximum;
+            
 
             List<DevStruct> tmp_list = new List<DevStruct>();
+            List<DevStruct> clean_list = new List<DevStruct>();
 
-            foreach (DevStruct d in devices_list)
+            progressBar.Maximum = devices_list.Count;
+
+            if (checkBox5.Checked)
+            {
+                int j = 0;
+                while (j < devices_list.Count)
+                {
+                    if (!clean_list.Contains(devices_list[j]))
+                        clean_list.Add(devices_list[j]);
+                    else
+                        duplicates.Add(devices_list[j].name);
+                    j++;
+                    progressBar.Value = j;
+                    Application.DoEvents();
+                }
+                progressBar.Value = progressBar.Maximum;
+            }
+            else
+                clean_list = devices_list;
+
+
+            foreach (DevStruct d in clean_list)
             {
                 devstruct = d;
                 //Patch Microchip and Atmel controllers
@@ -589,7 +542,6 @@ config = {18}",
                     if (microchip_csv_list.ContainsKey(key))
                     {
                         devstruct.chip_id = microchip_csv_list[key].DeviceID;
-                        //devstruct.opts3 = microchip_csv_list[key].DeviceIDMask;
                     }
                     else if (atmel_csv_list.ContainsKey(key))
                     {
@@ -600,6 +552,7 @@ config = {18}",
                 devstruct.name = devstruct.name.Replace("((1.8v))", "(1.8v)");
                 devstruct.name = devstruct.name.Replace("1.8V", "(1.8V)");
                 devstruct.name = devstruct.name.Replace("((1.8V))", "(1.8V)");
+                devstruct.name = devstruct.name.Replace("ISP", "ICSP");
                 tmp_list.Add(devstruct);
             }
             devices_list = tmp_list;
@@ -622,20 +575,20 @@ config = {18}",
             }
 
             //Convert
-            for (int i = 0; i < devices_list.Count; i++)
+            foreach (DevStruct d in devices_list)
             {
                 //Get the element in ini format
                 if (checkBox2.Checked)
-                    device_list_ini.Add(get_ic_string_ini(devices_list[i]) + Environment.NewLine);
+                    device_list_ini.Add(get_ic_string_ini(d) + Environment.NewLine);
 
                 //Get the element in C header format
                 if (checkBox1.Checked)
-                    device_list_c.Add(get_ic_string_c(devices_list[i]));
+                    device_list_c.Add(get_ic_string_c(d));
 
                 //Get the element in xml format
                 if (checkBox3.Checked)
                 {
-                    device_list_xml.Add(get_ic_xml(devices_list[i]));
+                    device_list_xml.Add(get_ic_xml(d));
                 }
             }
             try
