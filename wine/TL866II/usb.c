@@ -320,6 +320,8 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID, PUCHAR Buff
 	if (device_handle[(int)InterfaceHandle] == NULL)
 		return FALSE;
 	int ret;
+	if((PipeID & 0x80) && (PipeID & 0x7F) > 1 && BufferLength < 64)
+		BufferLength = 64; 
 	if(Overlapped != NULL)//If an asynchronous transfer is needed then pack all the arguments to an Arg structure and pass them to a new thread and return immediately.
 	{
 		ResetEvent(Overlapped->hEvent);
