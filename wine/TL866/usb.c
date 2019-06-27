@@ -543,6 +543,7 @@ FARPROC get_proc_address(LPCSTR lpProcName) {
   strcat(sysdir, "\\setupapi.dll");
   HMODULE hmodule = LoadLibraryA(sysdir);
   FARPROC address = GetProcAddress(hmodule, lpProcName);
+  return address;
 }
 
 __stdcall HANDLE SetupDiGetClassDevsW(const GUID *ClassGuid, PCWSTR Enumerator,
