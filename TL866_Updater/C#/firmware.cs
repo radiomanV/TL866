@@ -43,6 +43,7 @@ namespace TL866
         public const int UNENCRYPTED_FIRMWARE_SIZE = 0x1E400;
         public const int FIRMWARE_SIGNATURE_OFFSET = 0x1E3FC;
         public const uint FIRMWARE_SIGNATURE = 0x5AA5AA55;
+        public const uint CP0_ADDRESS = 0x1FFF9;
         public const int DEVCODE_LENGHT = 8;
         public const int SERIALCODE_LENGHT = 24;
 

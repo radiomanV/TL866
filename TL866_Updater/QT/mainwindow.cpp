@@ -338,8 +338,16 @@ void MainWindow::on_btnSave_clicked()
 {
     //Prepare data to be saved.
     QByteArray temp = get_resource(ui->radiofA->isChecked() ? A_FIRMWARE_RESOURCE :  CS_FIRMWARE_RESOURCE, FLASH_SIZE);
+
+    //Writing the main firmware or empty on choice
     if(ui->optionBoot->isChecked())
         memset(&temp.data()[BOOTLOADER_SIZE], 0xFF, UNENCRYPTED_FIRMWARE_SIZE);//if the option bootloader only is selected then clear the main firmware area(0x1800-0x1FBFF)
+
+    //Disable the CP0 bit if necessary
+    if(!ui->cp0->isChecked())
+        temp.data()[CP0_ADDRESS] |= 0x04;
+
+    //Writing serial code
     memset(&temp.data()[SERIAL_OFFSET],' ',32);//add trailing spaces
     memcpy(&temp.data()[SERIAL_OFFSET], ui->txtDevcode->text().toLatin1().data(), static_cast<size_t>(ui->txtDevcode->text().size()));//copy devcode to key array
     memcpy(&temp.data()[SERIAL_OFFSET+8], ui->txtSerial->text().toLatin1().data(), static_cast<size_t>(ui->txtSerial->text().size()));//copy serial to key array
@@ -374,6 +382,14 @@ void MainWindow::on_btnSave_clicked()
         file.close();//done!
         QApplication::beep();
     }
+}
+
+//Click the CP0 checkbox
+void MainWindow::on_cp0_stateChanged(int arg1)
+{
+    if(arg1 == Qt::Unchecked)
+        QMessageBox::warning(this, "TL866", "Disabling the CP0 bit will disable switch to bootloader function in the latest firmware versions!\nThis bit should be disabled only for debugging purposes.",
+                             QMessageBox::Ok);
 }
 
 //Helper function to get a binary resource
@@ -683,9 +699,9 @@ void MainWindow::gui_updated(const QString &message, bool eraseLed, bool writeLe
 }
 
 //This procedure is called automatically by the usb device change. Call this function to refresh the info.
- MainWindow::DeviceInfo MainWindow::DeviceChanged(bool arrived)
+MainWindow::DeviceInfo MainWindow::DeviceChanged(bool arrived)
 {
-     DeviceInfo device_info = {"", "", 0};
+    DeviceInfo device_info = {"", "", 0};
 
     if(!arrived && reset_flag)//ignore unplug events if the device was resetted by us.
         return device_info;
@@ -801,14 +817,14 @@ void MainWindow::gui_updated(const QString &message, bool eraseLed, bool writeLe
     else//no device connected
         SetBlank();
     return device_info;
- }
+}
 
 //Helper function to get formated device and serial code
 const QString MainWindow::GetFormatedString(const QString &devcode, const QString &serial)
 {
     return QString("Device code: %1\nSerial number: %2").arg(devcode.trimmed() +
-                  (Firmware::IsBadCrc(devcode, serial) ? " (Bad device code)" : "")) .arg(serial.trimmed() +
-                  (Firmware::IsBadCrc(devcode, serial) ? " (Bad serial code)" : ""));
+                                                             (Firmware::IsBadCrc(devcode, serial) ? " (Bad device code)" : "")) .arg(serial.trimmed() +
+                                                                                                                                     (Firmware::IsBadCrc(devcode, serial) ? " (Bad serial code)" : ""));
 }
 
 
@@ -957,3 +973,4 @@ bool MainWindow::AdvQuestion()
     return(QMessageBox::warning(advdlg, "TL866", "Warning! this operation may brick your device.\nDo you want to continue?",
                                 QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
 }
+

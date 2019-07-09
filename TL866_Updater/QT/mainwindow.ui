@@ -809,6 +809,43 @@
         </item>
        </layout>
       </widget>
+      <widget class="QCheckBox" name="cp0">
+       <property name="geometry">
+        <rect>
+         <x>273</x>
+         <y>90</y>
+         <width>231</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Code protection bit(CP0)</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QLabel" name="label_8">
+      <property name="geometry">
+       <rect>
+        <x>210</x>
+        <y>130</y>
+        <width>361</width>
+        <height>16</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>11</pointsize>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(0, 0, 255);</string>
+      </property>
+      <property name="text">
+       <string>Generated firmware version 3.2.82 (Minipro 6.71)</string>
+      </property>
      </widget>
     </widget>
    </widget>

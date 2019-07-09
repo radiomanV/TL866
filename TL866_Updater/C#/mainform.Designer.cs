@@ -70,6 +70,8 @@
             this.LedNorm = new System.Windows.Forms.Label();
             this.LedBoot = new System.Windows.Forms.Label();
             this.TabControl = new System.Windows.Forms.TabControl();
+            this.cp0 = new System.Windows.Forms.CheckBox();
+            this.label2 = new System.Windows.Forms.Label();
             this.TabPage2.SuspendLayout();
             this.GroupBox3.SuspendLayout();
             this.GroupBox2.SuspendLayout();
@@ -82,6 +84,7 @@
             // TabPage2
             // 
             this.TabPage2.BackColor = System.Drawing.Color.Transparent;
+            this.TabPage2.Controls.Add(this.label2);
             this.TabPage2.Controls.Add(this.GroupBox3);
             this.TabPage2.Controls.Add(this.GroupBox2);
             this.TabPage2.Location = new System.Drawing.Point(4, 25);
@@ -201,6 +204,7 @@
             // 
             // Panel1
             // 
+            this.Panel1.Controls.Add(this.cp0);
             this.Panel1.Controls.Add(this.RadiofCS);
             this.Panel1.Controls.Add(this.RadiofA);
             this.Panel1.Location = new System.Drawing.Point(232, 20);
@@ -538,6 +542,29 @@
             this.TabControl.Size = new System.Drawing.Size(741, 358);
             this.TabControl.TabIndex = 1;
             // 
+            // cp0
+            // 
+            this.cp0.AutoSize = true;
+            this.cp0.Checked = true;
+            this.cp0.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.cp0.Location = new System.Drawing.Point(16, 61);
+            this.cp0.Name = "cp0";
+            this.cp0.Size = new System.Drawing.Size(172, 20);
+            this.cp0.TabIndex = 2;
+            this.cp0.Text = "Code protection bit(CP0)";
+            this.cp0.UseVisualStyleBackColor = true;
+            this.cp0.CheckedChanged += new System.EventHandler(this.cp0_CheckedChanged);
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.ForeColor = System.Drawing.Color.Blue;
+            this.label2.Location = new System.Drawing.Point(193, 133);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(291, 16);
+            this.label2.TabIndex = 59;
+            this.label2.Text = "Generated firmware version 3.2.82 (Minipro 6.71)";
+            // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -556,6 +583,7 @@
             this.StyleChanged += new System.EventHandler(this.MainForm_SizeChanged);
             this.SystemColorsChanged += new System.EventHandler(this.MainForm_SizeChanged);
             this.TabPage2.ResumeLayout(false);
+            this.TabPage2.PerformLayout();
             this.GroupBox3.ResumeLayout(false);
             this.GroupBox3.PerformLayout();
             this.GroupBox2.ResumeLayout(false);
@@ -614,6 +642,8 @@
         internal System.Windows.Forms.Label LedNorm;
         internal System.Windows.Forms.Label LedBoot;
         internal System.Windows.Forms.TabControl TabControl;
+        private System.Windows.Forms.CheckBox cp0;
+        private System.Windows.Forms.Label label2;
 
     }
 }

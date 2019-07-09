@@ -8,6 +8,7 @@
 #define XOR_TABLE_SIZE              0x100
 #define XOR_TABLE_OFFSET            0x1FC00
 #define FIRMWARE_SIGNATURE_OFFSET   0x1E3FC
+#define CP0_ADDRESS                 0x1FFF9
 #define FIRMWARE_SIGNATURE          0x5AA5AA55
 
 #define SERIAL_OFFSET               0x1FD00

@@ -784,6 +784,9 @@ namespace TL866
             if (!OptionFull.Checked)
                 for (int i = Firmware.BOOTLOADER_SIZE; i < Firmware.XOR_TABLE_OFFSET; i++)
                     data[i] = 0xFF;
+            //Disable the CP0 bit if necessary
+            if (!cp0.Checked)
+                data[Firmware.CP0_ADDRESS] |= 0x04;
             ////Writing serial code
             byte[] info = new byte[Firmware.BLOCK_SIZE];
             string s1 = TxtDevcode.Text + new string(' ', Firmware.DEVCODE_LENGHT - TxtDevcode.Text.Length);
@@ -871,5 +874,12 @@ namespace TL866
         private delegate void SetProgressBarCallBack(int percentage);
 
         private delegate void SetMessageCallBack(string message);
+
+        private void cp0_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!cp0.Checked)
+                MessageBox.Show("Disabling the CP0 bit will disable switch to bootloader function in the latest firmware versions!\r\nThis bit should be disabled only for debugging purposes.", "TL866",
+            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
     }
 }

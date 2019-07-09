@@ -68,6 +68,8 @@ private slots:
     void WriteInfo(const QString &device_code, const QString &serial_number);
 
 
+    void on_cp0_stateChanged(int arg1);
+
 signals:
     void reflash_status(const QString &result);
     void dump_status(const QString &result);
@@ -108,7 +110,7 @@ private:
 #define A_FIRMWARE_RESOURCE     ":/firmware/firmwareA.bin"
 #define CS_FIRMWARE_RESOURCE    ":/firmware/firmwareCS.bin"
 #define DUMPER_RESOURCE         ":/firmware/dumper.bin"
-#define VERSION                 "2.5"
+#define VERSION                 "2.52"
 };
 
 #endif // MAINWINDOW_H
