@@ -40,7 +40,12 @@ namespace InfoIc2PlusDump
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern uint GetIcList(string search, uint[] ICArray, uint Manuf, uint IcType);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-        private static extern uint GetDllInfo(ref uint p1, ref uint p2);
+        private static extern uint GetDllInfo(ref uint dll_version, ref uint num_mfcs);
+
+        //External patcher function
+        [DllImport("PatchLib.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+        private static extern void Patch_Device(ref DevStruct devstruct);
+
 
 
         [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
@@ -50,15 +55,17 @@ namespace InfoIc2PlusDump
             public uint logo;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 20)]
             public string manufacturer_name;
-            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
             public string manufacturer_description;
+            public IntPtr devs;
+            public uint num_devs;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
         public struct DevStruct
         {
             public uint protocol_id;
-            public uint unknown;
+            public uint opts8;
             public uint category;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 40)]
             public string name;
@@ -78,7 +85,7 @@ namespace InfoIc2PlusDump
             public uint opts6;
             public uint package_details;
             public uint opts4;
-        }
+        }//116 bytes
 
 
         public class device
@@ -117,6 +124,8 @@ namespace InfoIc2PlusDump
             public string opts6;
             [XmlAttribute("opts7")]
             public string opts7;
+            [XmlAttribute("opts8")]
+            public string opts8;
             [XmlAttribute("package_details")]
             public string package_details;
             [XmlAttribute("config")]
@@ -238,7 +247,10 @@ namespace InfoIc2PlusDump
             DeviceList.Items.Clear();
             for (int i = 0; i < GetIcList(SearchBox.Text.ToUpper(), devices, (uint)tag[MfcList.SelectedIndex], GetIcType()); i++)
             {
+                //Skip devices marked as not ready yet
                 GetIcStru((uint)tag[MfcList.SelectedIndex], devices[i], ref devstruct);
+                if ((devstruct.opts8 & 0x10000000) != 0)
+                    continue;
                 DeviceList.Items.Add(devstruct.name);
             }
             DeviceList.Tag = devices;
@@ -255,6 +267,20 @@ namespace InfoIc2PlusDump
             uint[] tag2 = (uint[])DeviceList.Tag;
             GetIcStru(tag1[MfcList.SelectedIndex], tag2[DeviceList.SelectedIndex], ref devstruct);
             devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_bytes_count);
+            if (devstruct.category == 2)
+            {
+                string key = devstruct.name.Split('@')[0];
+                key = key.Split('(')[0].Trim();
+                if (microchip_csv_list.ContainsKey(key))
+                {
+                    devstruct.chip_id = microchip_csv_list[key].DeviceID;
+                }
+                else if (atmel_csv_list.ContainsKey(key))
+                {
+                    devstruct.chip_id = atmel_csv_list[key].DeviceID;
+                }
+            }
+            Patch_Device(ref devstruct);
             txt_info.Text = get_ic_string_ini(devstruct).ToString();
             label_devs.Text = "Devices:" + DeviceList.Items.Count.ToString();
         }
@@ -305,6 +331,8 @@ namespace InfoIc2PlusDump
                 MfcStruct b = new MfcStruct();
                 MfcList.Items.Clear();
                 DeviceList.Items.Clear();
+                uint dll_version = 0;
+                uint num_mfcs = 0;
                 for (int i = 0; i < GetIcMFC(SearchBox.Text.ToUpper(), manufacturers, GetIcType()); i++)
                 {
                     GetMfcStru(manufacturers[i], ref b);
@@ -313,9 +341,8 @@ namespace InfoIc2PlusDump
                 MfcList.Tag = manufacturers;
                 if (MfcList.Items.Count > 0)
                     MfcList.SelectedIndex = 0;
-                uint p1 = 0;
-                uint p2 = 0;
-                label_total.Text = "Total Devices:" + GetDllInfo(ref p1, ref p2).ToString();
+
+                label_total.Text = "Total Devices:" + GetDllInfo(ref dll_version, ref num_mfcs).ToString();
             }
             catch
             {
@@ -390,20 +417,22 @@ data_memory2_size = 0x{7:x2}
 chip_id = 0x{8:x4}
 chip_id_bytes_count = 0x{9:x2}
 opts1 = 0x{10:x2}
-opts2 = 0x{11:x2}
-opts3 = 0x{12:x2}
-opts4 = 0x{13:x2}
-opts5 = 0x{14:x2}
-opts6 = 0x{15:x2}
-opts7 = 0x{16:x2}
-package_details = 0x{17:x8}
-config = {18}",
+opts2 = 0x{11:x4}
+opts3 = 0x{12:x4}
+opts4 = 0x{13:x4}
+opts5 = 0x{14:x4}
+opts6 = 0x{15:x4}
+opts7 = 0x{16:x4}
+opts8 = 0x{17:x4}
+package_details = 0x{18:x8}
+config = {19}",
             devstruct.name, devstruct.protocol_id, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_bytes_count, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct));
+            devstruct.opts6, devstruct.opts7, devstruct.opts8, devstruct.package_details,
+            get_fuse_name(devstruct));
         }
 
         //Get device info in c header format
@@ -423,21 +452,23 @@ config = {18}",
     .chip_id = 0x{8:x4},
     .chip_id_bytes_count = 0x{9:x2},
     .opts1 = 0x{10:x2},
-    .opts2 = 0x{11:x2},
-    .opts3 = 0x{12:x2},
-    .opts4 = 0x{13:x2},
-    .opts5 = 0x{14:x2},
-    .opts6 = 0x{15:x2},
-    .opts7 = 0x{16:x2},
-    .package_details = 0x{17:x8},
-    .config = {18}
+    .opts2 = 0x{11:x4},
+    .opts3 = 0x{12:x4},
+    .opts4 = 0x{13:x4},
+    .opts5 = 0x{14:x4},
+    .opts6 = 0x{15:x4},
+    .opts7 = 0x{16:x4},
+    .opts8 = 0x{17:x4},
+    .package_details = 0x{18:x8},
+    .config = {19}
 }},",
             devstruct.name, devstruct.protocol_id, devstruct.type, devstruct.read_buffer_size,
             devstruct.write_buffer_size, devstruct.code_memory_size,
             devstruct.data_memory_size, devstruct.data_memory2_size,
             devstruct.chip_id, devstruct.chip_id_bytes_count, devstruct.opts1,
             devstruct.opts2, devstruct.opts3, devstruct.opts4, devstruct.opts5,
-            devstruct.opts6, devstruct.opts7, devstruct.package_details, get_fuse_name(devstruct));
+            devstruct.opts6, devstruct.opts7, devstruct.opts8, devstruct.package_details,
+            get_fuse_name(devstruct));
         }
 
 
@@ -457,12 +488,13 @@ config = {18}",
             xml_chip.chip_id = "0x" + devstruct.chip_id.ToString("x4");
             xml_chip.chip_id_size = "0x" + devstruct.chip_id_bytes_count.ToString("x2");
             xml_chip.opts1 = "0x" + devstruct.opts1.ToString("x2");
-            xml_chip.opts2 = "0x" + devstruct.opts2.ToString("x2");
-            xml_chip.opts3 = "0x" + devstruct.opts3.ToString("x2");
-            xml_chip.opts4 = "0x" + devstruct.opts4.ToString("x2");
-            xml_chip.opts5 = "0x" + devstruct.opts5.ToString("x2");
-            xml_chip.opts6 = "0x" + devstruct.opts6.ToString("x2");
-            xml_chip.opts7 = "0x" + devstruct.opts7.ToString("x2");
+            xml_chip.opts2 = "0x" + devstruct.opts2.ToString("x4");
+            xml_chip.opts3 = "0x" + devstruct.opts3.ToString("x4");
+            xml_chip.opts4 = "0x" + devstruct.opts4.ToString("x4");
+            xml_chip.opts5 = "0x" + devstruct.opts5.ToString("x4");
+            xml_chip.opts6 = "0x" + devstruct.opts6.ToString("x4");
+            xml_chip.opts7 = "0x" + devstruct.opts7.ToString("x4");
+            xml_chip.opts7 = "0x" + devstruct.opts8.ToString("x4");
             xml_chip.package_details = "0x" + devstruct.package_details.ToString("x8");
             xml_chip.fuses = get_fuse_name(devstruct);
             return xml_chip;
@@ -471,9 +503,7 @@ config = {18}",
         //Perform the infoic.dll dump
         private void dump_database()
         {
-            uint[] manufacturers = new uint[4096];
-            uint[] devices = new uint[4096];
-            DevStruct devstruct = new DevStruct();
+            DevStruct devstruct;
             List<DevStruct> devices_list = new List<DevStruct>();
             List<string> duplicates = new List<string>();
             List<device> device_list_xml = new List<device>();
@@ -481,14 +511,23 @@ config = {18}",
             List<string> device_list_c = new List<string>();
             SortedDictionary<uint, string> total = new SortedDictionary<uint, string>();
 
+            uint dll_version = 0;
+            uint num_mfcs = 0;
+            GetDllInfo(ref dll_version, ref num_mfcs);
             //Iterate over the entire manufacturers
-            for (uint i = 0; i < GetIcMFC("", manufacturers, 0); i++)
+            for (uint i = 0; i < num_mfcs; i++)
             {
+                MfcStruct mfcstruct = new MfcStruct();
+                GetMfcStru(i, ref mfcstruct);
                 //Iterate over the entire devices in the curent manufacturer
-                for (uint k = 0; k < GetIcList("", devices, manufacturers[i], 0); k++)
+                for (uint k = 0; k < mfcstruct.num_devs; k++)
                 {
                     //Get the device struct
-                    GetIcStru(manufacturers[i], devices[k], ref devstruct);
+                    devstruct = (DevStruct)Marshal.PtrToStructure(new IntPtr(mfcstruct.devs.ToInt32() + k * Marshal.SizeOf(new DevStruct())), typeof(DevStruct));
+
+                    //Skip devices marked as not ready yet
+                    if ((devstruct.opts8 & 0x10000000) != 0)
+                        continue;
 
                     //Remove spaces
                     devstruct.type &= 0xff;
@@ -505,7 +544,7 @@ config = {18}",
 
                 }
             }
-            
+
 
             List<DevStruct> tmp_list = new List<DevStruct>();
             List<DevStruct> clean_list = new List<DevStruct>();
@@ -553,6 +592,11 @@ config = {18}",
                 devstruct.name = devstruct.name.Replace("1.8V", "(1.8V)");
                 devstruct.name = devstruct.name.Replace("((1.8V))", "(1.8V)");
                 devstruct.name = devstruct.name.Replace("ISP", "ICSP");
+
+                //Pass the device structure pointer to an external "C" patcher
+                //The external patcher is implemented in plain C code
+                Patch_Device(ref devstruct);
+   
                 tmp_list.Add(devstruct);
             }
             devices_list = tmp_list;
