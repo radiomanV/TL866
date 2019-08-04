@@ -36,7 +36,7 @@ extern "C"
 		//Patch opts5
 		if(device->opts7 == 0x06 && device->opts5 >= 0xF0)
 			device->opts5 = 0xF0;
-		device->opts5 = (device->opts5 & 0x00FF) | ((uint32_t)device->opts1 << 8);
+		device->opts5 = (device->opts5 & 0xFFFF00FF) | ((uint32_t)device->opts1 << 8);
 
 		//Patch opts8
 		device->opts8 = (device->opts8 & 0x00FF) | (uint32_t)(patch_hi8(device) << 8);
