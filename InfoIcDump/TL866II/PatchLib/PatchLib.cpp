@@ -4,6 +4,7 @@
 
 extern "C"
 {
+#pragma pack(1)
 	typedef struct {
 		uint32_t protocol_id;
 		uint32_t opts8;
@@ -29,10 +30,14 @@ extern "C"
 
 	uint8_t patch_hi8(devstruct_t *device);
 	uint8_t patch_lo8(devstruct_t *device);
+	void patch_package(devstruct_t *device);
 
 
 	__declspec(dllexport) void Patch_Device(devstruct_t *device)
 	{
+		//Patch package details and opts4
+		patch_package(device);
+
 		//Patch opts5
 		if(device->opts7 == 0x06 && device->opts5 >= 0xF0)
 			device->opts5 = 0xF0;
@@ -41,6 +46,36 @@ extern "C"
 		//Patch opts8
 		device->opts8 = (device->opts8 & 0x00FF) | (uint32_t)(patch_hi8(device) << 8);
 		device->opts8 = (device->opts8 & 0xFF00) | patch_lo8(device);
+	}
+
+
+	//Patch package_details and opts4
+	void patch_package(devstruct_t *device)
+	{
+		if ( device->protocol_id == 0x2D ) return;			
+		if ( device->protocol_id == 3 )
+		{
+			device->opts4 |= 0x100048;
+			if ((device->package_details & 0xFF00) == 0x500 ) return;		
+			device->package_details |= 0x900;
+			return;
+		}
+		else
+		{
+			if ( device->protocol_id == 2 )
+			{
+				if ( device->variant & 0x20 ) return;				
+				device->opts4 |= 0x100000;
+				device->package_details |= 0xA00;
+				return;
+			}
+			else
+			{
+				if ( device->protocol_id != 1 || (uint8_t)device->opts1 ) return;				
+				device->opts4 |= 0x100000;
+				device->package_details |= 0xB00;
+			}
+		}
 	}
 
 
