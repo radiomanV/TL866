@@ -35,6 +35,19 @@ FORMS    += mainwindow.ui \
 RESOURCES += \
     resources.qrc
 
+unix:macx{
+HEADERS += usb_macos.h \
+        notifier_macos.h
+SOURCES += usb_macos.cpp \
+        notifier_macos.cpp
+LIBS += -L/opt/local/lib \
+        -lusb-1.0 \
+        -framework IOKit \
+        -framework Carbon
+QMAKE_CXXFLAGS += "-std=c++0x"
+INCPATH += /opt/local/include
+}
+
 unix:!macx{
 HEADERS += usb_linux.h \
         notifier_linux.h

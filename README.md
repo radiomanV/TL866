@@ -56,3 +56,8 @@ sudo udevadm control --reload-rules
 The CentOS rules file currently make the programmer device writable for 
 all users.
 
+#### macOS
+
+Follow instructions for Linux. You'll need libusb and libqt4 through
+a package installer. Macports has been used successfully. Udev doesn't
+exist for macOS so native IOKit is used instead.

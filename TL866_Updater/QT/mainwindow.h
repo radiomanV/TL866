@@ -27,6 +27,11 @@
 #include "notifier_linux.h"
 #endif
 
+#ifdef Q_OS_DARWIN
+#include "usb_macos.h"
+#include "notifier_macos.h"
+#endif
+
 
 namespace Ui {
 class MainWindow;
