@@ -53,7 +53,6 @@ int get_device_count();
 
 // Global variables
 libusb_device_handle *device_handle[4];
-libusb_context *ctx;
 libusb_device **devs;
 
 HANDLE h_thread;
@@ -232,8 +231,8 @@ int open_devices(int *error) {
   device_handle[3] = NULL;
   devs = NULL;
 
-  libusb_init(&ctx);         // initialize a new session
-  libusb_set_debug(ctx, 3);  // set verbosity level
+  libusb_init(NULL);         // initialize a new session
+  libusb_set_debug(NULL, 3);  // set verbosity level
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
   usb_handle[1] = INVALID_HANDLE_VALUE;
@@ -249,7 +248,7 @@ int open_devices(int *error) {
 
   int devices_found = 0, ret;
   struct libusb_device_descriptor desc;
-  int count = libusb_get_device_list(ctx, &devs);
+  int count = libusb_get_device_list(NULL, &devs);
 
   if (count < 0) {
     return 0;
@@ -288,7 +287,7 @@ void close_devices() {
       }
     }
     libusb_free_device_list(devs, 1);
-    libusb_exit(ctx);  // close session
+    libusb_exit(NULL);  // close session
     devs = NULL;
     ;
   }
