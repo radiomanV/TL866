@@ -58,7 +58,7 @@ all users.
 
 #### macOS
 
-Follow instructions for Linux. You'll need libusb and libqt4 through
+Follow instructions for Linux. You'll need pkg-config, libusb, and libqt4 or above through
 a package installer. Macports and Homebrew have been used successfully. Udev doesn't
 exist for macOS so native IOKit is used instead.
 
