@@ -3,7 +3,7 @@
 
 #include <glob.h>
 #include <QList>
-#include <libusb-1.0/libusb.h>
+#include <libusb.h>
 
 class USB
 {

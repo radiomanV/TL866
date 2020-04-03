@@ -40,11 +40,13 @@ HEADERS += usb_macos.h \
         notifier_macos.h
 SOURCES += usb_macos.cpp \
         notifier_macos.cpp
-LIBS += -L/opt/local/lib \
-        -lusb-1.0 \
+LIBS += `pkg-config --libs-only-l libusb-1.0` \
         -framework IOKit \
         -framework Carbon
-QMAKE_CXXFLAGS += "-std=c++0x"
+QMAKE_CXX = clang
+QMAKE_CXXFLAGS += "-std=c++0x" \
+        `pkg-config --cflags libusb-1.0`
+QMAKE_LFLAGS += `pkg-config --libs-only-L libusb-1.0`
 INCPATH += /opt/local/include
 }
 

@@ -22,7 +22,7 @@ sudo apt-get install build-essential pkg-config git libusb-1.0-0-dev libqt4-dev
 ### Checkout source code and compile 
 ```nohighlight
 git clone https://github.com/radiomanV/TL866
-cd TL866/QT
+cd TL866/TL866_Updater/QT
 qmake
 make
 sudo cp TL866_Updater /usr/local/bin
@@ -58,6 +58,17 @@ all users.
 
 #### macOS
 
-Follow instructions for Linux. You'll need libusb and libqt4 through
-a package installer. Macports has been used successfully. Udev doesn't
+Follow instructions for Linux. You'll need pkg-config, libusb, and libqt4 or above through
+a package installer. Macports and Homebrew have been used successfully. Udev doesn't
 exist for macOS so native IOKit is used instead.
+
+Homebrew instructions:
+
+```nohighlight
+brew install qt libusb pkg-config
+git clone https://github.com/radiomanV/TL866
+cd TL866/TL866_Updater/QT
+qmake
+make
+cp -R TL866_Updater.app /Applications
+```
