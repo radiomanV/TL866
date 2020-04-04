@@ -54,6 +54,16 @@ BOOL cancel;
 HANDLE *usb_handle;
 GUID m_guid;
 
+typedef BOOL(__stdcall *pMessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
+typedef HWND(__stdcall *pGetForegroundWindow)();
+typedef LRESULT(__stdcall *pSendMessageA)(HWND, UINT, WPARAM, LPARAM);
+typedef BOOL(__stdcall *pRedrawWindow)(HWND, const RECT *, HRGN, UINT);
+
+pMessageBoxA message_box;
+pGetForegroundWindow get_foreground_window;
+pSendMessageA send_message;
+pRedrawWindow redraw_window;
+
 // These are functions signature extracted from MiniPro.exe and should be
 // compatible from V6.0 and above.
 const unsigned char open_devices_pattern[] = {0x6A, 0x00, 0x68, 0x80, 0x00,
@@ -79,6 +89,14 @@ const unsigned char brickbug_patern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
 BOOL patch_minipro() {
   DWORD dwOldProtection;
   DWORD func_addr = 0;
+
+  // Set some function pointers
+  HMODULE hmodule = LoadLibraryA("user32.dll");
+  message_box = (pMessageBoxA)GetProcAddress(hmodule, "MessageBoxA");
+  get_foreground_window =
+      (pGetForegroundWindow)GetProcAddress(hmodule, "GetForegroundWindow");
+  send_message = (pSendMessageA)GetProcAddress(hmodule, "SendMessageA");
+  redraw_window = (pRedrawWindow)GetProcAddress(hmodule, "RedrawWindow");
 
   // Get the BaseAddress, NT Header and Image Import Descriptor
   void *BaseAddress = GetModuleHandleA(NULL);
@@ -246,7 +264,7 @@ int open_devices(GUID *guid, int *error) {
   device_handle[3] = NULL;
   devs = NULL;
 
-  libusb_init(NULL);         // initialize a new session
+  libusb_init(NULL);          // initialize a new session
   libusb_set_debug(NULL, 3);  // set verbosity level
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
@@ -310,7 +328,8 @@ unsigned int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead,
   unsigned int ret = uread(0, lpOutBuffer, nBytesToRead);
   LeaveCriticalSection(&lock);
   if (ret == 0xFFFFFFFF)
-    MessageBoxA(GetForegroundWindow(), "Read error!", "TL866", MB_ICONWARNING);
+    message_box(get_foreground_window(), "Read error!", "TL866",
+                MB_ICONWARNING);
   return ret;
 }
 
@@ -422,10 +441,10 @@ void notifier_function() {
             // printf("device added.\n");
             close_devices();
             usleep(100000);
-            SendMessageA(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL,
+            send_message(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL,
                          (LPARAM)&DevBi);
             usleep(100000);
-            RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+            redraw_window(hWnd, NULL, NULL, RDW_INVALIDATE);
           }
 
         } else if (!strcasecmp(udev_device_get_action(dev), "remove")) {
@@ -435,10 +454,10 @@ void notifier_function() {
             // printf("device removed.\n");
             close_devices();
             usleep(100000);
-            SendMessageA(hWnd, WM_DEVICECHANGE, DBT_DEVICEREMOVECOMPLETE,
+            send_message(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL,
                          (LPARAM)&DevBi);
             usleep(100000);
-            RedrawWindow(hWnd, NULL, NULL, RDW_INVALIDATE);
+            redraw_window(hWnd, NULL, NULL, RDW_INVALIDATE);
           }
         }
         udev_device_unref(dev);
@@ -508,11 +527,24 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
   return TRUE;
 }
 
-//SetupApi redirected functions needed for the new wine 4.11+
+// SetupApi redirected functions needed for the new wine 4.11+ winex11.drv calls
+typedef BOOL(__stdcall *pSetupDiGetDeviceInterfaceDetailW)(HANDLE, HANDLE,
+                                                           HANDLE, DWORD,
+                                                           PDWORD, LPVOID);
 
+typedef BOOL(__stdcall *pSetupDiGetDeviceRegistryPropertyW)(HANDLE, LPVOID,
+                                                            DWORD, PDWORD,
+                                                            PBYTE, DWORD,
+                                                            PDWORD);
+typedef BOOL(__stdcall *pSetupDiCallClassInstaller)(LPVOID, HANDLE, LPVOID);
+typedef HANDLE(__stdcall *pSetupDiGetClassDevsA)(const GUID *, PCSTR, HWND,
+                                                 DWORD);
 typedef HANDLE(__stdcall *pSetupDiGetClassDevsW)(const GUID *, PCWSTR, HWND,
                                                  DWORD);
 typedef BOOL(__stdcall *pSetupDiEnumDeviceInfo)(HANDLE, DWORD, LPVOID);
+typedef BOOL(__stdcall *pSetupDiEnumDeviceInterfaces)(HANDLE, LPVOID,
+                                                      const GUID *, DWORD,
+                                                      HANDLE);
 typedef BOOL(__stdcall *pSetupDiGetDevicePropertyW)(HANDLE, LPVOID,
                                                     const LPVOID *, LPVOID *,
                                                     PBYTE, DWORD, PDWORD,
@@ -542,7 +574,45 @@ FARPROC get_proc_address(LPCSTR lpProcName) {
   strcat(sysdir, "\\setupapi.dll");
   HMODULE hmodule = LoadLibraryA(sysdir);
   FARPROC address = GetProcAddress(hmodule, lpProcName);
+  // printf("%s : 0x%08X\n", lpProcName, (uint32_t)address);
   return address;
+}
+
+__stdcall BOOL SetupDiGetDeviceInterfaceDetailW(
+    HANDLE DeviceInfoSet, HANDLE DeviceInterfaceData,
+    HANDLE DeviceInterfaceDetailData, DWORD DeviceInterfaceDetailDataSize,
+    PDWORD RequiredSize, LPVOID DeviceInfoData) {
+  pSetupDiGetDeviceInterfaceDetailW pfunc =
+      (pSetupDiGetDeviceInterfaceDetailW)get_proc_address(
+          "SetupDiGetDeviceInterfaceDetailW");
+  return pfunc(DeviceInfoSet, DeviceInterfaceData, DeviceInterfaceDetailData,
+               DeviceInterfaceDetailDataSize, RequiredSize, DeviceInfoData);
+}
+
+_stdcall BOOL SetupDiGetDeviceRegistryPropertyW(
+    HANDLE DeviceInfoSet, LPVOID DeviceInfoData, DWORD Property,
+    PDWORD PropertyRegDataType, PBYTE PropertyBuffer, DWORD PropertyBufferSize,
+    PDWORD RequiredSize) {
+  pSetupDiGetDeviceRegistryPropertyW pfunc =
+      (pSetupDiGetDeviceRegistryPropertyW)get_proc_address(
+          "SetupDiGetDeviceRegistryPropertyW");
+  return pfunc(DeviceInfoSet, DeviceInfoData, Property, PropertyRegDataType,
+               PropertyBuffer, PropertyBufferSize, RequiredSize);
+}
+
+__stdcall BOOL SetupDiCallClassInstaller(LPVOID InstallFunction,
+                                         HANDLE DeviceInfoSet,
+                                         LPVOID DeviceInfoDat) {
+  pSetupDiCallClassInstaller pfunc =
+      (pSetupDiCallClassInstaller)get_proc_address("SetupDiCallClassInstaller");
+  return pfunc(InstallFunction, DeviceInfoSet, DeviceInfoDat);
+}
+
+__stdcall HANDLE SetupDiGetClassDevsA(const GUID *ClassGuid, PCSTR Enumerator,
+                                      HWND hwndParent, DWORD Flags) {
+  pSetupDiGetClassDevsA pfunc =
+      (pSetupDiGetClassDevsA)get_proc_address("SetupDiGetClassDevsA");
+  return pfunc(ClassGuid, Enumerator, hwndParent, Flags);
 }
 
 __stdcall HANDLE SetupDiGetClassDevsW(const GUID *ClassGuid, PCWSTR Enumerator,
@@ -557,6 +627,18 @@ __stdcall BOOL SetupDiEnumDeviceInfo(HANDLE DeviceInfoSet, DWORD MemberIndex,
   pSetupDiEnumDeviceInfo pfunc =
       (pSetupDiEnumDeviceInfo)get_proc_address("SetupDiEnumDeviceInfo");
   return pfunc(DeviceInfoSet, MemberIndex, DeviceInfoData);
+}
+
+_stdcall BOOL SetupDiEnumDeviceInterfaces(HANDLE DeviceInfoSet,
+                                          LPVOID DeviceInfoData,
+                                          const GUID *InterfaceClassGuid,
+                                          DWORD MemberIndex,
+                                          HANDLE DeviceInterfaceData) {
+  pSetupDiEnumDeviceInterfaces pfunc =
+      (pSetupDiEnumDeviceInterfaces)get_proc_address(
+          "SetupDiEnumDeviceInterfaces");
+  return pfunc(DeviceInfoSet, DeviceInfoData, InterfaceClassGuid, MemberIndex,
+               DeviceInterfaceData);
 }
 
 __stdcall BOOL SetupDiGetDevicePropertyW(

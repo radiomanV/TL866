@@ -1,5 +1,10 @@
+@ stdcall -private SetupDiCallClassInstaller(ptr ptr ptr)
+@ stdcall -private SetupDiGetDeviceInterfaceDetailW(ptr ptr ptr long ptr ptr)
+@ stdcall -private SetupDiGetDeviceRegistryPropertyW(ptr ptr long ptr ptr long ptr)
+@ stdcall -private SetupDiGetClassDevsA(ptr ptr ptr long)
 @ stdcall -private SetupDiGetClassDevsW(ptr ptr ptr long)
-@ stdcall -private SetupDiEnumDeviceInfo(ptr long ptr)
+@ stdcall -private SetupDiEnumDeviceInfo(ptr ptr ptr ptr long ptr)
+@ stdcall -private SetupDiEnumDeviceInterfaces(ptr long ptr)
 @ stdcall -private SetupDiGetDevicePropertyW(ptr ptr ptr ptr ptr long ptr long)
 @ stdcall -private SetupDiDestroyDeviceInfoList(ptr)
 @ stdcall -private SetupDiCreateDeviceInfoList(ptr ptr)
@@ -10,5 +15,4 @@
 @ stdcall -private SetupDiSetDeviceRegistryPropertyW(ptr ptr long ptr long)
 @ stdcall -private SetupDiCreateDevRegKeyW(ptr ptr long long long ptr ptr)
 @ stdcall -private SetupDiRemoveDevice(ptr ptr)
-
 
