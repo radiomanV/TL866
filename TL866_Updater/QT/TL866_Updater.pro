@@ -36,6 +36,8 @@ RESOURCES += \
     resources.qrc
 
 unix:macx{
+CONFIG += app_bundle
+ICON = penDrive4.icns
 HEADERS += usb_macos.h \
         notifier_macos.h
 SOURCES += usb_macos.cpp \
