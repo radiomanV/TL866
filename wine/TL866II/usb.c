@@ -142,12 +142,6 @@ BOOL patch_xgpro() {
   send_message = (pSendMessageA)GetProcAddress(hmodule, "SendMessageA");
   redraw_window = (pRedrawWindow)GetProcAddress(hmodule, "RedrawWindow");
 
-  // Load the original setupapi.dll for new wine 4.11+
-  char sysdir[MAX_PATH];
-  GetSystemDirectoryA(sysdir, MAX_PATH);
-  strcat(sysdir, "\\setupapi.dll");
-  hmodule = LoadLibraryA(sysdir);
-
   // Get the BaseAddress, NT Header and Image Import Descriptor
   void *BaseAddress = GetModuleHandleA(NULL);
   PIMAGE_NT_HEADERS NtHeader = (PIMAGE_NT_HEADERS)(

@@ -124,7 +124,7 @@ BOOL patch_minipro() {
 
   // Get the address of RegisterDeviceNotificationA in user32.dll
   DWORD_PTR ProcAddress = (DWORD_PTR)GetProcAddress(
-      GetModuleHandleA("user32.dll"), "RegisterDeviceNotificationA");
+      hmodule, "RegisterDeviceNotificationA");
 
   // Find the address in the thunk table
   PIMAGE_THUNK_DATA thunk =
