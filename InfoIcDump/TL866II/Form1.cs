@@ -10,6 +10,8 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Xml.Serialization;
 using System.Xml;
+using System.Linq;
+using System.Xml.Linq;
 using System.Diagnostics;
 
 
@@ -36,11 +38,14 @@ namespace InfoIc2PlusDump
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern void GetIcStru(uint Manuf, uint device, ref DevStruct IcName);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-        private static extern uint GetIcMFC(string search, uint[] ManArray, uint IcType);
+        private static extern uint GetIcMFC(string search, uint[] ManArray, uint IcType, uint mask);
+        //[DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
+        //private static extern uint GetIcMFC(string search, uint[] ManArray, uint IcType);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern uint GetIcList(string search, uint[] ICArray, uint Manuf, uint IcType);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern uint GetDllInfo(ref uint dll_version, ref uint num_mfcs);
+
 
         //External patcher function
         [DllImport("PatchLib.dll", CharSet = CharSet.Ansi, SetLastError = true)]
@@ -86,51 +91,6 @@ namespace InfoIc2PlusDump
             public uint package_details;
             public uint opts4;
         }//116 bytes
-
-
-        public class device
-        {
-            [XmlAttribute("name")]
-            public string icname;
-            [XmlAttribute("protocol_id")]
-            public string protocol;
-            [XmlAttribute("variant")]
-            public string type;
-            [XmlAttribute("read_buffer_size")]
-            public string read_buffer_size;
-            [XmlAttribute("write_buffer_size")]
-            public string write_buffer_size;
-            [XmlAttribute("code_memory_size")]
-            public string code_memory_size;
-            [XmlAttribute("data_memory_size")]
-            public string data_memory_size;
-            [XmlAttribute("data_memory2_size")]
-            public string data_memory2_size;
-            [XmlAttribute("chip_id")]
-            public string chip_id;
-            [XmlAttribute("chip_id_bytes_count")]
-            public string chip_id_size;
-            [XmlAttribute("opts1")]
-            public string opts1;
-            [XmlAttribute("opts2")]
-            public string opts2;
-            [XmlAttribute("opts3")]
-            public string opts3;
-            [XmlAttribute("opts4")]
-            public string opts4;
-            [XmlAttribute("opts5")]
-            public string opts5;
-            [XmlAttribute("opts6")]
-            public string opts6;
-            [XmlAttribute("opts7")]
-            public string opts7;
-            [XmlAttribute("opts8")]
-            public string opts8;
-            [XmlAttribute("package_details")]
-            public string package_details;
-            [XmlAttribute("config")]
-            public string fuses;
-        }
 
         public struct MICROCHIP_CSV
         {
@@ -322,6 +282,34 @@ namespace InfoIc2PlusDump
         }
 
 
+
+        uint get_total_devices()
+        {
+            DevStruct devstruct;
+            uint dll_version = 0;
+            uint num_mfcs = 0;
+            uint num_devices = 0;
+            GetDllInfo(ref dll_version, ref num_mfcs);
+            //Iterate over the entire manufacturers
+            for (uint i = 0; i < num_mfcs; i++)
+            {
+                MfcStruct mfcstruct = new MfcStruct();
+                GetMfcStru(i, ref mfcstruct);
+                //Iterate over the entire devices in the curent manufacturer
+                for (uint k = 0; k < mfcstruct.num_devs; k++)
+                {
+                    //Get the device struct
+                    devstruct = (DevStruct)Marshal.PtrToStructure(new IntPtr(mfcstruct.devs.ToInt32() + k * Marshal.SizeOf(new DevStruct())), typeof(DevStruct));
+
+                    //Skip devices marked as not ready yet
+                    if ((devstruct.opts8 & 0x10000000) == 0)
+                        num_devices++;
+
+                }
+            }
+            return num_devices;
+        }
+
         //Populate the manufacturers list
         private void populate_mfc_list()
         {
@@ -331,9 +319,8 @@ namespace InfoIc2PlusDump
                 MfcStruct b = new MfcStruct();
                 MfcList.Items.Clear();
                 DeviceList.Items.Clear();
-                uint dll_version = 0;
-                uint num_mfcs = 0;
-                for (int i = 0; i < GetIcMFC(SearchBox.Text.ToUpper(), manufacturers, GetIcType()); i++)
+                uint num_mfcs = GetIcMFC(SearchBox.Text.ToUpper(), manufacturers, GetIcType(), 0x20000000);
+                for (int i = 0; i < num_mfcs; i++)
                 {
                     GetMfcStru(manufacturers[i], ref b);
                     MfcList.Items.Add(b.manufacturer_name);
@@ -342,7 +329,7 @@ namespace InfoIc2PlusDump
                 if (MfcList.Items.Count > 0)
                     MfcList.SelectedIndex = 0;
 
-                label_total.Text = "Total Devices:" + GetDllInfo(ref dll_version, ref num_mfcs).ToString();
+                label_total.Text = "Total Devices:" + get_total_devices().ToString();
             }
             catch
             {
@@ -352,6 +339,7 @@ namespace InfoIc2PlusDump
                 }
             }
         }
+
 
 
         /*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
@@ -382,6 +370,8 @@ namespace InfoIc2PlusDump
                         return "gal1_acw";
                     else if (devstruct.type == 2)
                         return "gal2_acw";
+                    if (devstruct.type == 0x0f)
+                        return "atf16V8c_acw";
                     break;
                 case 0x2b:
                     if (devstruct.type == 4)
@@ -392,6 +382,8 @@ namespace InfoIc2PlusDump
                 case 0x2c:
                     if (devstruct.type == 8)
                         return "gal5_acw";
+                    else if (devstruct.type == 0x0c)
+                        return "atf22v10c_acw";
                     break;
             }
             if (microchip_csv_list.ContainsKey(key))
@@ -405,7 +397,7 @@ namespace InfoIc2PlusDump
         private string get_ic_string_ini(DevStruct devstruct)
         {
             devstruct.type &= 0xff;
-            return string.Format(
+            return String.Format(
 @"[{0}]
 protocol_id = 0x{1:x2}
 variant = 0x{2:x2}
@@ -473,30 +465,32 @@ config = {19}",
 
 
         //Get device info in xml format
-        private device get_ic_xml(DevStruct devstruct)
+        private XAttribute[] get_ic_xml(DevStruct devstruct)
         {
             devstruct.type &= 0xff;
-            device xml_chip = new device();
-            xml_chip.icname = devstruct.name;
-            xml_chip.protocol = "0x" + devstruct.protocol_id.ToString("x2");
-            xml_chip.type = "0x" + devstruct.type.ToString("x2");
-            xml_chip.read_buffer_size = "0x" + devstruct.read_buffer_size.ToString("x2");
-            xml_chip.write_buffer_size = "0x" + devstruct.write_buffer_size.ToString("x2");
-            xml_chip.code_memory_size = "0x" + devstruct.code_memory_size.ToString("x2");
-            xml_chip.data_memory_size = "0x" + devstruct.data_memory_size.ToString("x2");
-            xml_chip.data_memory2_size = "0x" + devstruct.data_memory2_size.ToString("x2");
-            xml_chip.chip_id = "0x" + devstruct.chip_id.ToString("x4");
-            xml_chip.chip_id_size = "0x" + devstruct.chip_id_bytes_count.ToString("x2");
-            xml_chip.opts1 = "0x" + devstruct.opts1.ToString("x2");
-            xml_chip.opts2 = "0x" + devstruct.opts2.ToString("x4");
-            xml_chip.opts3 = "0x" + devstruct.opts3.ToString("x4");
-            xml_chip.opts4 = "0x" + devstruct.opts4.ToString("x4");
-            xml_chip.opts5 = "0x" + devstruct.opts5.ToString("x4");
-            xml_chip.opts6 = "0x" + devstruct.opts6.ToString("x4");
-            xml_chip.opts7 = "0x" + devstruct.opts7.ToString("x4");
-            xml_chip.opts7 = "0x" + devstruct.opts8.ToString("x4");
-            xml_chip.package_details = "0x" + devstruct.package_details.ToString("x8");
-            xml_chip.fuses = get_fuse_name(devstruct);
+            XAttribute[] xml_chip = {
+            new XAttribute("name" , devstruct.name),
+            new XAttribute("type", devstruct.category & 0xff),
+            new XAttribute("protocol_id" ,"0x" + devstruct.protocol_id.ToString("x2")),
+            new XAttribute("variant", "0x" + devstruct.type.ToString("x2")),
+            new XAttribute("read_buffer_size" , "0x" + devstruct.read_buffer_size.ToString("x2")),
+            new XAttribute("write_buffer_size" , "0x" + devstruct.write_buffer_size.ToString("x2")),
+            new XAttribute("code_memory_size" , "0x" + devstruct.code_memory_size.ToString("x2")),
+            new XAttribute("data_memory_size" , "0x" + devstruct.data_memory_size.ToString("x2")),
+            new XAttribute("data_memory2_size" , "0x" + devstruct.data_memory2_size.ToString("x2")),
+            new XAttribute("chip_id" , "0x" + devstruct.chip_id.ToString("x4")),
+            new XAttribute("chip_id_bytes_count" , "0x" + devstruct.chip_id_bytes_count.ToString("x2")),
+            new XAttribute("opts1" , "0x" + devstruct.opts1.ToString("x2")),
+            new XAttribute("opts2" , "0x" + devstruct.opts2.ToString("x4")),
+            new XAttribute("opts3" , "0x" + devstruct.opts3.ToString("x4")),
+            new XAttribute("opts4" , "0x" + devstruct.opts4.ToString("x4")),
+            new XAttribute("opts5" , "0x" + devstruct.opts5.ToString("x4")),
+            new XAttribute("opts6" , "0x" + devstruct.opts6.ToString("x4")),
+            new XAttribute("opts7" , "0x" + devstruct.opts7.ToString("x4")),
+            new XAttribute("opts8" , "0x" + devstruct.opts8.ToString("x4")),
+            new XAttribute("package_details" , "0x" + devstruct.package_details.ToString("x8")),
+            new XAttribute("fuses" , get_fuse_name(devstruct))
+        };
             return xml_chip;
         }
 
@@ -506,7 +500,6 @@ config = {19}",
             DevStruct devstruct;
             List<DevStruct> devices_list = new List<DevStruct>();
             List<string> duplicates = new List<string>();
-            List<device> device_list_xml = new List<device>();
             List<string> device_list_ini = new List<string>();
             List<string> device_list_c = new List<string>();
             SortedDictionary<uint, string> total = new SortedDictionary<uint, string>();
@@ -535,6 +528,7 @@ config = {19}",
                     devstruct.chip_id = change_endianess(devstruct.chip_id, devstruct.chip_id_bytes_count);
 
                     //Add device to list
+                    devstruct.category |= (i << 8);
                     devices_list.Add(devstruct);
                     //Log the device
                     if (total.ContainsKey(devstruct.protocol_id))
@@ -574,7 +568,7 @@ config = {19}",
             {
                 devstruct = d;
                 //Patch Microchip and Atmel controllers
-                if (devstruct.category == 2)
+                if ((devstruct.category & 0xff) == 2)
                 {
                     string key = devstruct.name.Split('@')[0];
                     key = key.Split('(')[0];
@@ -596,7 +590,7 @@ config = {19}",
                 //Pass the device structure pointer to an external "C" patcher
                 //The external patcher is implemented in plain C code
                 Patch_Device(ref devstruct);
-   
+
                 tmp_list.Add(devstruct);
             }
             devices_list = tmp_list;
@@ -607,11 +601,11 @@ config = {19}",
             //Sort the list by category
             if (checkBox6.Checked == true)
             {
-                for (uint i = 1; i < 6; i++)
+                for (uint i = 1; i < 7; i++)
                 {
                     foreach (DevStruct d in devices_list)
                     {
-                        if (d.category == i)
+                        if ((d.category & 0xff) == i)
                             tmp_list.Add(d);
                     }
                 }
@@ -628,12 +622,6 @@ config = {19}",
                 //Get the element in C header format
                 if (checkBox1.Checked)
                     device_list_c.Add(get_ic_string_c(d));
-
-                //Get the element in xml format
-                if (checkBox3.Checked)
-                {
-                    device_list_xml.Add(get_ic_xml(d));
-                }
             }
             try
             {
@@ -660,14 +648,44 @@ config = {19}",
                 //write the devices.xml file
                 if (checkBox3.Checked)
                 {
-                    XmlTextWriter xml_text_writer = new XmlTextWriter("Devices.xml", System.Text.Encoding.UTF8);
-                    xml_text_writer.Formatting = Formatting.Indented;
-                    xml_text_writer.Indentation = 2;
-                    XmlSerializer serializer = new XmlSerializer(device_list_xml.GetType(), new XmlRootAttribute("devices"));
-                    XmlSerializerNamespaces serializer_namespace = new XmlSerializerNamespaces();
-                    serializer_namespace.Add("", "");
-                    serializer.Serialize(xml_text_writer, device_list_xml, serializer_namespace);
-                    xml_text_writer.Close();
+
+                    SortedDictionary<uint, XElement> cat = new SortedDictionary<uint, XElement>();
+                    XElement db = new XElement("database");
+                    XAttribute rattr = new XAttribute("device", "TL866II");
+                    db.Add(rattr);
+                    XElement devices;
+                    foreach (DevStruct dev in devices_list)
+                    {
+                        XElement ic = new XElement("ic");
+                        ic.Add(get_ic_xml(dev));
+                        if (cat.ContainsKey((dev.category >> 8)))
+                        {
+                            cat[dev.category >> 8].Add(ic);
+                        }
+                        else
+                        {
+                            MfcStruct mfcstruct = new MfcStruct();
+                            GetMfcStru(dev.category >> 8, ref mfcstruct);
+                            devices = new XElement("manufacturer");
+                            XAttribute manuf = new XAttribute("name", mfcstruct.manufacturer_name);
+                            devices.Add(manuf);
+                            devices.Add(ic);
+                            cat.Add((dev.category >> 8), devices);
+                        }
+                    }
+
+                    foreach (XElement dev in cat.Values)
+                    {
+                        db.Add(dev);
+                    }
+                    XElement root = new XElement("infoic");
+                    root.Add(db);
+                    XmlWriterSettings xws = new XmlWriterSettings();
+                    xws.Indent = true;
+                    xws.Indent = true;
+                    XmlWriter xml_writer = XmlWriter.Create("Devices.xml", xws);
+                    root.WriteTo(xml_writer);
+                    xml_writer.Close();
                 }
 
                 //write the log.txt file
