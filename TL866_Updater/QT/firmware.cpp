@@ -26,6 +26,7 @@
 #include <QFile>
 #include<QTime>
 #include <QDebug>
+#include <QRandomGenerator>
 
 const unsigned char Firmware::XortableA[] = {
     0xA4, 0x1E, 0x42, 0x8C, 0x3C, 0x76, 0x14, 0xC7, 0xB8, 0xB5, 0x81, 0x4A, 0x13, 0x37, 0x7C, 0x0A,
@@ -70,8 +71,6 @@ Firmware::Firmware()
     m_isValid=false;
     m_eraseA=0;
     m_eraseCS=0;
-    qsrand(QDateTime::currentDateTime().toTime_t());
-
 }
 
 //Open update.dat file and decrypt it.
@@ -201,9 +200,11 @@ void Firmware::decrypt_firmware(unsigned char *data_out, int type)
 //encrypt a block of 80 bytes
 void Firmware::encrypt_block(unsigned char *data, const unsigned char *xortable, unsigned char index)
 {
+    QRandomGenerator gen;
+    gen.seed(QDateTime::currentDateTime().toTime_t());
     //First step, fill the last 16 bytes of data buffer with random generated values.
     for(int i=0;i<16;i++){
-        data[i+64]=static_cast<unsigned char>(qrand() % 0x100);
+        data[i+64]= static_cast<uchar>(gen.generate()) & 0xFF;
     }
 
     /* Second step, data scrambling. We swap the first byte with the last, the fourth from the beginning with the fourth from the end and so on.
@@ -254,9 +255,11 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     unsigned char index;
     ushort crc16;
     CRC crc;
+    QRandomGenerator gen;
+    gen.seed(QDateTime::currentDateTime().toTime_t());
     for(int i=32;i<BLOCK_SIZE-2;i++)
     {
-        key[i] = static_cast<unsigned char>(qrand() % 0x100);
+        key[i] = static_cast<uchar>(gen.generate()) & 0xFF;
     }
     key[34] = 0;
     for (int i = 5; i < 34; i++)

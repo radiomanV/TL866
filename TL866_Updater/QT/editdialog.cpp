@@ -25,7 +25,9 @@
 #include "ui_editdialog.h"
 #include "firmware.h"
 #include "crc.h"
+#include<QTime>
 #include <QMessageBox>
+#include <QRandomGenerator>
 
 EditDialog::EditDialog(QWidget *parent, QString devcode, QString serial) :
     QDialog(parent),
@@ -53,9 +55,11 @@ void EditDialog::on_btnRndDev_clicked()
 {
     int i;
     QString s;
+    QRandomGenerator gen;
+    gen.seed(QDateTime::currentDateTime().toTime_t());
     for(i=0;i<8;i++)
     {
-        s.append(QString::number(qrand() % 10));
+        s.append(QString::number(gen.generate() % 10));
     }
     ui->txtDevcode->setText(s);
     on_btnRndSer_clicked();
@@ -63,17 +67,19 @@ void EditDialog::on_btnRndDev_clicked()
 
 void EditDialog::on_btnRndSer_clicked()
 {
+    QRandomGenerator gen;
+    gen.seed(QDateTime::currentDateTime().toTime_t());
     if(ui->txtDevcode->text().isEmpty())
         on_btnRndDev_clicked();
     int i;
     QString s;
     ushort crc16 = get_dev_crc();
     s.append(QString("%1").arg(crc16 >> 8, 2, 16, QLatin1Char('0')).toUpper());
-    s.append(QString("%1").arg(qrand()%256, 2, 16, QLatin1Char('0')).toUpper());
+    s.append(QString("%1").arg(gen.generate() & 0xFF, 2, 16, QLatin1Char('0')).toUpper());
     s.append(QString("%1").arg(crc16 & 0xFF, 2, 16, QLatin1Char('0')).toUpper());
     for(i=0;i<9;i++)
     {
-        s.append(QString("%1").arg(qrand()%256, 2, 16, QLatin1Char('0')).toUpper());
+        s.append(QString("%1").arg(gen.generate() & 0xFF, 2, 16, QLatin1Char('0')).toUpper());
     }
     ui->txtSerial->setText(s);
 }
@@ -101,7 +107,7 @@ ushort EditDialog::get_dev_crc()
 
 void EditDialog::on_txtDevcode_textChanged(const QString &arg1)
 {
-    Q_UNUSED(arg1);
+    Q_UNUSED(arg1)
     if (ui->txtDevcode->text().isEmpty())
     {
         ui->txtSerial->clear();

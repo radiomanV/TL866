@@ -42,17 +42,17 @@ void HexWriter::WriteHex(QByteArray data)
             temp[0]=(segment>>8);
             temp[1]=(segment&0xff);
             segment++;
-            outStream << GetHexLine(temp,2,0,SEGMENT_RECORD) << endl;
+            outStream << GetHexLine(temp,2,0,SEGMENT_RECORD) << Qt::endl;
         }
-        outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),16,address,DATA_RECORD) << endl;
+        outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),16,address,DATA_RECORD) << Qt::endl;
         address+=16;
         size-=16;
     }
-   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]), static_cast<uchar>(size/2),address,DATA_RECORD) << endl;
+   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]), static_cast<uchar>(size/2),address,DATA_RECORD) << Qt::endl;
    size/=2;
    address+=size;
-   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),static_cast<uchar>(size),address,DATA_RECORD) << endl;
-   outStream << GetHexLine(nullptr,0,0,EOF_RECORD) << endl;
+   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),static_cast<uchar>(size),address,DATA_RECORD) << Qt::endl;
+   outStream << GetHexLine(nullptr,0,0,EOF_RECORD) << Qt::endl;
 }
 
 

@@ -397,7 +397,7 @@ QByteArray MainWindow::get_resource(const QString &resource_path, int size)
 {
     QResource res(resource_path);
     QByteArray ba;
-    ba = (res.isCompressed() ? qUncompress(res.data(), size) : QByteArray(reinterpret_cast<const char*>(res.data()), size));
+    ba = (res.compressionAlgorithm() != QResource::NoCompression ? qUncompress(res.data(), size) : QByteArray(reinterpret_cast<const char*>(res.data()), size));
     return ba;
 }
 

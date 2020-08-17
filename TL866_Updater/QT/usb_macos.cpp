@@ -26,10 +26,10 @@
 
 USB::USB()
 {
-    device_handle = NULL;
-    devs = NULL;
-    libusb_init(&ctx);//initialize a new session
-    libusb_set_debug(ctx, 3);//set verbosity level
+    device_handle = nullptr;
+    devs = nullptr;
+    libusb_init(nullptr);//initialize a new session
+    libusb_set_option(nullptr,LIBUSB_OPTION_LOG_LEVEL, 3);//set verbosity level//set verbosity level
 }
 
 USB::~USB()
@@ -37,15 +37,15 @@ USB::~USB()
     if(isOpen())
         close_device();
 
-    if(devs != NULL)
+    if(devs != nullptr)
         libusb_free_device_list(devs, 1);
-    libusb_exit(ctx); //close session
+    libusb_exit(nullptr); //close session
 }
 
 
 int USB::get_devices_count()
 {
-   if(devs != NULL)
+   if(devs != nullptr)
        libusb_free_device_list(devs, 1);
     devices.clear();
 
@@ -82,7 +82,7 @@ bool USB::open_device(int index)
 
 bool USB::isOpen()
 {
-    return (device_handle !=NULL);
+    return (device_handle !=nullptr);
 }
 
 
@@ -91,7 +91,7 @@ void  USB::close_device()
 {
     if(isOpen())
         libusb_close(device_handle);
-    device_handle = NULL;
+    device_handle = nullptr;
 }
 
 
@@ -100,7 +100,7 @@ size_t  USB::usb_read(unsigned char *data, size_t size)
     int bytes_read;
     if(libusb_claim_interface(device_handle, 0) < 0)
         return 0;
-    int ret = libusb_bulk_transfer(device_handle, LIBUSB_ENDPOINT_IN | 1, data, size, &bytes_read, 0);
+    int ret = libusb_bulk_transfer(device_handle, LIBUSB_ENDPOINT_IN | 1, data, static_cast<int>(size), &bytes_read, 0);
     libusb_release_interface(device_handle, 0);
     if(ret !=0)
         return 0;
@@ -113,7 +113,7 @@ size_t  USB::usb_write(unsigned char *data, size_t size)
     int bytes_writen;
     if(libusb_claim_interface(device_handle, 0) < 0)
         return 0;
-    int ret = libusb_bulk_transfer(device_handle, LIBUSB_ENDPOINT_OUT | 1, data, size, &bytes_writen, 0);
+    int ret = libusb_bulk_transfer(device_handle, LIBUSB_ENDPOINT_OUT | 1, data, static_cast<int>(size), &bytes_writen, 0);
     libusb_release_interface(device_handle, 0);
     if(ret !=0)
         return 0;

@@ -31,7 +31,7 @@ Notifier::Notifier()
     udev *udev = udev_new();
     if (!udev)
     {
-        qDebug() << "udev error!" << endl;
+        qDebug() << "udev error!" << Qt::endl;
         return;
     }
 
@@ -67,7 +67,7 @@ Notifier::Notifier()
     mon = udev_monitor_new_from_netlink(udev, "udev");
     if(!mon)
     {
-        qDebug() << "Netlink not available!" << endl;
+        qDebug() << "Netlink not available!" << Qt::endl;
         udev_unref(udev);
         return;
     }

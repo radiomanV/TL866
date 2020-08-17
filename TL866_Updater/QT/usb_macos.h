@@ -20,7 +20,6 @@ public:
 
 
 private:
-    libusb_context *ctx;
     libusb_device_handle *device_handle;
     QList<libusb_device*> devices;
     libusb_device **devs;
