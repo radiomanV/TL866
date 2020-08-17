@@ -59,6 +59,7 @@ SOURCES += usb_linux.cpp \
         notifier_linux.cpp
 LIBS += -ludev \
         -lusb-1.0
+QMAKE_LFLAGS += -no-pie
 }
 
 win32:{
