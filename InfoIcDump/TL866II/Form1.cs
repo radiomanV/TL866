@@ -39,10 +39,8 @@ namespace InfoIc2PlusDump
         private static extern void GetIcStru(uint Manuf, uint device, ref DevStruct IcName);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern uint GetIcMFC(string search, uint[] ManArray, uint IcType, uint mask);
-        //[DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-        //private static extern uint GetIcMFC(string search, uint[] ManArray, uint IcType);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
-        private static extern uint GetIcList(string search, uint[] ICArray, uint Manuf, uint IcType);
+        private static extern uint GetIcList(string search, uint[] ICArray, uint Manuf, uint IcType, uint mask);
         [DllImport("InfoIC2Plus.dll", CharSet = CharSet.Ansi, SetLastError = true)]
         private static extern uint GetDllInfo(ref uint dll_version, ref uint num_mfcs);
 
@@ -107,6 +105,8 @@ namespace InfoIc2PlusDump
 
         SortedDictionary<string, MICROCHIP_CSV> microchip_csv_list = new SortedDictionary<string, MICROCHIP_CSV>();
         SortedDictionary<string, ATMEL_CSV> atmel_csv_list = new SortedDictionary<string, ATMEL_CSV>();
+
+        public const uint MAGIC_MASK = 0x20000000;
 
         //constructor
         public Form1()
@@ -198,17 +198,18 @@ namespace InfoIc2PlusDump
         private void MfcList_SelectedIndexChanged(System.Object sender, System.EventArgs e)
         {
             MfcStruct mfcstruct = new MfcStruct();
-            uint[] tag = (uint[])MfcList.Tag;
-            GetMfcStru(tag[MfcList.SelectedIndex], ref mfcstruct);
+            uint[] mfc = (uint[])MfcList.Tag;
+            GetMfcStru(mfc[MfcList.SelectedIndex], ref mfcstruct);
             LogoImage.Image = GetBitmapFromResources(mfcstruct.logo);
             Label1.Text = mfcstruct.manufacturer_description;
             uint[] devices = new uint[4096];
             DevStruct devstruct = new DevStruct();
             DeviceList.Items.Clear();
-            for (int i = 0; i < GetIcList(SearchBox.Text.ToUpper(), devices, (uint)tag[MfcList.SelectedIndex], GetIcType()); i++)
+            uint devices_count = GetIcList(SearchBox.Text.ToUpper(), devices, (uint)mfc[MfcList.SelectedIndex], GetIcType(), MAGIC_MASK);
+            for (int i = 0; i < devices_count; i++)
             {
                 //Skip devices marked as not ready yet
-                GetIcStru((uint)tag[MfcList.SelectedIndex], devices[i], ref devstruct);
+                GetIcStru((uint)mfc[MfcList.SelectedIndex], devices[i], ref devstruct);
                 if ((devstruct.opts8 & 0x10000000) != 0)
                     continue;
                 DeviceList.Items.Add(devstruct.name);
@@ -319,7 +320,7 @@ namespace InfoIc2PlusDump
                 MfcStruct b = new MfcStruct();
                 MfcList.Items.Clear();
                 DeviceList.Items.Clear();
-                uint num_mfcs = GetIcMFC(SearchBox.Text.ToUpper(), manufacturers, GetIcType(), 0x20000000);
+                uint num_mfcs = GetIcMFC(SearchBox.Text.ToUpper(), manufacturers, GetIcType(), MAGIC_MASK);
                 for (int i = 0; i < num_mfcs; i++)
                 {
                     GetMfcStru(manufacturers[i], ref b);

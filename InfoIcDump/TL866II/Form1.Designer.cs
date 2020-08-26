@@ -268,8 +268,6 @@ namespace InfoIc2PlusDump
             // checkBox1
             // 
             this.checkBox1.AutoSize = true;
-            this.checkBox1.Checked = true;
-            this.checkBox1.CheckState = System.Windows.Forms.CheckState.Checked;
             this.checkBox1.Font = new System.Drawing.Font("Arial", 9.75F);
             this.checkBox1.Location = new System.Drawing.Point(322, 395);
             this.checkBox1.Name = "checkBox1";
@@ -282,8 +280,6 @@ namespace InfoIc2PlusDump
             // checkBox2
             // 
             this.checkBox2.AutoSize = true;
-            this.checkBox2.Checked = true;
-            this.checkBox2.CheckState = System.Windows.Forms.CheckState.Checked;
             this.checkBox2.Font = new System.Drawing.Font("Arial", 9.75F);
             this.checkBox2.Location = new System.Drawing.Point(407, 395);
             this.checkBox2.Name = "checkBox2";
