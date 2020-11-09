@@ -27,12 +27,12 @@
 #include <QResource>
 #include <QDragEnterEvent>
 #include <QMimeData>
+#include <QtGlobal>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "editdialog.h"
 #include "hexwriter.h"
 #include "crc.h"
-
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -397,7 +397,7 @@ QByteArray MainWindow::get_resource(const QString &resource_path, int size)
 {
     QResource res(resource_path);
     QByteArray ba;
-#if QT_VERSION >= 0x050000
+#if QT_VERSION >= QT_VERSION_CHECK(5, 13, 0)
     ba = (res.compressionAlgorithm() != QResource::NoCompression ? qUncompress(res.data(), size) : QByteArray(reinterpret_cast<const char*>(res.data()), size));
 #else
     ba = (res.isCompressed() ? qUncompress(res.data(), size) : QByteArray(reinterpret_cast<const char*>(res.data()), size));

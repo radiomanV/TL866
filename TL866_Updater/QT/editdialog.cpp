@@ -26,9 +26,9 @@
 #include "firmware.h"
 #include "crc.h"
 #include <QMessageBox>
+#include<QTime>
 
 #if QT_VERSION >= 0x050000
-#include<QTime>
 #include <QRandomGenerator>
 #endif
 

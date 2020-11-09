@@ -25,13 +25,19 @@
 #include "firmware.h"
 #include <QDebug>
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+#define ENDL endl
+#else
+#define ENDL Qt::endl
+#endif
+
 Notifier::Notifier()
 {
     socket_notifier=NULL;
     udev *udev = udev_new();
     if (!udev)
     {
-        qDebug() << "udev error!" << Qt::endl;
+        qDebug() << "udev error!" << ENDL;
         return;
     }
 
@@ -67,7 +73,7 @@ Notifier::Notifier()
     mon = udev_monitor_new_from_netlink(udev, "udev");
     if(!mon)
     {
-        qDebug() << "Netlink not available!" << Qt::endl;
+        qDebug() << "Netlink not available!" << ENDL;
         udev_unref(udev);
         return;
     }

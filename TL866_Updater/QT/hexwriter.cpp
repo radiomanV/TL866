@@ -22,6 +22,11 @@
 
 #include "hexwriter.h"
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 14, 0)
+#define ENDL endl
+#else
+#define ENDL Qt::endl
+#endif
 
 HexWriter::HexWriter(QIODevice *file)
 {
@@ -42,17 +47,17 @@ void HexWriter::WriteHex(QByteArray data)
             temp[0]=(segment>>8);
             temp[1]=(segment&0xff);
             segment++;
-            outStream << GetHexLine(temp,2,0,SEGMENT_RECORD) << Qt::endl;
+            outStream << GetHexLine(temp,2,0,SEGMENT_RECORD) << ENDL;
         }
-        outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),16,address,DATA_RECORD) << Qt::endl;
+        outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),16,address,DATA_RECORD) << ENDL;
         address+=16;
         size-=16;
     }
-   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]), static_cast<uchar>(size/2),address,DATA_RECORD) << Qt::endl;
+   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]), static_cast<uchar>(size/2),address,DATA_RECORD) << ENDL;
    size/=2;
    address+=size;
-   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),static_cast<uchar>(size),address,DATA_RECORD) << Qt::endl;
-   outStream << GetHexLine(nullptr,0,0,EOF_RECORD) << Qt::endl;
+   outStream << GetHexLine(reinterpret_cast<uchar*>(&data.data()[(segment-1)*0x10000+address]),static_cast<uchar>(size),address,DATA_RECORD) << ENDL;
+   outStream << GetHexLine(nullptr,0,0,EOF_RECORD) << ENDL;
 }
 
 

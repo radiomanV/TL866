@@ -25,9 +25,9 @@
 #include "crc.h"
 #include <QFile>
 #include <QDebug>
+#include<QTime>
 
 #if QT_VERSION >= 0x050000
-#include<QTime>
 #include <QRandomGenerator>
 #endif
 
@@ -308,8 +308,6 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     for(int i=0;i<BLOCK_SIZE;i++){
         key[i]^=firmware[XOR_TABLE_OFFSET+index++];
     }
-
-
 }
 
 //Decrypt 80 bytes data block containing dev code and serial
