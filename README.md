@@ -16,8 +16,10 @@ native software to work with Wine. The wrapper is located in wine folder.
 
 #### Debian/Ubuntu
 ```nohighlight
-sudo apt-get install build-essential pkg-config git libusb-1.0-0-dev libqt4-dev
+sudo apt-get install build-essential pkg-config git libusb-1.0-0-dev qt5-default qtbase5-dev
 ```
+If you want to compile with old QT4 replace `qt5-default qtbase5-dev` with `libqt4-dev`
+
 
 ### Checkout source code and compile 
 ```nohighlight
