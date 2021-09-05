@@ -566,10 +566,9 @@ BOOL patch_function(char *library, char *func, void *funcaddress) {
 
 static inline void patch(void *src, void *dest){
   // push xxxx, ret; an absolute Jump replacement.
-  BYTE p[] = {0x68, 0, 0, 0, 0, 0xc3};
-  DWORD *p_func = (DWORD *)&p[1];
-  *p_func = (DWORD)dest;
-  memcpy(src, p, sizeof(p));
+  *(BYTE*)src = 0x68;
+  *((DWORD *)((BYTE*)src + 1)) = (DWORD)dest;
+  *((BYTE*)src + 5) = 0xc3;
 }
 
 // Xgpro patcher function. Called from DllMain. Return TRUE if patch was ok and
