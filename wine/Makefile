@@ -1,7 +1,8 @@
-SRCDIR                   = .
-DLL                      = setupapi.dll
+SRCDIR                    = .
+DLL                       = setupapi.dll
 
 ### Common settings
+CFLAGS		          =
 CEXTRA                    = -m32 -mincoming-stack-boundary=2
 LIBRARIES                 = -lusb-1.0 -ludev
 

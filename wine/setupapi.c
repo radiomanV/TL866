@@ -10,6 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifdef DBG
+#include <pthread.h>
+#endif
 
 #include <dbt.h>
 #include <winbase.h>
@@ -20,6 +23,7 @@
 #define TL866A_PID  0xe11c
 #define TL866II_VID 0xA466
 #define TL866II_PID 0x0A53
+
 
 typedef struct {
   HANDLE InterfaceHandle;
@@ -72,6 +76,10 @@ pGetForegroundWindow get_foreground_window;
 pSendMessageA send_message;
 pRedrawWindow redraw_window;
 
+#ifdef DBG
+pthread_mutex_t mylock = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
 // These are functions signature extracted from Xgpro.exe and should be
 // compatible from V7.0 and above.
 const unsigned char xgpro_open_devices_pattern[] = {
@@ -99,6 +107,30 @@ const unsigned char usb_read2_patern[] = {0x8B, 0x4C, 0x24, 0x0C, 0x8B, 0x54,
 const unsigned char brickbug_patern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
                                          0xF0, 0xC2, 0xC8, 0x75};
 
+
+
+//Print given array in hex
+void print_hex(unsigned char *buffer, unsigned int size)
+{
+    int i,k,r=0;
+    for(i=0;i<size;i++){
+        printf("%02X ",buffer[i]);
+        r++;
+        if((r == 16) || (i + 1 == size && r < 16) ){
+            if(i + 1 == size && r < 16) 
+                printf("%*c", r * 3 - 48, ' ');
+            printf("  ");
+
+            for(k=i-r+1;k<=i;k++){
+                printf("%c",(buffer[k]<32||buffer[k]>127) ? '.' : buffer[k]);
+            }
+
+            r=0;
+            printf("\n");
+        }
+    }
+    printf("\n");   
+}
 
 
 /// Xgpro replacement functions
@@ -197,6 +229,12 @@ void async_transfer(Args *args) {
   libusb_bulk_transfer(device_handle[(int)args->InterfaceHandle], args->PipeID,
                        args->Buffer, args->BufferLength,
                        args->LengthTransferred, 20000);
+#ifdef DBG
+    pthread_mutex_lock( &mylock );
+    printf("%s %u bytes on endpoint %u\n", (args->PipeID & 0x80) ? "Read async" : "Write async", args->BufferLength, args->PipeID & 0x7F);
+    print_hex(args->Buffer, *args->LengthTransferred);
+    pthread_mutex_unlock( &mylock );
+#endif
   SetEvent(args->Overlapped
                ->hEvent);  // signal the event to release the waiting object.
   free(args);              // Free the malloced args.
@@ -229,8 +267,13 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   } else  // Just an synchronous transfer is needed; just call the
           // libusb_bulk_transfer.
   {
-    ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
-                               Buffer, BufferLength, LengthTransferred, 20000);
+        ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID, Buffer, BufferLength, LengthTransferred, 20000);
+#ifdef DBG
+        pthread_mutex_lock( &mylock );
+        printf("%s %u bytes on endpoint %u\n", (PipeID & 0x80) ? "Read normal" : "Write normal", BufferLength, PipeID & 0x7F);
+        print_hex(Buffer, *LengthTransferred);
+        pthread_mutex_unlock( &mylock );
+#endif
   }
 
   return (ret == LIBUSB_SUCCESS);
@@ -316,6 +359,10 @@ unsigned int uread(HANDLE hDevice, unsigned char *data, size_t size) {
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1,
                            data, size, &bytes_read, 20000);
   libusb_release_interface(device_handle[(int)hDevice], 0);
+#ifdef DBG
+    printf("Read %d bytes\n",bytes_read);
+    print_hex(data,bytes_read);
+#endif
   return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
 }
 
@@ -329,6 +376,10 @@ BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size) {
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1,
                            data, size, &bytes_writen, 20000);
   libusb_release_interface(device_handle[(int)hDevice], 0);
+#ifdef DBG
+    printf("Write %d bytes\n",bytes_writen);
+    print_hex(data,bytes_writen);
+#endif
   return (ret == LIBUSB_SUCCESS);
 }
 
