@@ -1,0 +1,29 @@
+##
+## This file is part of Minipro project.
+##
+## Minipro is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## Minipro is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+ 
+# These rules do not grant any permission by itself, but flag devices
+# supported by Minipro.
+# The access policies are stored in following files:
+# * 61-minipro-plugdev.rules
+# * 61-minipro-uaccess.rules
+
+ACTION!="add|change", GOTO="minipro_rules_end"
+SUBSYSTEM!="usb", GOTO="minipro_rules_end"
+
+# TL866A/CS
+ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="e11c", ENV{ID_MINIPRO}="1"
+
+# TL866II+
+ATTRS{idVendor}=="a466", ATTRS{idProduct}=="0a53", ENV{ID_MINIPRO}="1"
+
+LABEL="minipro_rules_end"
