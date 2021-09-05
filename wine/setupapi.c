@@ -33,18 +33,6 @@ typedef struct {
   LPOVERLAPPED Overlapped;
 } Args;
 
-// replacement functions for Xgpro. Function prototypes and calling convention
-// must be the same as in Xgpro.exe, otherwise the application will crash.
-HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
-                                             LPVOID NotificationFilter,
-                                             DWORD Flags);
-BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID,
-                                    ULONG PolicyType, ULONG ValueLength,
-                                    PVOID Value);
-BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
-                               PUCHAR Buffer, ULONG BufferLength,
-                               PULONG LengthTransferred,
-                               LPOVERLAPPED Overlapped);
 
 // Global variables
 libusb_device_handle *device_handle[4];
@@ -123,7 +111,7 @@ void print_hex(unsigned char *buffer, unsigned int size) {
   printf("\n");
 }
 
-/// Xgpro replacement functions
+// USB open/close function replacement
 void close_devices() {
   printf("Close devices.\n");
   if (devs != NULL) {
@@ -140,15 +128,8 @@ void close_devices() {
   }
 }
 
-int xgpro_open_devices(int *error) {
+int open_devices() {
   printf("Open devices.\n");
-
-  const GUID guid = {0xE7E8BA13,
-                     0x2A81,
-                     0x446E,
-                     {0xA1, 0x1E, 0x72, 0x39, 0x8F, 0xBD, 0xA8, 0x2F}};
-  // Save the minipro GUID
-  memcpy(&m_guid, &guid, sizeof(GUID));
   close_devices();
   device_handle[0] = NULL;
   device_handle[1] = NULL;
@@ -164,15 +145,14 @@ int xgpro_open_devices(int *error) {
   usb_handle[2] = INVALID_HANDLE_VALUE;
   usb_handle[3] = INVALID_HANDLE_VALUE;
 
+
+  if(device_vid == TL866II_VID){
+  *devices_count = 0; 
   winusb_handle[0] = INVALID_HANDLE_VALUE;
   winusb_handle[1] = INVALID_HANDLE_VALUE;
   winusb_handle[2] = INVALID_HANDLE_VALUE;
   winusb_handle[3] = INVALID_HANDLE_VALUE;
-
-  // save vid/pid
-  device_vid = TL866II_VID;
-  device_pid = TL866II_PID;
-  *devices_count = 0;
+  } 
 
   int devices_found = 0, ret;
   struct libusb_device_descriptor desc;
@@ -194,9 +174,11 @@ int xgpro_open_devices(int *error) {
           libusb_claim_interface(device_handle[devices_found], 0) ==
               LIBUSB_SUCCESS) {
         usb_handle[devices_found] = (HANDLE)devices_found;
-        winusb_handle[devices_found] = (HANDLE)devices_found;
+        if(device_vid == TL866II_VID){
+            winusb_handle[devices_found] = (HANDLE)devices_found;
+            *devices_count = devices_found + 1;
+        }
         devices_found++;
-        *devices_count = devices_found;
         if (devices_found == 4) return 0;
       }
     }
@@ -204,7 +186,7 @@ int xgpro_open_devices(int *error) {
   return 0;
 }
 
-// winusb implemented functions.
+/// Xgpro replacement functions.
 BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID,
                                     ULONG PolicyType, ULONG ValueLength,
                                     PVOID Value) {
@@ -271,60 +253,9 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   return (ret == LIBUSB_SUCCESS);
 }
 
+
+
 /// Minipro replacement functions
-int minipro_open_devices(GUID *guid, int *error) {
-  printf("Open devices.\n");
-
-  // Save the minipro GUID
-  memcpy(&m_guid, guid, sizeof(GUID));
-
-  close_devices();
-  device_handle[0] = NULL;
-  device_handle[1] = NULL;
-  device_handle[2] = NULL;
-  device_handle[3] = NULL;
-  devs = NULL;
-
-  libusb_init(NULL);  // initialize a new session
-  libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);  // set verbosity level
-
-  usb_handle[0] = INVALID_HANDLE_VALUE;
-  usb_handle[1] = INVALID_HANDLE_VALUE;
-  usb_handle[2] = INVALID_HANDLE_VALUE;
-  usb_handle[3] = INVALID_HANDLE_VALUE;
-
-  // save vid/pid
-  device_vid = TL866A_VID;
-  device_pid = TL866A_PID;
-
-  int devices_found = 0, ret;
-  struct libusb_device_descriptor desc;
-  int count = libusb_get_device_list(NULL, &devs);
-
-  if (count < 0) {
-    return 0;
-  }
-
-  for (int i = 0; i < count; i++) {
-    ret = libusb_get_device_descriptor(devs[i], &desc);
-    if (ret != LIBUSB_SUCCESS) {
-      return 0;
-    }
-
-    if (device_pid == desc.idProduct && device_vid == desc.idVendor) {
-      if (libusb_open(devs[i], &device_handle[devices_found]) ==
-              LIBUSB_SUCCESS &&
-          libusb_claim_interface(device_handle[devices_found], 0) ==
-              LIBUSB_SUCCESS) {
-        usb_handle[devices_found] = (HANDLE)devices_found;
-        devices_found++;
-        if (devices_found == 4) return 0;
-      }
-    }
-  }
-  return 0;
-}
-
 unsigned int uread(HANDLE hDevice, unsigned char *data, size_t size) {
   if (hDevice == INVALID_HANDLE_VALUE) return 0;
   if (device_handle[(int)hDevice] == NULL) return 0;
@@ -493,6 +424,8 @@ void notifier_function() {
   udev_monitor_unref(mon);
 }
 
+
+// RegisterDeviceNotifications WIN API replacement
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
                                              LPVOID NotificationFilter,
                                              DWORD Flags) {
@@ -504,7 +437,8 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
   return 0;
 }
 
-// Patch functions
+
+/// Patcher functions
 BOOL patch_function(char *library, char *func, void *funcaddress) {
   DWORD dwOldProtection;
   DWORD func_addr = 0;
@@ -564,6 +498,7 @@ BOOL patch_function(char *library, char *func, void *funcaddress) {
   return TRUE;
 }
 
+// Inline helper patch function
 static inline void patch(void *src, void *dest){
   // push xxxx, ret; an absolute Jump replacement.
   *(BYTE*)src = 0x68;
@@ -648,7 +583,7 @@ BOOL patch_xgpro() {
                  &dwOldProtection);  // unprotect the code memory section
 
   // patch Open_Devices function
-  patch(p_opendevices, &xgpro_open_devices);
+  patch(p_opendevices, &open_devices);
 
   // patch close_devices function
   patch(p_closedevices, &close_devices);
@@ -657,8 +592,19 @@ BOOL patch_xgpro() {
                  NtHeader->OptionalHeader.SizeOfCode, dwOldProtection,
                  &dwOldProtection);  // restore the old protection
 
+  
+  // Set the Xgpro GUID
+  const GUID guid = {0xE7E8BA13,
+                     0x2A81,
+                     0x446E,
+                     {0xA1, 0x1E, 0x72, 0x39, 0x8F, 0xBD, 0xA8, 0x2F}};
+  memcpy(&m_guid, &guid, sizeof(GUID));
+  // set vid/pid
+  device_vid = TL866II_VID;
+  device_pid = TL866II_PID;
   return TRUE;
 }
+
 
 // Minipro patcher function. Called from DllMain. Return TRUE if patch was ok
 // and continue with program loading or FALSE to exit with error.
@@ -748,7 +694,7 @@ BOOL patch_minipro() {
                  &dwOldProtection);  // unprotect the code memory section
 
   // patch Open_Devices function
-  patch(p_opendevices, &minipro_open_devices);
+  patch(p_opendevices, &open_devices);
 
   // patch close_devices function
   patch(p_closedevices, &close_devices);
@@ -772,12 +718,24 @@ BOOL patch_minipro() {
                  NtHeader->OptionalHeader.SizeOfCode, dwOldProtection,
                  &dwOldProtection);  // restore the old protection
 
+  // Set the Minipro GUID
+  const GUID guid = {0x85980D83,
+                     0x32B9,
+                     0x4BA1,
+                     {0x8F,0xDF,0x12,0xA7,0x11,0xB9,0x9C,0xA2}};
+  memcpy(&m_guid, &guid, sizeof(GUID));
+  
+  // set vid/pid
+  device_vid = TL866A_VID;
+  device_pid = TL866A_PID;
   return TRUE;
 }
 
 
-/*//////////////////////////////////////////////////////////////////////////*/
 
+
+
+/// DLLMAIN
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
   switch (fdwReason) {
     case DLL_PROCESS_ATTACH:
@@ -797,7 +755,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
   return TRUE;
 }
 
-// SetupApi redirected functions needed for the new wine 4.11+ winex11.drv calls
+
+
+/// SetupApi redirected functions needed for the new wine 4.11+ winex11.drv calls
 typedef BOOL(__stdcall *pSetupDiGetDeviceInterfaceDetailW)(HANDLE, HANDLE,
                                                            HANDLE, DWORD,
                                                            PDWORD, LPVOID);
