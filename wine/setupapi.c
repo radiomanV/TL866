@@ -19,11 +19,10 @@
 #include <windef.h>
 #include <winnt.h>
 
-#define TL866A_VID  0x04d8
-#define TL866A_PID  0xe11c
+#define TL866A_VID 0x04d8
+#define TL866A_PID 0xe11c
 #define TL866II_VID 0xA466
 #define TL866II_PID 0x0A53
-
 
 typedef struct {
   HANDLE InterfaceHandle;
@@ -47,7 +46,6 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
                                PULONG LengthTransferred,
                                LPOVERLAPPED Overlapped);
 
-
 // Global variables
 libusb_device_handle *device_handle[4];
 libusb_device **devs;
@@ -63,8 +61,6 @@ GUID m_guid;
 
 unsigned short device_vid;
 unsigned short device_pid;
-void (*close_devices)();
-
 
 typedef BOOL(__stdcall *pMessageBoxA)(HWND, LPCSTR, LPCSTR, UINT);
 typedef HWND(__stdcall *pGetForegroundWindow)();
@@ -86,12 +82,11 @@ const unsigned char xgpro_open_devices_pattern[] = {
     0x53, 0x57, 0x6A, 0x00, 0x68, 0x80, 0x00, 0x00,
     0x40, 0x6A, 0x03, 0x6A, 0x00, 0x6A, 0x03, 0x68};
 
-
 // These are functions signature extracted from MiniPro.exe and should be
 // compatible from V6.0 and above.
-const unsigned char minipro_open_devices_pattern[] = {0x6A, 0x00, 0x68, 0x80, 0x00,
-                                              0x00, 0x00, 0x6A, 0x03, 0x6A,
-                                              0x00, 0x6A, 0x03};
+const unsigned char minipro_open_devices_pattern[] = {
+    0x6A, 0x00, 0x68, 0x80, 0x00, 0x00, 0x00,
+    0x6A, 0x03, 0x6A, 0x00, 0x6A, 0x03};
 const unsigned char usb_write_patern[] = {0x8B, 0x94, 0x24, 0x0C, 0x10, 0x00,
                                           0x00, 0x8D, 0x44, 0x24, 0x00, 0x6A,
                                           0x00, 0x50, 0x8B, 0x84};
@@ -107,34 +102,29 @@ const unsigned char usb_read2_patern[] = {0x8B, 0x4C, 0x24, 0x0C, 0x8B, 0x54,
 const unsigned char brickbug_patern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
                                          0xF0, 0xC2, 0xC8, 0x75};
 
+// Print given array in hex
+void print_hex(unsigned char *buffer, unsigned int size) {
+  int i, k, r = 0;
+  for (i = 0; i < size; i++) {
+    printf("%02X ", buffer[i]);
+    r++;
+    if ((r == 16) || (i + 1 == size && r < 16)) {
+      if (i + 1 == size && r < 16) printf("%*c", r * 3 - 48, ' ');
+      printf("  ");
 
+      for (k = i - r + 1; k <= i; k++) {
+        printf("%c", (buffer[k] < 32 || buffer[k] > 127) ? '.' : buffer[k]);
+      }
 
-//Print given array in hex
-void print_hex(unsigned char *buffer, unsigned int size)
-{
-    int i,k,r=0;
-    for(i=0;i<size;i++){
-        printf("%02X ",buffer[i]);
-        r++;
-        if((r == 16) || (i + 1 == size && r < 16) ){
-            if(i + 1 == size && r < 16) 
-                printf("%*c", r * 3 - 48, ' ');
-            printf("  ");
-
-            for(k=i-r+1;k<=i;k++){
-                printf("%c",(buffer[k]<32||buffer[k]>127) ? '.' : buffer[k]);
-            }
-
-            r=0;
-            printf("\n");
-        }
+      r = 0;
+      printf("\n");
     }
-    printf("\n");   
+  }
+  printf("\n");
 }
 
-
 /// Xgpro replacement functions
-void xgpro_close_devices() {
+void close_devices() {
   printf("Close devices.\n");
   if (devs != NULL) {
     for (int i = 0; i < 4; i++) {
@@ -150,11 +140,9 @@ void xgpro_close_devices() {
   }
 }
 
-
 int xgpro_open_devices(int *error) {
   printf("Open devices.\n");
-  
-  
+
   const GUID guid = {0xE7E8BA13,
                      0x2A81,
                      0x446E,
@@ -168,7 +156,7 @@ int xgpro_open_devices(int *error) {
   device_handle[3] = NULL;
   devs = NULL;
 
-  libusb_init(NULL);          // initialize a new session
+  libusb_init(NULL);  // initialize a new session
   libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);  // set verbosity level
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
@@ -180,7 +168,6 @@ int xgpro_open_devices(int *error) {
   winusb_handle[1] = INVALID_HANDLE_VALUE;
   winusb_handle[2] = INVALID_HANDLE_VALUE;
   winusb_handle[3] = INVALID_HANDLE_VALUE;
-
 
   // save vid/pid
   device_vid = TL866II_VID;
@@ -230,10 +217,12 @@ void async_transfer(Args *args) {
                        args->Buffer, args->BufferLength,
                        args->LengthTransferred, 20000);
 #ifdef DBG
-    pthread_mutex_lock( &mylock );
-    printf("%s %u bytes on endpoint %u\n", (args->PipeID & 0x80) ? "Read async" : "Write async", args->BufferLength, args->PipeID & 0x7F);
-    print_hex(args->Buffer, *args->LengthTransferred);
-    pthread_mutex_unlock( &mylock );
+  pthread_mutex_lock(&mylock);
+  printf("%s %u bytes on endpoint %u\n",
+         (args->PipeID & 0x80) ? "Read async" : "Write async",
+         args->BufferLength, args->PipeID & 0x7F);
+  print_hex(args->Buffer, *args->LengthTransferred);
+  pthread_mutex_unlock(&mylock);
 #endif
   SetEvent(args->Overlapped
                ->hEvent);  // signal the event to release the waiting object.
@@ -267,41 +256,28 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   } else  // Just an synchronous transfer is needed; just call the
           // libusb_bulk_transfer.
   {
-        ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID, Buffer, BufferLength, LengthTransferred, 20000);
+    ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
+                               Buffer, BufferLength, LengthTransferred, 20000);
 #ifdef DBG
-        pthread_mutex_lock( &mylock );
-        printf("%s %u bytes on endpoint %u\n", (PipeID & 0x80) ? "Read normal" : "Write normal", BufferLength, PipeID & 0x7F);
-        print_hex(Buffer, *LengthTransferred);
-        pthread_mutex_unlock( &mylock );
+    pthread_mutex_lock(&mylock);
+    printf("%s %u bytes on endpoint %u\n",
+           (PipeID & 0x80) ? "Read normal" : "Write normal", BufferLength,
+           PipeID & 0x7F);
+    print_hex(Buffer, *LengthTransferred);
+    pthread_mutex_unlock(&mylock);
 #endif
   }
 
   return (ret == LIBUSB_SUCCESS);
 }
 
-
- /// Minipro replacement functions
- void minipro_close_devices() {
-  printf("Close devices.\n");
-  if (devs != NULL) {
-    for (int i = 0; i < 4; i++) {
-      if (device_handle[i] != NULL) {
-        libusb_close(device_handle[i]);
-        device_handle[i] = NULL;
-      }
-    }
-    libusb_free_device_list(devs, 1);
-    libusb_exit(NULL);  // close session
-    devs = NULL;
-  }
-}
- 
+/// Minipro replacement functions
 int minipro_open_devices(GUID *guid, int *error) {
   printf("Open devices.\n");
-  
+
   // Save the minipro GUID
   memcpy(&m_guid, guid, sizeof(GUID));
-  
+
   close_devices();
   device_handle[0] = NULL;
   device_handle[1] = NULL;
@@ -309,14 +285,13 @@ int minipro_open_devices(GUID *guid, int *error) {
   device_handle[3] = NULL;
   devs = NULL;
 
-  libusb_init(NULL);          // initialize a new session
+  libusb_init(NULL);  // initialize a new session
   libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);  // set verbosity level
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
   usb_handle[1] = INVALID_HANDLE_VALUE;
   usb_handle[2] = INVALID_HANDLE_VALUE;
   usb_handle[3] = INVALID_HANDLE_VALUE;
-
 
   // save vid/pid
   device_vid = TL866A_VID;
@@ -338,7 +313,9 @@ int minipro_open_devices(GUID *guid, int *error) {
 
     if (device_pid == desc.idProduct && device_vid == desc.idVendor) {
       if (libusb_open(devs[i], &device_handle[devices_found]) ==
-          LIBUSB_SUCCESS) {
+              LIBUSB_SUCCESS &&
+          libusb_claim_interface(device_handle[devices_found], 0) ==
+              LIBUSB_SUCCESS) {
         usb_handle[devices_found] = (HANDLE)devices_found;
         devices_found++;
         if (devices_found == 4) return 0;
@@ -348,20 +325,16 @@ int minipro_open_devices(GUID *guid, int *error) {
   return 0;
 }
 
-
 unsigned int uread(HANDLE hDevice, unsigned char *data, size_t size) {
   if (hDevice == INVALID_HANDLE_VALUE) return 0;
   if (device_handle[(int)hDevice] == NULL) return 0;
   size_t bytes_read;
-  if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
-    return 0;
   int ret =
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1,
                            data, size, &bytes_read, 20000);
-  libusb_release_interface(device_handle[(int)hDevice], 0);
 #ifdef DBG
-    printf("Read %d bytes\n",bytes_read);
-    print_hex(data,bytes_read);
+  printf("Read %d bytes\n", bytes_read);
+  print_hex(data, bytes_read);
 #endif
   return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
 }
@@ -370,15 +343,12 @@ BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size) {
   if (hDevice == INVALID_HANDLE_VALUE) return 0;
   if (device_handle[(int)hDevice] == NULL) return 0;
   size_t bytes_writen;
-  if (libusb_claim_interface(device_handle[(int)hDevice], 0) != LIBUSB_SUCCESS)
-    return 0;
   int ret =
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1,
                            data, size, &bytes_writen, 20000);
-  libusb_release_interface(device_handle[(int)hDevice], 0);
 #ifdef DBG
-    printf("Write %d bytes\n",bytes_writen);
-    print_hex(data,bytes_writen);
+  printf("Write %d bytes\n", bytes_writen);
+  print_hex(data, bytes_writen);
 #endif
   return (ret == LIBUSB_SUCCESS);
 }
@@ -408,10 +378,6 @@ unsigned int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer,
   unsigned int ret = uread(hDevice, lpOutBuffer, nBytesToRead);
   return ret;
 }
-
-
-
-
 
 // Return the device count
 int get_device_count() {
@@ -527,7 +493,6 @@ void notifier_function() {
   udev_monitor_unref(mon);
 }
 
-
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
                                              LPVOID NotificationFilter,
                                              DWORD Flags) {
@@ -539,7 +504,7 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
   return 0;
 }
 
-// Patcher function
+// Patch functions
 BOOL patch_function(char *library, char *func, void *funcaddress) {
   DWORD dwOldProtection;
   DWORD func_addr = 0;
@@ -599,18 +564,25 @@ BOOL patch_function(char *library, char *func, void *funcaddress) {
   return TRUE;
 }
 
+static inline void patch(void *src, void *dest){
+  // push xxxx, ret; an absolute Jump replacement.
+  BYTE p[] = {0x68, 0, 0, 0, 0, 0xc3};
+  DWORD *p_func = (DWORD *)&p[1];
+  *p_func = (DWORD)dest;
+  memcpy(src, p, sizeof(p));
+}
+
 // Xgpro patcher function. Called from DllMain. Return TRUE if patch was ok and
 // continue with program loading or FALSE to exit with error.
 BOOL patch_xgpro() {
-
   // Get the BaseAddress, NT Header and Image Import Descriptor
   void *BaseAddress = GetModuleHandleA(NULL);
   PIMAGE_NT_HEADERS NtHeader = (PIMAGE_NT_HEADERS)(
       (PBYTE)BaseAddress + ((PIMAGE_DOS_HEADER)BaseAddress)->e_lfanew);
-  
+
   unsigned char *version =
       memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage, "Xgpro v", 7);
-  if(!version) return FALSE;
+  if (!version) return FALSE;
   printf("Found %s\n", version);
 
   // Set some function pointers
@@ -637,8 +609,7 @@ BOOL patch_xgpro() {
   void *p_opendevices =
       memmem(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
              NtHeader->OptionalHeader.SizeOfCode, &xgpro_open_devices_pattern,
-             sizeof(xgpro_open_devices_pattern)) -
-      0x1D;
+             sizeof(xgpro_open_devices_pattern)) - 0x1D;
   void *p_closedevices =
       (void *)(*(int *)((unsigned char *)p_opendevices + 5)) +
       (DWORD)((unsigned char *)p_opendevices + 9);
@@ -667,9 +638,6 @@ BOOL patch_xgpro() {
 
   // Patch all low level functions in Xgpro.exe to point to our custom
   // functions.
-  BYTE t[] = {0x68, 0, 0,
-              0,    0, 0xc3};  // push xxxx, ret; an absolute Jump replacement.
-  DWORD *p_func = (DWORD *)&t[1];
   DWORD dwOldProtection;
 
   // Initialize the usb handle address.
@@ -681,33 +649,29 @@ BOOL patch_xgpro() {
                  &dwOldProtection);  // unprotect the code memory section
 
   // patch Open_Devices function
-  *p_func = (DWORD)&xgpro_open_devices;
-  memcpy(p_opendevices, t, 6);
+  patch(p_opendevices, &xgpro_open_devices);
 
   // patch close_devices function
-  *p_func = (DWORD)&xgpro_close_devices;
-  memcpy(p_closedevices, t, 6);
+  patch(p_closedevices, &close_devices);
 
   VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
                  NtHeader->OptionalHeader.SizeOfCode, dwOldProtection,
                  &dwOldProtection);  // restore the old protection
-  
-  close_devices = &xgpro_close_devices;
+
   return TRUE;
 }
 
-// Minipro patcher function. Called from DllMain. Return TRUE if patch was ok and
-// continue with program loading or FALSE to exit with error.
+// Minipro patcher function. Called from DllMain. Return TRUE if patch was ok
+// and continue with program loading or FALSE to exit with error.
 BOOL patch_minipro() {
-
   // Get the BaseAddress, NT Header and Image Import Descriptor
   void *BaseAddress = GetModuleHandleA(NULL);
   PIMAGE_NT_HEADERS NtHeader = (PIMAGE_NT_HEADERS)(
       (PBYTE)BaseAddress + ((PIMAGE_DOS_HEADER)BaseAddress)->e_lfanew);
-  
+
   unsigned char *version =
       memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage, "MiniPro v", 9);
-  if(!version) return FALSE;
+  if (!version) return FALSE;
   printf("Found %s\n", version);
 
   // Set some function pointers
@@ -718,7 +682,7 @@ BOOL patch_minipro() {
   send_message = (pSendMessageA)GetProcAddress(hmodule, "SendMessageA");
   redraw_window = (pRedrawWindow)GetProcAddress(hmodule, "RedrawWindow");
 
-    // Patch the Linux incompatible functions functions
+  // Patch the Linux incompatible functions functions
   if (!patch_function("user32.dll", "RegisterDeviceNotificationA",
                       &RegisterDeviceNotifications))
     return FALSE;
@@ -727,8 +691,7 @@ BOOL patch_minipro() {
   void *p_opendevices =
       memmem(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
              NtHeader->OptionalHeader.SizeOfCode, &minipro_open_devices_pattern,
-             sizeof(minipro_open_devices_pattern)) -
-      0x28;
+             sizeof(minipro_open_devices_pattern)) - 0x28;
   void *p_closedevices =
       (void *)(*(int *)((unsigned char *)p_opendevices + 4)) +
       (DWORD)((unsigned char *)p_opendevices + 8);
@@ -775,12 +738,8 @@ BOOL patch_minipro() {
   if (p_brickbug)
     printf("Patched brick bug at 0x%08X\n", (DWORD)p_brickbug + 0x08);
 
-
   // Patch all low level functions in MiniPro.exe to point to our custom
   // functions.
-  BYTE t[] = {0x68, 0, 0,
-              0,    0, 0xc3};  // push xxxx, ret; an absolute Jump replacement.
-  DWORD *p_func = (DWORD *)&t[1];
   DWORD dwOldProtection;
 
   // Initialize the usb handle address.
@@ -790,28 +749,22 @@ BOOL patch_minipro() {
                  &dwOldProtection);  // unprotect the code memory section
 
   // patch Open_Devices function
-  *p_func = (DWORD)&minipro_open_devices;
-  memcpy(p_opendevices, t, 6);
+  patch(p_opendevices, &minipro_open_devices);
 
   // patch close_devices function
-  *p_func = (DWORD)&minipro_close_devices;
-  memcpy(p_closedevices, t, 6);
+  patch(p_closedevices, &close_devices);
 
   // patch USB_Write function
-  *p_func = (DWORD)&usb_write;
-  memcpy(p_usbwrite, t, 6);
+  patch(p_usbwrite, &usb_write);
 
   // patch USB_Read function
-  *p_func = (DWORD)&usb_read;
-  memcpy(p_usbread, t, 6);
+  patch(p_usbread, &usb_read);
 
   // patch USB_Write2 function
-  *p_func = (DWORD)&usb_write2;
-  memcpy(p_usbwrite2, t, 6);
+  patch(p_usbwrite2, &usb_write2);
 
   // patch USB_Read2 function
-  *p_func = (DWORD)&usb_read2;
-  memcpy(p_usbread2, t, 6);
+  patch(p_usbread2, &usb_read2);
 
   // patch the brick bug
   if (p_brickbug) *(p_brickbug + 0x08) = 0xEB;
@@ -819,12 +772,12 @@ BOOL patch_minipro() {
   VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
                  NtHeader->OptionalHeader.SizeOfCode, dwOldProtection,
                  &dwOldProtection);  // restore the old protection
-  
-  close_devices = &minipro_close_devices;
+
   return TRUE;
 }
 
-/*/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////*/
+
+/*//////////////////////////////////////////////////////////////////////////*/
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
   switch (fdwReason) {
