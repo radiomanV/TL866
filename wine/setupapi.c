@@ -137,8 +137,14 @@ int open_devices() {
   device_handle[3] = NULL;
   devs = NULL;
 
-  libusb_init(NULL);  // initialize a new session
-  libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);  // set verbosity level
+  // initialize a new session
+  libusb_init(NULL);
+  // set verbosity level
+#if LIBUSB_API_VERSION >= 0x01000106 
+  libusb_set_option(NULL, LIBUSB_OPTION_LOG_LEVEL, 3);
+#else
+  libusb_set_debug(NULL, 3);
+#endif  
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
   usb_handle[1] = INVALID_HANDLE_VALUE;
