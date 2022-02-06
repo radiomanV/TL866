@@ -1,7 +1,8 @@
-#define __WINESRC__
 #define __CYGWIN__
 #define _GNU_SOURCE
 
+#include <windows.h>
+#define __WINESRC__
 #include <glob.h>
 #include <libudev.h>
 #include <libusb-1.0/libusb.h>
