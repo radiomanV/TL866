@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #define __WINESRC__
+#include <winsock2.h>
 #include <glob.h>
 #include <libudev.h>
 #include <libusb-1.0/libusb.h>
