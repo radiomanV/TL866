@@ -4,7 +4,7 @@ DLL                       = setupapi.dll
 ### Common settings
 CFLAGS		          =
 CEXTRA                    = -m32 -mincoming-stack-boundary=2
-LIBRARIES                 = -lusb-1.0 -ludev
+LIBRARIES                 = -lusb-1.0 -ludev -lwsock32 -lws2_32
 
 
 ### setupapi.dll sources and settings
