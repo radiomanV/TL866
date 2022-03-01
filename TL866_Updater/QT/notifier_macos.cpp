@@ -30,6 +30,10 @@
 #include <QMutex>
 #include <QMutexLocker>
 
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101700) // Before macOS 12
+#define kIOMainPortDefault kIOMasterPortDefault
+#endif
+
 extern "C"
 void device_callback(void *refcon, io_iterator_t iterator)
 {
@@ -83,7 +87,7 @@ Notifier::Notifier()
     // Create a notification port and add its run loop event source to our run loop
     // This is how async notifications get set up.
     
-    notifyPort = IONotificationPortCreate(kIOMasterPortDefault);
+    notifyPort = IONotificationPortCreate(kIOMainPortDefault);
     runLoopSource = IONotificationPortGetRunLoopSource(notifyPort);
     
     runLoop = CFRunLoopGetCurrent();
