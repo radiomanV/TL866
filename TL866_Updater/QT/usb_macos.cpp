@@ -28,9 +28,8 @@ USB::USB()
 {
     device_handle = nullptr;
     devs = nullptr;
-    ctx = nullptr;
-    libusb_init(&ctx);//initialize a new session
-    libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, 3);//set verbosity level//set verbosity level
+    libusb_init(nullptr);//initialize a new session
+    libusb_set_option(nullptr, LIBUSB_OPTION_LOG_LEVEL, 3);//set verbosity level//set verbosity level
 }
 
 USB::~USB()
@@ -40,7 +39,7 @@ USB::~USB()
 
     if(devs != nullptr)
         libusb_free_device_list(devs, 1);
-    libusb_exit(ctx); //close session
+    libusb_exit(nullptr); //close session
 }
 
 
@@ -50,7 +49,7 @@ int USB::get_devices_count()
        libusb_free_device_list(devs, 1);
     devices.clear();
 
-    int count = libusb_get_device_list(ctx, &devs);
+    int count = libusb_get_device_list(nullptr, &devs);
     if(count < 0) {
         return 0;
     }

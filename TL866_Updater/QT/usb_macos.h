@@ -23,7 +23,6 @@ private:
     libusb_device_handle *device_handle;
     QList<libusb_device*> devices;
     libusb_device **devs;
-    libusb_context *ctx;
 };
 
 #endif // USB_MACOS_H
