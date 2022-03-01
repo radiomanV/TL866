@@ -28,8 +28,9 @@ USB::USB()
 {
     device_handle = nullptr;
     devs = nullptr;
-    libusb_init(nullptr);//initialize a new session
-    libusb_set_option(nullptr,LIBUSB_OPTION_LOG_LEVEL, 3);//set verbosity level//set verbosity level
+    ctx = nullptr;
+    libusb_init(&ctx);//initialize a new session
+    libusb_set_option(ctx, LIBUSB_OPTION_LOG_LEVEL, 3);//set verbosity level//set verbosity level
 }
 
 USB::~USB()
@@ -39,7 +40,7 @@ USB::~USB()
 
     if(devs != nullptr)
         libusb_free_device_list(devs, 1);
-    libusb_exit(nullptr); //close session
+    libusb_exit(ctx); //close session
 }
 
 

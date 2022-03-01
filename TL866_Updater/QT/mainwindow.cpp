@@ -34,6 +34,12 @@
 #include "hexwriter.h"
 #include "crc.h"
 
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+#define QPALETTE_BACKGROUND QPalette::Background
+#else
+#define QPALETTE_BACKGROUND QPalette::Base
+#endif
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -95,12 +101,12 @@ MainWindow::~MainWindow()
 void MainWindow::leds_off()
 {
     QPalette pal;
-    pal.setColor(QPalette::Background, QColor::fromRgb(0,64,0));
+    pal.setColor(QPALETTE_BACKGROUND, QColor::fromRgb(0,64,0));
     ui->LedNorm->setPalette(pal);
     ui->LedBoot->setPalette(pal);
-    pal.setColor(QPalette::Background, QColor::fromRgb(64,64,0));
+    pal.setColor(QPALETTE_BACKGROUND, QColor::fromRgb(64,64,0));
     ui->LedErase->setPalette(pal);
-    pal.setColor(QPalette::Background, QColor::fromRgb(64,0,0));
+    pal.setColor(QPALETTE_BACKGROUND, QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
     ui->LedNorm->setProperty("state",false);
     ui->LedBoot->setProperty("state",false);
@@ -115,7 +121,7 @@ void MainWindow::setNled(bool state)
 {
     ui->LedNorm->setProperty("state", state);
     QPalette pal;
-    pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
+    pal.setColor(QPALETTE_BACKGROUND,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedNorm->setPalette(pal);
 }
 
@@ -123,7 +129,7 @@ void MainWindow::setBled(bool state)
 {
     ui->LedBoot->setProperty("state", state);
     QPalette pal;
-    pal.setColor(QPalette::Background,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
+    pal.setColor(QPALETTE_BACKGROUND,state ? QColor::fromRgb(0,255,0) :  QColor::fromRgb(0,64,0));
     ui->LedBoot->setPalette(pal);
 }
 
@@ -131,7 +137,7 @@ void MainWindow::setEled(bool state)
 {
     ui->LedErase->setProperty("state", state);
     QPalette pal;
-    pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,255,0) :  QColor::fromRgb(64,64,0));
+    pal.setColor(QPALETTE_BACKGROUND,state ? QColor::fromRgb(255,255,0) :  QColor::fromRgb(64,64,0));
     ui->LedErase->setPalette(pal);
 }
 
@@ -139,7 +145,7 @@ void MainWindow::setWled(bool state)
 {
     ui->LedWrite->setProperty("state", state);
     QPalette pal;
-    pal.setColor(QPalette::Background,state ? QColor::fromRgb(255,0,0) :  QColor::fromRgb(64,0,0));
+    pal.setColor(QPALETTE_BACKGROUND,state ? QColor::fromRgb(255,0,0) :  QColor::fromRgb(64,0,0));
     ui->LedWrite->setPalette(pal);
 }
 
@@ -269,7 +275,11 @@ void MainWindow::on_btnReset_clicked()
 
     if(!CheckDevices(this))
         return;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     *worker = QtConcurrent::run(this, &MainWindow::reset);
+#else
+    *worker = QtConcurrent::run(&MainWindow::reset, this);
+#endif
     ui->btnReset->setProperty("state", true);
 }
 
@@ -302,7 +312,11 @@ void MainWindow::on_btnReflash_clicked()
     if(index == -1)
         return;
     ui->progressBar->setMaximum(ENCRYPTED_FIRMWARE_SIZE/BLOCK_SIZE-1);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     *worker = QtConcurrent::run(this, &MainWindow::reflash, index);
+#else
+    *worker = QtConcurrent::run(&MainWindow::reflash, this, index);
+#endif
 }
 
 
@@ -328,7 +342,11 @@ void MainWindow::on_btnDump_clicked()
             fileName += ".hex";
         ui->progressBar->setMaximum(FLASH_SIZE - 1);
         DeviceInfo info = DeviceChanged(true);
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
         *worker = QtConcurrent::run(this, &MainWindow::dump, fileName, info.device_type);
+#else
+        *worker = QtConcurrent::run(&MainWindow::dump, this, fileName, info.device_type);
+#endif
     }
 }
 
