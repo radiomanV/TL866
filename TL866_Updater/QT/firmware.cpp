@@ -208,7 +208,11 @@ void Firmware::encrypt_block(unsigned char *data, const unsigned char *xortable,
 {
 #if QT_VERSION >= 0x050000
     QRandomGenerator gen;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     gen.seed(QDateTime::currentDateTime().toTime_t());
+#else
+    gen.seed(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
+#endif
 #endif
     //First step, fill the last 16 bytes of data buffer with random generated values.
     for(int i=0;i<16;i++){
@@ -269,7 +273,11 @@ void Firmware::encrypt_serial(unsigned char *key, const unsigned char *firmware)
     CRC crc;
 #if QT_VERSION >= 0x050000
     QRandomGenerator gen;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     gen.seed(QDateTime::currentDateTime().toTime_t());
+#else
+    gen.seed(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
+#endif
 #endif
     for(int i=32;i<BLOCK_SIZE-2;i++)
     {

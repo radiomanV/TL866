@@ -60,7 +60,11 @@ void EditDialog::on_btnRndDev_clicked()
     QString s;
 #if QT_VERSION >= 0x050000
     QRandomGenerator gen;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     gen.seed(QDateTime::currentDateTime().toTime_t());
+#else
+    gen.seed(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
+#endif
 #endif
     for(i=0;i<8;i++)
     {
@@ -80,7 +84,11 @@ void EditDialog::on_btnRndSer_clicked()
 {
 #if QT_VERSION >= 0x050000
     QRandomGenerator gen;
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     gen.seed(QDateTime::currentDateTime().toTime_t());
+#else
+    gen.seed(QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000);
+#endif
 #endif
     if(ui->txtDevcode->text().isEmpty())
         on_btnRndDev_clicked();
