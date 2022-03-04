@@ -75,6 +75,10 @@ MainWindow::MainWindow(QWidget *parent) :
     //initialise main ui
     ui->btnAdvanced->setEnabled(false);
     ui->btnDump->setEnabled(false);
+    ui->LedNorm->setBackgroundRole(QPALETTE_BACKGROUND);
+    ui->LedBoot->setBackgroundRole(QPALETTE_BACKGROUND);
+    ui->LedErase->setBackgroundRole(QPALETTE_BACKGROUND);
+    ui->LedWrite->setBackgroundRole(QPALETTE_BACKGROUND);
     leds_off();
     reset_flag=false;
     DeviceChanged(true);
