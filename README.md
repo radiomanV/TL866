@@ -63,3 +63,7 @@ qmake
 make
 cp -R TL866_Updater.app /Applications
 ```
+
+### InfoicDump utility
+This utility can dump the `infoic.dll` and `infoic2plus.dll` to an XML format database.   
+More information on this here: [InfoicDump](https://github.com/radiomanV/TL866/tree/master/InfoIcDump#infoicdump)
