@@ -6,7 +6,7 @@ required by the opensource [minipro](https://gitlab.com/DavidGriffith/minipro) u
 
 ## Using of the InfoIcDump utility on Linux
 #### Debian/Ubuntu
-The provided `InfoicDump.exe` is a seflf-contained .net core application which can be run   
+The provided `InfoicDump.exe` is a self-contained .net core application which can be run   
 directly under Linux with the help of [Wine](https://wiki.winehq.org/Download) framework.   
 
 You only need to install Wine without any other dependencies and create a clean 32 bit prefix.  
