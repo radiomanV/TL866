@@ -24,6 +24,10 @@ WINEPREFIX=$HOME/wine_32 WINEDEBUG=-all wine InfoicDump.exe
 This will dump everything using default settings and provide a nice and clean output,    
 removing the Wine debug gibberish. 
 If you have troubles remove the `WINEDEBUG=-all` part and run the utility again.   
+Of course you can silent the `stderr` totally like this:
+```nohighlight 
+WINEPREFIX=$HOME/wine_32 wine InfoicDump.exe 2> /dev/null
+```
 
 The final dump will be found in `output` directory.   
 You can customize this dump by providing some command line arguments:   
