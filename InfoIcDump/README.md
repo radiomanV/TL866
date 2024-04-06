@@ -22,7 +22,7 @@ Copy the `infoic.dll` or/and `infoic2Plus.dll` over the InfoicDump directory and
 WINEPREFIX=$HOME/wine_32 WINEDEBUG=-all wine InfoicDump.exe
 ```
 This will dump everything using default settings and provide a nice and clean output,    
-removing the Wine debug gibbersish. 
+removing the Wine debug gibberish. 
 If you have troubles remove the `WINEDEBUG=-all` part and run the utility again.   
 
 The final dump will be found in `output` directory.   
