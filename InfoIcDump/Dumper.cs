@@ -64,7 +64,7 @@ namespace InfoIcDump
                         config_csv_list.Add(line.Split(';')[0], csv);
                     }
                 }
-                Console.WriteLine("configs.csv loaded. Total entries: {0}", config_csv_list.Count.ToString());
+                Console.WriteLine("configs.csv loaded. Total entries:{0}", config_csv_list.Count.ToString());
             }
             catch (Exception ex)
             {
@@ -89,9 +89,9 @@ namespace InfoIcDump
                 "--no-group                 Don't group devices" + Environment.NewLine +
                 "--no-infoic                Don't dump infoic.dll" + Environment.NewLine +
                 "--no--infoic2              Don't dump infoic2plus.dll" + Environment.NewLine +
-                "--tl866-only               Only dump TL866II+ entries" + Environment.NewLine +
-                "--t48-only                 Only dump T48 entries" + Environment.NewLine +
-                "--t56-only                 Only dump T56 entries" + Environment.NewLine +
+                "--no-tl866                 Don't dump TL866II+ entries" + Environment.NewLine +
+                "--no-T48                   Don't dump T48 entries" + Environment.NewLine +
+                "--no-T56                   Don't dump T56 entries" + Environment.NewLine +
                 "--no-memory                Don't dump EPROM/EEPROM/FLASH devices" + Environment.NewLine +
                 "--no-mcu                   Don't dump MCU/MPU devices" + Environment.NewLine +
                 "--no-pld                   Don't dump PLD/CPLD devices" + Environment.NewLine +
@@ -120,16 +120,16 @@ namespace InfoIcDump
                         options.DumpInfoic2 = false;
                         break;
 
-                    case "--tl866-only":
-                        options.TL866 = true;
+                    case "--no-tl866":
+                        options.TL866 = false;
                         break;
 
-                    case "--t48-only":
-                        options.T48 = true;
+                    case "--no-t48":
+                        options.T48 = false;
                         break;
 
-                    case "--t56-only":
-                        options.T56 = true;
+                    case "--no-t56":
+                        options.T56 = false;
                         break;
 
                     case "--no-memory":
@@ -236,9 +236,9 @@ namespace InfoIcDump
                 Infoic2Path = StartupPath + "InfoIC2Plus.dll",
                 ConfigsPath = StartupPath + "configs.csv",
                 OutPath = StartupPath + "output" + Path.DirectorySeparatorChar,
-                TL866 = false,
-                T48 = false,
-                T56 = false,
+                TL866 = true,
+                T48 = true,
+                T56 = true,
                 Memory = true,
                 Mcu = true,
                 Pld = true,
@@ -287,7 +287,7 @@ namespace InfoIcDump
             {
                 if (infoic.InfoIcLoaded)
                 {
-                    Console.WriteLine("InfoIc.dll loaded. Total devices: {0}", infoic.InfoIcNumDevices);
+                    Console.WriteLine("InfoIc.dll loaded. Total devices:{0}", infoic.InfoIcNumDevices);
                 }
                 else
                 {
@@ -299,7 +299,7 @@ namespace InfoIcDump
             {
                 if (options.DumpInfoic2 && infoic.InfoIc2Loaded)
                 {
-                    Console.WriteLine("InfoIc2Plus.dll loaded. Total devices: {0}", infoic.InfoIc2NumDevices);
+                    Console.WriteLine("InfoIc2Plus.dll loaded. Total devices:{0}", infoic.InfoIc2NumDevices);
                 }
                 else
                 {
@@ -346,12 +346,9 @@ namespace InfoIcDump
                 total = [];
                 device_count = 0;
                 XElement[] elements = DumpDatabase(ref options, DB_TYPE.INFOIC2, ref filter, ref total, ref device_count);
-                if (device_count > 0)
-                {
-                    XElement database = new("database");
-                    database.Add(new XAttribute("type", "INFOIC2PLUS"), elements);
-                    xml_root.Add(database);
-                }
+                XElement database = new("database");
+                database.Add(new XAttribute("type", "INFOIC2PLUS"), elements);
+                xml_root.Add(database);
                 if (!WriteLogs(options.OutPath, filter, "filter2.txt", total, "log2.txt", device_count)) { return -1; }
             }
 
@@ -362,12 +359,9 @@ namespace InfoIcDump
                 total = [];
                 device_count = 0;
                 XElement[] elements = DumpDatabase(ref options, DB_TYPE.INFOIC, ref filter, ref total, ref device_count);
-                if (device_count > 0)
-                {
-                    XElement database = new("database");
-                    database.Add(new XAttribute("type", "INFOIC"), elements);
-                    xml_root.Add(database);
-                }
+                XElement database = new("database");
+                database.Add(new XAttribute("type", "INFOIC"), elements);
+                xml_root.Add(database);
                 if (!WriteLogs(options.OutPath, filter, "filter.txt", total, "log.txt", device_count)) { return -1; }
             }
 
@@ -407,7 +401,7 @@ namespace InfoIcDump
         }
 
         //Get the device info in xml format
-        private static List<XAttribute> GetIcXml(DevStruct devstruct, DB_TYPE type)
+        private List<XAttribute> GetIcXml(DevStruct devstruct, DB_TYPE type)
         {
             List<XAttribute> xml_chip = [];
             xml_chip.Add(new XAttribute("name", devstruct.Name));
@@ -440,7 +434,7 @@ namespace InfoIcDump
         }
 
         // Compare two device profiles
-        private static bool CompareDevice(DevStruct d1, DevStruct d2)
+        private bool CompareDevice(DevStruct d1, DevStruct d2)
         {
             return
             d1.Category == d2.Category &&
@@ -503,21 +497,14 @@ namespace InfoIcDump
                     if (Devstruct.Category == (uint)CHIP_TYPE.LOGIC) { continue; }
 
 
-                    // Filter devices
-                    UInt32 ptype = Devstruct.Opts8 & (TL866II_FLAG | T48_FLAG | T56_FLAG);
                     if ((Devstruct.Category == (uint)CHIP_TYPE.MEMORY && !options.Memory) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.MPU && !options.Mcu) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.PLD && !options.Pld) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.SRAM && !options.Sram) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.NAND && !options.Nand) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.EMMC && !options.Emmc) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.VGA && !options.Vga) ||
-                      (options.TL866 && ptype != TL866II_FLAG) ||
-                      (options.T48 && ptype != T48_FLAG) ||
-                      (options.T56 && ptype != T56_FLAG) ||
-                      (ptype == 0 && (options.TL866 || options.T48 || options.T56)))
+                      (Devstruct.Category == (uint)CHIP_TYPE.VGA && !options.Vga))
                         continue;
-
 
                     //Remove spaces and bad characters
                     Devstruct.Name = Devstruct.Name.Replace(" ", "").Replace(",", ";").
@@ -561,6 +548,12 @@ namespace InfoIcDump
 
                     //Add device to list
                     DeviceList.Add(Devstruct);
+
+                    //Log the device
+                    if (total.ContainsKey(Devstruct.ProtocolId))
+                        total[Devstruct.ProtocolId] += Devstruct.Name + Environment.NewLine;
+                    else
+                        total.Add(Devstruct.ProtocolId, Devstruct.Name + Environment.NewLine);
                 }
             }
 
@@ -590,18 +583,12 @@ namespace InfoIcDump
                 DeviceList = tmp_list;
             }
 
-            // Get fuse name for each chip before comapacting and log devices
+            // Get fuse name for each chip before comapcting
             for (int i = 0; i < DeviceList.Count; i++)
             {
                 Devstruct = DeviceList[i];
                 Devstruct.config = GetFuseName(Devstruct);
                 DeviceList[i] = Devstruct;
-
-                //Log the device
-                if (total.ContainsKey(Devstruct.ProtocolId))
-                    total[Devstruct.ProtocolId] += Devstruct.Name + Environment.NewLine;
-                else
-                    total.Add(Devstruct.ProtocolId, Devstruct.Name + Environment.NewLine);
             }
 
             // save device count for later

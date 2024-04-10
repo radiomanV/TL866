@@ -130,9 +130,9 @@ namespace InfoIcDump
             public uint Count;
         }
 
-        public static readonly uint T56_FLAG = 0x10000000;
-        public static readonly uint T48_FLAG = 0x40000000;
-        public static readonly uint TL866II_FLAG = 0x20000000;
+        public static readonly uint T56_MASK = 0x10000000;
+        public static readonly uint T48_MASK = 0x40000000;
+        public static readonly uint TL866II_MASK = 0x20000000;
 
         public static readonly uint SMT_FLAG = 0x80000000;
         public static readonly uint PLCC_FLAG = 0x04000000;
@@ -402,6 +402,273 @@ namespace InfoIcDump
             uint lo8 = PatchLo8(ref Device);
             uint hi8 = PatchHi8(ref Device);
             Device.Opts8 = (Device.Opts8 & 0xFFFF0000) | (hi8 << 8) | lo8;
+
+            // Patch variant high byte
+            if((Device.Variant & 0xFF00) == 0)
+            {
+                uint algo = GetAlgoNumber(Device);
+                Device.Variant = (Device.Variant & 0x00FF) | (algo << 8);
+            }
+        }
+
+        private static byte GetAlgoNumber(DevStruct device)
+        {
+            byte variantLoByte = (byte)(device.Variant & 0xFF);
+            byte voltagesHiByte = (byte)((device.Opts5 >> 8) & 0xFF);
+
+            switch (device.ProtocolId)
+            {
+                case 0x01:
+                    if ((variantLoByte & 3) == 1)
+                    {
+                        if (device.CodeMemorySize < 0x8000)
+                            return 0x1A;
+                        return 0x11;
+                    }
+                    if ((variantLoByte & 3) == 0)
+                        return 0x13;
+                    if ((variantLoByte & 3) == 2)
+                        return 0x14;
+                    return (byte)(variantLoByte & 3);
+                case 0x02:
+                    if (variantLoByte >= 0)
+                    {
+                        if ((voltagesHiByte & 0xF) != 2)
+                            return 0x21;
+                        return 0x2A;
+                    }
+                    else if ((variantLoByte & 0x20) != 0)
+                    {
+                        if ((voltagesHiByte & 0xF) == 1)
+                        {
+                            return 0x69;
+                        }
+                        else if ((voltagesHiByte & 0xF) == 2)
+                        {
+                            return 0x68;
+                        }
+                        else
+                        {
+                            return 0x67;
+                        }
+                    }
+                    else if ((voltagesHiByte & 0xF) == 1)
+                    {
+                        return 0x2B;
+                    }
+                    else
+                    {
+                        if ((voltagesHiByte & 0xF) != 2)
+                            return 0x11;
+                        return 0x1A;
+                    }
+                case 0x03:
+                case 0x0F:
+                    if ((variantLoByte & 0xF0) == 32)
+                    {
+                        if ((variantLoByte & 3) == 3)
+                        {
+                            return 0x20;
+                        }
+                        else if ((variantLoByte & 3) == 2)
+                        {
+                            return 0x21;
+                        }
+                    }
+                    else
+                    {
+                        switch (variantLoByte & 3)
+                        {
+                            case 3:
+                                return 0x10;
+                            case 2:
+                                return 0x11;
+                            case 1:
+                                return 0x12;
+                            default:
+                                if ((variantLoByte & 3) == 0)
+                                    return 0x13;
+                                break;
+                        }
+                    }
+                    return (byte)(variantLoByte & 0xF0);
+                case 0x05:
+                    if (device.PackageDetails == 5)
+                        return 0x76;
+                    else
+                        return 0x75;
+                case 0x06:
+                    if ((variantLoByte & 0x80) != 0)
+                    {
+                        if (device.PackageDetails == 5)
+                            return 0x73;
+                        return 0x71;
+                    }
+                    if (device.PackageDetails == 5)
+                    {
+                        return 0x72;
+                    }
+                    else
+                    {
+                        if (device.CodeMemorySize != 0x80000)
+                            return 0x71;
+                        return 0x70;
+                    }
+                case 0x07:
+                    if ((variantLoByte & 0x10) != 0)
+                    {
+                        if (device.CodeMemorySize == 0x10000)
+                        {
+                            return 0x31;
+                        }
+                        else if (device.CodeMemorySize == 0x8000)
+                        {
+                            return 0x32;
+                        }
+                        else
+                        {
+                            return 0x33;
+                        }
+                    }
+                    else
+                    {
+                        return 0x41;
+                    }
+                case 0x08:
+                    if (device.PackageDetails == 5)
+                    {
+                        if (variantLoByte == 4)
+                        {
+                            return 0x22;
+                        }
+                        else if (variantLoByte == 3)
+                        {
+                            return 0x23;
+                        }
+                        else
+                        {
+                            if (variantLoByte != 2)
+                                return 0x21;
+                            return 0x24;
+                        }
+                    }
+                    else
+                    {
+                        if (variantLoByte == 4)
+                            return 0x12;
+                        if (variantLoByte == 3)
+                            return 0x13;
+                        if (variantLoByte != 2)
+                            return 0x11;
+                        return 0x14;
+                    }
+                case 0x09:
+                    if (device.PackageDetails == 0x28000000)
+                    {
+                        if (device.CodeMemorySize != 0x80000)
+                            return 0x1A;
+                        return 0x2A;
+                    }
+                    if (device.PackageDetails == 0xFD000000)
+                    {
+                        if (device.CodeMemorySize == 0x80000)
+                            return 0x2B;
+                        return 0x1B;
+                    }
+                    else if (device.PackageDetails == 4)
+                    {
+                        if (device.CodeMemorySize == 0x80000)
+                            return 0x2C;
+                        else
+                            return 0x1C;
+                    }
+                    return (byte)device.PackageDetails;
+                case 0x0A:
+                    if ((variantLoByte & 0x80) != 0)
+                    {
+                        return 0x42;
+                    }
+                    else if (device.CodeMemorySize == 0x10000)
+                    {
+                        return 0x34;
+                    }
+                    else if (device.CodeMemorySize == 0x8000)
+                    {
+                        return 0x35;
+                    }
+                    else
+                    {
+                        return 0x36;
+                    }
+                case 0x0B:
+                    if ((variantLoByte & 0x10) != 0)
+                    {
+                        return 0x43;
+                    }
+                    else if (device.CodeMemorySize == 0x800)
+                    {
+                        return 0x3B;
+                    }
+                    else
+                    {
+                        return 0x3A;
+                    }
+                case 0x0D:
+                    if (device.PackageDetails == 5)
+                        return 0x45;
+                    else
+                        return 0x44;
+                case 0x0E:
+                    return 0x50;
+                case 0x10:
+                    if (variantLoByte == 16 || variantLoByte == 17)
+                    {
+                        if (device.PackageDetails == 5)
+                            return 0x7E;
+                        else
+                            return 0x7B;
+                    }
+                    else if (variantLoByte == 18)
+                    {
+                        if (device.PackageDetails == 5)
+                            return 0x7F;
+                        else
+                            return 0x7C;
+                    }
+                    else if (device.PackageDetails == 5)
+                    {
+                        return 0x7D;
+                    }
+                    else
+                    {
+                        return 0x7A;
+                    }
+                case 0x11:
+                    if (device.PackageDetails == 5)
+                    {
+                        if ((variantLoByte & 0xF) == 1)
+                            return 0x92;
+                        else
+                            return 0x94;
+                    }
+                    else if (device.PackageDetails == 3)
+                    {
+                        if ((variantLoByte & 0xF) == 1)
+                            return 0x95;
+                        else
+                            return 0x96;
+                    }
+                    else if ((variantLoByte & 0xF) == 1)
+                    {
+                        return 0x91;
+                    }
+                    else
+                    {
+                        return 0x93;
+                    }
+                default:
+                    return 0x00;
+            }
         }
 
         // Patch PackageDetails and Opts4
