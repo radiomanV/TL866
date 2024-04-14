@@ -23,6 +23,10 @@
 #define TL866A_PID 0xe11c
 #define TL866II_VID 0xA466
 #define TL866II_PID 0x0A53
+#define MODEL_A		0x1
+#define MODEL_II	0x2
+#define MODEL_T48	0x3
+#define MODEL_T56	0x4
 
 typedef struct {
   HANDLE InterfaceHandle;
@@ -38,6 +42,7 @@ typedef struct {
 libusb_device_handle *device_handle[4];
 libusb_device **devs;
 int debug = 0;
+int model = 0;
 
 HANDLE h_thread;
 
@@ -176,15 +181,21 @@ int open_devices() {
       return 0;
     }
 
-    if (device_pid == desc.idProduct && device_vid == desc.idVendor) {
+    if (device_pid == desc.idProduct && device_vid == desc.idVendor) {  
+      
       if (libusb_open(devs[i], &device_handle[devices_found]) ==
               LIBUSB_SUCCESS &&
           libusb_claim_interface(device_handle[devices_found], 0) ==
               LIBUSB_SUCCESS) {
         usb_handle[devices_found] = (HANDLE)devices_found;
         if(device_vid == TL866II_VID){
+            char product[50];
             winusb_handle[devices_found] = (HANDLE)devices_found;
             *devices_count = devices_found + 1;
+            libusb_get_string_descriptor_ascii(device_handle[devices_found], desc.iProduct, product, 50);
+            if (strncmp(product, "XGecu T48", 9) == 0) model = MODEL_T48; else model = MODEL_II;
+        } else {
+            model = MODEL_A;
         }
         devices_found++;
         if (devices_found == 4) return 0;
