@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#ifdef DBG
+
 #include <pthread.h>
-#endif
+
 
 #include <dbt.h>
 #include <winbase.h>
@@ -37,6 +37,7 @@ typedef struct {
 // Global variables
 libusb_device_handle *device_handle[4];
 libusb_device **devs;
+int debug = 0;
 
 HANDLE h_thread;
 
@@ -60,9 +61,7 @@ pGetForegroundWindow get_foreground_window;
 pSendMessageA send_message;
 pRedrawWindow redraw_window;
 
-#ifdef DBG
 pthread_mutex_t mylock = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 // These are functions signature extracted from Xgpro.exe and should be
 // compatible from V7.0 and above.
@@ -129,6 +128,9 @@ void close_devices() {
 }
 
 int open_devices() {
+  char *debug_var = NULL;
+  debug_var = getenv("TL_DEBUG");
+  if (debug_var && 0 == strncmp(debug_var, "1", 1)) debug = 1; else debug = 0;
   printf("Open devices.\n");
   close_devices();
   device_handle[0] = NULL;
@@ -204,14 +206,14 @@ void async_transfer(Args *args) {
   libusb_bulk_transfer(device_handle[(int)args->InterfaceHandle], args->PipeID,
                        args->Buffer, args->BufferLength,
                        args->LengthTransferred, 20000);
-#ifdef DBG
-  pthread_mutex_lock(&mylock);
-  printf("%s %u bytes on endpoint %u\n",
+  if (debug) {
+    pthread_mutex_lock(&mylock);
+    printf("%s %u bytes on endpoint %u\n",
          (args->PipeID & 0x80) ? "Read async" : "Write async",
          args->BufferLength, args->PipeID & 0x7F);
-  print_hex(args->Buffer, *args->LengthTransferred);
-  pthread_mutex_unlock(&mylock);
-#endif
+    print_hex(args->Buffer, *args->LengthTransferred);
+    pthread_mutex_unlock(&mylock);
+  }
   SetEvent(args->Overlapped
                ->hEvent);  // signal the event to release the waiting object.
   free(args);              // Free the malloced args.
@@ -246,14 +248,14 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   {
     ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
                                Buffer, BufferLength, LengthTransferred, 20000);
-#ifdef DBG
-    pthread_mutex_lock(&mylock);
-    printf("%s %u bytes on endpoint %u\n",
+    if (debug) {
+      pthread_mutex_lock(&mylock);
+      printf("%s %u bytes on endpoint %u\n",
            (PipeID & 0x80) ? "Read normal" : "Write normal", BufferLength,
            PipeID & 0x7F);
-    print_hex(Buffer, *LengthTransferred);
-    pthread_mutex_unlock(&mylock);
-#endif
+      print_hex(Buffer, *LengthTransferred);
+      pthread_mutex_unlock(&mylock);
+    }
   }
 
   return (ret == LIBUSB_SUCCESS);
@@ -269,10 +271,10 @@ unsigned int uread(HANDLE hDevice, unsigned char *data, size_t size) {
   int ret =
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1,
                            data, size, &bytes_read, 20000);
-#ifdef DBG
-  printf("Read %d bytes\n", bytes_read);
-  print_hex(data, bytes_read);
-#endif
+  if (debug) {
+    printf("Read %d bytes\n", bytes_read);
+    print_hex(data, bytes_read);
+  }
   return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
 }
 
@@ -283,10 +285,10 @@ BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size) {
   int ret =
       libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1,
                            data, size, &bytes_writen, 20000);
-#ifdef DBG
-  printf("Write %d bytes\n", bytes_writen);
-  print_hex(data, bytes_writen);
-#endif
+  if (debug) {
+    printf("Write %d bytes\n", bytes_writen);
+    print_hex(data, bytes_writen);
+  }
   return (ret == LIBUSB_SUCCESS);
 }
 
