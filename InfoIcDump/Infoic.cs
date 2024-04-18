@@ -135,7 +135,7 @@ namespace InfoIcDump
         public static readonly uint TL866II_MASK = 0x20000000;
 
         public static readonly uint SMT_FLAG = 0x80000000;
-        public static readonly uint PLCC_FLAG = 0x04000000;
+        public static readonly uint PLCC_FLAG = 0x40000000;
         public static readonly uint ERASE_FLAG = 0x20;
 
         public enum CHIP_TYPE : uint { MEMORY = 1, MPU, PLD, SRAM, LOGIC, NAND, EMMC, VGA }
