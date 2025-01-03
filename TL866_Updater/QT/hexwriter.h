@@ -1,5 +1,6 @@
 #ifndef HEXWRITER_H
 #define HEXWRITER_H
+#include <QString>
 #include <QTextStream>
 
 class HexWriter
