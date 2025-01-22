@@ -22,8 +22,8 @@
 #define TL866A_PID 0xe11c
 #define TL866II_VID 0xA466
 #define TL866II_PID 0x0A53
-#define T76_PID 0xA466
-#define T76_VID 0x1A86
+#define T76_PID 0x1A86
+#define T76_VID 0xA466
 
 typedef struct {
   HANDLE InterfaceHandle;
