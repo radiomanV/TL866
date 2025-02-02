@@ -5,13 +5,12 @@
 #include <glob.h>
 #include <libudev.h>
 #include <libusb-1.0/libusb.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <pthread.h>
 
 #include <dbt.h>
 #include <winbase.h>
@@ -20,10 +19,12 @@
 
 #define TL866A_VID 0x04d8
 #define TL866A_PID 0xe11c
-#define TL866II_VID 0xA466
-#define TL866II_PID 0x0A53
-#define T76_PID 0x1A86
-#define T76_VID 0xA466
+#define TL866II_VID 0xa466
+#define TL866II_PID 0x0a53
+#define T76_VID 0xa466
+#define T76_PID 0x1a86
+
+#define PIPE_TRANSFER_TIMEOUT 0x03
 
 typedef struct {
   HANDLE InterfaceHandle;
@@ -38,6 +39,7 @@ typedef struct {
 libusb_device_handle *device_handle[4];
 libusb_device **devs;
 int debug = 0;
+int timeout = 5000;
 
 HANDLE h_thread;
 
@@ -119,7 +121,8 @@ void print_hex(unsigned char *buffer, unsigned int size) {
 void close_devices() {
   printf("Close devices.\n");
   if (devs != NULL) {
-    for (int i = 0; i < 4; i++) {
+    // Xgpro T76 doesn't support multiple devices yet.
+    for (int i = 0; i < (device_pid == T76_PID ? 1 : 4); i++) {
       if (device_handle[i] != NULL) {
         libusb_release_interface(device_handle[i], 0);
         libusb_close(device_handle[i]);
@@ -157,16 +160,22 @@ int open_devices() {
 #endif
 
   usb_handle[0] = INVALID_HANDLE_VALUE;
-  usb_handle[1] = INVALID_HANDLE_VALUE;
-  usb_handle[2] = INVALID_HANDLE_VALUE;
-  usb_handle[3] = INVALID_HANDLE_VALUE;
+
+  // Xgpro T76 doesn't support multiple devices yet.
+  if (device_pid != T76_PID) {
+    usb_handle[1] = INVALID_HANDLE_VALUE;
+    usb_handle[2] = INVALID_HANDLE_VALUE;
+    usb_handle[3] = INVALID_HANDLE_VALUE;
+  }
 
   if (device_vid == TL866II_VID) {
     *devices_count = 0;
     winusb_handle[0] = INVALID_HANDLE_VALUE;
-    winusb_handle[1] = INVALID_HANDLE_VALUE;
-    winusb_handle[2] = INVALID_HANDLE_VALUE;
-    winusb_handle[3] = INVALID_HANDLE_VALUE;
+    if (device_pid != T76_PID) {
+      winusb_handle[1] = INVALID_HANDLE_VALUE;
+      winusb_handle[2] = INVALID_HANDLE_VALUE;
+      winusb_handle[3] = INVALID_HANDLE_VALUE;
+    }
   }
 
   int devices_found = 0, ret;
@@ -177,6 +186,7 @@ int open_devices() {
     return 0;
   }
 
+  char name[128];
   for (int i = 0; i < count; i++) {
     ret = libusb_get_device_descriptor(devs[i], &desc);
     if (ret != LIBUSB_SUCCESS) {
@@ -194,8 +204,19 @@ int open_devices() {
           winusb_handle[devices_found] = (HANDLE)devices_found;
           *devices_count = devices_found + 1;
         }
+        libusb_get_string_descriptor_ascii(device_handle[devices_found], 2,
+                                           name, sizeof(name));
+        if (strstr(name, "Xingong")) {
+          strcpy(name, "XGecu TL866II+");
+        } else if (strstr(name, "MiniPro")) {
+          strcpy(name, "Minipro TL866A/CS");
+        }
         devices_found++;
-        if (devices_found == 4)
+        printf("Found USB device %u: VID_%04X, PID_%04X; %s\n", devices_found,
+               desc.idVendor, desc.idProduct, name);
+
+        // Xgpro T76 doesn't support multiple devices yet.
+        if (devices_found == ((device_pid == T76_PID) ? 1 : 4))
           return 0;
       }
     }
@@ -207,6 +228,9 @@ int open_devices() {
 BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID,
                                     ULONG PolicyType, ULONG ValueLength,
                                     PVOID Value) {
+  if (PolicyType == 0x03) {
+    timeout = *(int *)Value;
+  }
   return TRUE;
 }
 
@@ -218,16 +242,22 @@ BOOL __stdcall WinUsb_FlushPipe(HANDLE InterfaceHandle, UCHAR PipeID) {
   return TRUE;
 }
 
+BOOL __stdcall WinUsb_Initialize(HANDLE DeviceHandle, PVOID *InterfaceHandle) {
+  return TRUE;
+}
+
+BOOL __stdcall WinUsb_Free(HANDLE InterfaceHandle) { return TRUE; }
+
 // Asynchronous transfer for WinUsb_ReadPipe/WinUsb_WritePipe.
 void async_transfer(Args *args) {
   libusb_bulk_transfer(device_handle[(int)args->InterfaceHandle], args->PipeID,
                        args->Buffer, args->BufferLength,
-                       args->LengthTransferred, 20000);
+                       args->LengthTransferred, timeout);
   if (debug) {
     pthread_mutex_lock(&mylock);
-    printf("%s %lu bytes on endpoint %u\n",
-           (args->PipeID & 0x80) ? "Read async" : "Write async",
-           args->BufferLength, args->PipeID & 0x7F);
+    printf("%s async %lu bytes on endpoint 0x%02X\n",
+           (args->PipeID & 0x80) ? "Read" : "Write", args->BufferLength,
+           args->PipeID);
     print_hex(args->Buffer, *args->LengthTransferred);
     pthread_mutex_unlock(&mylock);
   }
@@ -246,8 +276,11 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   if (device_handle[(int)InterfaceHandle] == NULL)
     return FALSE;
   int ret;
-  if ((PipeID & 0x80) && (PipeID & 0x7F) > 1 && BufferLength < 64)
+  
+  if ((PipeID > 0x80) && BufferLength < 64) {
     BufferLength = 64;
+  }
+  
   if (Overlapped != NULL) // If an asynchronous transfer is needed then pack
   // all the arguments to an Arg structure and pass
   // them to a new thread and return immediately.
@@ -265,13 +298,13 @@ BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
   } else // Just an synchronous transfer is needed; just call the
   // libusb_bulk_transfer.
   {
-    ret = libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
-                               Buffer, BufferLength, LengthTransferred, 20000);
+    ret =
+        libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
+                             Buffer, BufferLength, LengthTransferred, timeout);
     if (debug) {
       pthread_mutex_lock(&mylock);
-      printf("%s %lu bytes on endpoint %u\n",
-             (PipeID & 0x80) ? "Read normal" : "Write normal", BufferLength,
-             PipeID & 0x7F);
+      printf("%s normal %u bytes on endpoint 0x%02X\n",
+             (PipeID & 0x80) ? "Read" : "Write", *LengthTransferred, PipeID);
       print_hex(Buffer, *LengthTransferred);
       pthread_mutex_unlock(&mylock);
     }
@@ -458,7 +491,8 @@ void notifier_function() {
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
                                              LPVOID NotificationFilter,
                                              DWORD Flags) {
-  printf("RegisterDeviceNotifications hWnd=%X4\n", (unsigned int)hRecipient);
+  printf("RegisterDeviceNotifications hWnd = 0x%X4\n",
+         (unsigned int)hRecipient);
   hWnd = hRecipient;
   h_thread = CreateThread(NULL, 0, (void *)notifier_function, NULL, 0, NULL);
   if (!h_thread)
@@ -547,18 +581,33 @@ BOOL patch_xgpro() {
       (PIMAGE_NT_HEADERS)((PBYTE)BaseAddress +
                           ((PIMAGE_DOS_HEADER)BaseAddress)->e_lfanew);
 
-  // Search for version
-  BOOL t76 = FALSE;
-  unsigned char *version =
-      memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage, "Xgpro v", 7);
-  if (!version) {
-    version = memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage,
-                     "Xgpro T76 v", 11);
-    if (!version)
-      return FALSE;
-    t76 = TRUE;
+  // Search for version and set the Xgpro GUID and VID/PID
+  GUID guid;
+  unsigned char *version;
+  if ((version = memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage,
+                        "Xgpro v", 7))) {
+    device_vid = TL866II_VID;
+    device_pid = TL866II_PID;
+    guid = (GUID){0xE7E8BA13,
+                  0x2A81,
+                  0x446E,
+                  {0xA1, 0x1E, 0x72, 0x39, 0x8F, 0xBD, 0xA8, 0x2F}};
+
+  } else if ((version =
+                  memmem(BaseAddress, NtHeader->OptionalHeader.SizeOfImage,
+                         "Xgpro T76 v", 11))) {
+    device_vid = T76_VID;
+    device_pid = T76_PID;
+    guid = (GUID){0x015DE341,
+                  0x91CC,
+                  0x8286,
+                  {0x39, 0x64, 0x1A, 0x00, 0x6B, 0xC1, 0xF0, 0x0F}};
+
+  } else {
+    return FALSE;
   }
 
+  memcpy(&m_guid, &guid, sizeof(GUID));
   printf("Found %s\n", version);
 
   // Set some function pointers
@@ -581,6 +630,12 @@ BOOL patch_xgpro() {
   if (!patch_function("winusb.dll", "WinUsb_ReadPipe", &WinUsb_Transfer))
     return FALSE;
 
+  if (!patch_function("winusb.dll", "WinUsb_Initialize", &WinUsb_Initialize))
+    return FALSE;
+
+  if (!patch_function("winusb.dll", "WinUsb_Free", &WinUsb_Free))
+    return FALSE;
+
   // Searching for functions signature in code section.
   void *p_opendevices = NULL;
   void *p_closedevices = NULL;
@@ -588,13 +643,13 @@ BOOL patch_xgpro() {
   void *p_usbhandle = NULL;
   void *p_devicescount = NULL;
 
-  // Search for open device function pattern 1 (xgpro < V12.7x)
+  // Search for open_device function pattern 1 (xgpro < V12.7x)
   void *p_od1 =
       memmem(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
              NtHeader->OptionalHeader.SizeOfCode, &xgpro_open_devices_pattern1,
              sizeof(xgpro_open_devices_pattern1));
 
-  // Search for open device function pattern 2 (xgpro > V12.7x)
+  // Search for open_device function pattern 2 (xgpro > V12.7x)
   void *p_od2 =
       memmem(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
              NtHeader->OptionalHeader.SizeOfCode, &xgpro_open_devices_pattern2,
@@ -630,10 +685,10 @@ BOOL patch_xgpro() {
          (DWORD)BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
          (DWORD)NtHeader->OptionalHeader.SizeOfCode);
   printf("Open Devices found at 0x%08lX\n", (DWORD)p_opendevices);
-  printf("Close Devices found at  0x%08lX\n", (DWORD)p_closedevices);
-  printf("Usb Handle found at  0x%08lX\n", (DWORD)p_usbhandle);
-  printf("WinUsb Handle found at  0x%08lX\n", (DWORD)p_winusbhandle);
-  printf("Devices count found at  0x%08lX\n", (DWORD)p_devicescount);
+  printf("Close Devices found at 0x%08lX\n", (DWORD)p_closedevices);
+  printf("Usb Handle found at 0x%08lX\n", (DWORD)p_usbhandle);
+  printf("WinUsb Handle found at 0x%08lX\n", (DWORD)p_winusbhandle);
+  printf("Devices count found at 0x%08lX\n", (DWORD)p_devicescount);
 
   // Patch all low level functions in Xgpro.exe to point to our custom
   // functions.
@@ -656,26 +711,6 @@ BOOL patch_xgpro() {
   VirtualProtect(BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
                  NtHeader->OptionalHeader.SizeOfCode, dwOldProtection,
                  &dwOldProtection); // restore the old protection
-
-  // Set the Xgpro GUID and VID/PID
-  GUID guid;
-  if (t76) {
-    device_vid = T76_VID;
-    device_pid = T76_PID;
-    guid = (GUID){0x015DE341,
-                  0x91CC,
-                  0x8286,
-                  {0x39, 0x64, 0x1A, 0x00, 0x6B, 0xC1, 0xF0, 0x0F}};
-  } else {
-    device_vid = TL866II_VID;
-    device_pid = TL866II_PID;
-    guid = (GUID){0xE7E8BA13,
-                  0x2A81,
-                  0x446E,
-                  {0xA1, 0x1E, 0x72, 0x39, 0x8F, 0xBD, 0xA8, 0x2F}};
-  }
-
-  memcpy(&m_guid, &guid, sizeof(GUID));
   return TRUE;
 }
 
@@ -750,12 +785,12 @@ BOOL patch_minipro() {
          (DWORD)BaseAddress + NtHeader->OptionalHeader.BaseOfCode,
          (DWORD)NtHeader->OptionalHeader.SizeOfCode);
   printf("Open Devices found at 0x%08lX\n", (DWORD)p_opendevices);
-  printf("Close Devices found at  0x%08lX\n", (DWORD)p_closedevices);
-  printf("Usb Write found at  0x%08lX\n", (DWORD)p_usbwrite);
-  printf("Usb Read found at  0x%08lX\n", (DWORD)p_usbread);
-  printf("Usb Write2 found at  0x%08lX\n", (DWORD)p_usbwrite2);
-  printf("Usb Read2 found at  0x%08lX\n", (DWORD)p_usbread2);
-  printf("Usb Handle found at  0x%08lX\n", (DWORD)p_usbhandle);
+  printf("Close Devices found at 0x%08lX\n", (DWORD)p_closedevices);
+  printf("Usb Write found at 0x%08lX\n", (DWORD)p_usbwrite);
+  printf("Usb Read found at 0x%08lX\n", (DWORD)p_usbread);
+  printf("Usb Write2 found at 0x%08lX\n", (DWORD)p_usbwrite2);
+  printf("Usb Read2 found at 0x%08lX\n", (DWORD)p_usbread2);
+  printf("Usb Handle found at 0x%08lX\n", (DWORD)p_usbhandle);
   if (p_brickbug)
     printf("Patched brick bug at 0x%08lX\n", (DWORD)p_brickbug + 0x08);
 
@@ -810,22 +845,23 @@ BOOL patch_minipro() {
 
 /// DLLMAIN
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
+  char buffer[MAX_PATH];
+  GetModuleFileNameA(hinstDLL, buffer, sizeof(buffer));
   switch (fdwReason) {
   case DLL_PROCESS_ATTACH:
     DisableThreadLibraryCalls(hinstDLL);
-    printf("Dll Loaded.\n");
+    printf("%s loaded.\n", buffer);
     if (patch_xgpro() || patch_minipro())
       return TRUE;
-    printf("Dll Unloaded.\n");
+    printf("%s unloaded.\n", buffer);
     return FALSE;
     break;
   case DLL_PROCESS_DETACH:
     cancel = TRUE;
     WaitForSingleObject(h_thread, 5000);
-    printf("Dll Unloaded.\n");
+    printf("%s unloaded.\n", buffer);
     break;
   }
-
   return TRUE;
 }
 
