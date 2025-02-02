@@ -23,7 +23,10 @@ SUBSYSTEM!="usb", GOTO="minipro_rules_end"
 # TL866A/CS
 ATTRS{idVendor}=="04d8", ATTRS{idProduct}=="e11c", ENV{ID_MINIPRO}="1"
 
-# TL866II+
+# TL866II+, T48, T56
 ATTRS{idVendor}=="a466", ATTRS{idProduct}=="0a53", ENV{ID_MINIPRO}="1"
+
+# T76
+ATTRS{idVendor}=="a466", ATTRS{idProduct}=="1a86", ENV{ID_MINIPRO}="1"
 
 LABEL="minipro_rules_end"
