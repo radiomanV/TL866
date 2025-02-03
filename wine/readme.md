@@ -2,7 +2,7 @@ Simple low level winelib usb wrapper for the TL866A/CS, TL866II+ and Xgecu T56 p
 This version will autodetect the software used.
 
 Add the following rule to the udev subsystem:
-sudo cp ./udev/* /etc/udev/rules.d/ && sudo udevadm trigger
+`sudo cp ./udev/* /etc/udev/rules.d/ && sudo udevadm control --reload-rules && sudo udevadm trigger`
 
 
 How to install:
@@ -16,6 +16,5 @@ How to compile:
 2. Run make
 3. Rename the setup.dll.so file as setupapi.dll and copy this file in the Minipro/Xgpro folder
 
-You should install the 32 bit version of the libusb library (Debian users libusb-1.0-0:i386, Arch users lib32-libusb)   
-To compile the debug version pass the DBG define to make like this: make CFLAGS=-DDBG. This will print to console all the usb communication.  
+You should install the 32 bit version of the libusb library (Debian users libusb-1.0-0:i386, Arch users lib32-libusb)
 
