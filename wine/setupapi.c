@@ -3,7 +3,9 @@
 #define _GNU_SOURCE
 
 #include <glob.h>
+#ifdef UDEV
 #include <libudev.h>
+#endif
 #include <libusb-1.0/libusb.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -62,6 +64,7 @@ pMessageBoxA message_box;
 pGetForegroundWindow get_foreground_window;
 pSendMessageA send_message;
 pRedrawWindow redraw_window;
+void device_changed();
 
 pthread_mutex_t mylock = PTHREAD_MUTEX_INITIALIZER;
 
@@ -446,6 +449,9 @@ int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer,
   return uread(hDevice, lpOutBuffer, nBytesToRead);
 }
 
+// If make hotplug=udev is invoked then libudev is used for monitoring,
+// otherwise libusb hotplug events monitoring is used.  
+#ifdef UDEV
 
 /*** Udev functions ***/
 
@@ -483,16 +489,11 @@ int get_device_count() {
   return count;
 }
 
-// Udev monitoring USB plug/unplug events
+// Udev hotplug USB monitoring thread
 void notifier_function() {
   struct udev *udev;
   struct udev_monitor *mon;
   struct udev_device *dev;
-
-  DEV_BROADCAST_DEVICEINTERFACE_W DevBi;
-  DevBi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE_W);
-  DevBi.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
-  DevBi.dbcc_classguid = m_guid;
 
   udev = udev_new();
   if (!udev) {
@@ -511,6 +512,7 @@ void notifier_function() {
     return;
   }
 
+  printf("Using Udev hotplug events.\n\n");
   udev_monitor_filter_add_match_subsystem_devtype(mon, "usb", NULL);
   udev_monitor_enable_receiving(mon);
   int fd = udev_monitor_get_fd(mon);
@@ -536,25 +538,14 @@ void notifier_function() {
           if (count != count_new) {
             count = count_new;
             // printf("device added.\n");
-            close_devices();
-            usleep(100000);
-            send_message(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL,
-                         (LPARAM)&DevBi);
-            usleep(100000);
-            redraw_window(hWnd, NULL, NULL, RDW_INVALIDATE);
+            device_changed();
           }
-
         } else if (!strcasecmp(udev_device_get_action(dev), "remove")) {
           count_new = get_device_count();
           if (count != count_new) {
             count = count_new;
             // printf("device removed.\n");
-            close_devices();
-            usleep(100000);
-            send_message(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL,
-                         (LPARAM)&DevBi);
-            usleep(100000);
-            redraw_window(hWnd, NULL, NULL, RDW_INVALIDATE);
+            device_changed();
           }
         }
         udev_device_unref(dev);
@@ -565,7 +556,57 @@ void notifier_function() {
   udev_monitor_unref(mon);
 }
 
-// RegisterDeviceNotifications WIN API replacement
+// Use libusb hotplug events.
+#else
+// LibUsb hotplug callback function
+int hotplug_cb(struct libusb_context *ctx, struct libusb_device *dev,
+               libusb_hotplug_event event, void *user_data) {
+
+  if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED ||
+      event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) {
+    device_changed();
+  }
+  return 0;
+}
+
+// LibUsb hotplug USB monitoring thread
+void notifier_function() {
+  printf("Using LibUsb hotplug events.\n\n");
+  libusb_hotplug_callback_handle callback_handle;
+  int rc = libusb_hotplug_register_callback(
+      NULL,
+      LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0,
+      device_vid, device_pid, LIBUSB_HOTPLUG_MATCH_ANY,
+      (libusb_hotplug_callback_fn)hotplug_cb, NULL, &callback_handle);
+  if (LIBUSB_SUCCESS != rc) {
+    printf("LibUsb hotplug callback error.\n");
+    return;
+  }
+  while (!cancel) {
+    libusb_handle_events_completed(NULL, NULL);
+    usleep(10000);
+  }
+
+  libusb_hotplug_deregister_callback(NULL, callback_handle);
+}
+#endif
+
+// Notifier function. This will force the software to rescan devices.
+void device_changed() {
+
+  DEV_BROADCAST_DEVICEINTERFACE_W DevBi;
+  DevBi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE_W);
+  DevBi.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+  DevBi.dbcc_classguid = m_guid;
+
+  close_devices();
+  usleep(100000);
+  send_message(hWnd, WM_DEVICECHANGE, DBT_DEVICEARRIVAL, (LPARAM)&DevBi);
+  usleep(100000);
+  redraw_window(hWnd, NULL, NULL, RDW_INVALIDATE);
+}
+
+// RegisterDeviceNotifications WINAPI replacement
 HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
                                              LPVOID NotificationFilter,
                                              DWORD Flags) {
@@ -575,7 +616,6 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
   h_thread = CreateThread(NULL, 0, (void *)notifier_function, NULL, 0, NULL);
   if (!h_thread)
     printf("Thread notifier failed.\n");
-
   return 0;
 }
 
