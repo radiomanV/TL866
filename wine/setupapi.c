@@ -38,11 +38,11 @@ typedef struct {
 // Global variables
 libusb_device_handle *device_handle[4];
 libusb_device **devs;
+struct libusb_transfer *transfer[2][7];
+int timeout[2][7];
+
 int debug = 0;
-int timeout = 5000;
-
 HANDLE h_thread;
-
 HWND hWnd;
 BOOL cancel;
 HANDLE *usb_handle;
@@ -144,11 +144,21 @@ int open_devices() {
     debug = 0;
   printf("Open devices.\n");
   close_devices();
+  
+  
   device_handle[0] = NULL;
   device_handle[1] = NULL;
   device_handle[2] = NULL;
   device_handle[3] = NULL;
   devs = NULL;
+  
+  // Initialize all transfers pointers and timeouts
+  for (int i = 0; i < 2; i++) {
+    for (int j = 0; j < 7; j++) {
+      transfer[i][j] = NULL;
+      timeout[i][j] = 5000;
+    }
+  }
 
   // initialize a new session
   libusb_init(NULL);
@@ -224,20 +234,160 @@ int open_devices() {
   return 0;
 }
 
-/// Xgpro replacement functions.
-BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID,
-                                    ULONG PolicyType, ULONG ValueLength,
-                                    PVOID Value) {
-  if (PolicyType == 0x03) {
-    timeout = *(int *)Value;
+// Helper function to retrieve a transfer structure from a PipeID
+struct libusb_transfer *get_transfer(UCHAR PipeID) {
+  return transfer[(PipeID > 80 ? 1 : 0)][(PipeID & 0x7f) - 1];
+}
+
+// Helper functions to set/get timeout from PipeID
+int get_timeout(UCHAR PipeID) {
+  return timeout[(PipeID > 80 ? 1 : 0)][(PipeID & 0x7f) - 1];
+}
+
+void set_timeout(UCHAR PipeID, int ep_timeout) {
+  timeout[(PipeID > 80 ? 1 : 0)][(PipeID & 0x7f) - 1] = ep_timeout;
+}
+
+// libusb transfer callback
+void transfer_cb(struct libusb_transfer *transfer){
+	*(int*)transfer->user_data = 1;
+}
+
+
+/*** Xgpro replacement functions. ***/
+
+// USB transfer for WinUsb_ReadPipe/WinUsb_WritePipe.
+// This function will run in a separate thread if overlapped
+// transfer is specified.
+void usb_transfer(Args *args) {
+
+  int ret, completed = 0;
+  struct libusb_transfer *tr = get_transfer(args->PipeID);
+  tr = libusb_alloc_transfer(0);
+  if (!tr) {
+    printf("Out of memory!\n");
+    free(args);
+    return;
+  }
+
+  libusb_fill_bulk_transfer(tr, device_handle[(int)args->InterfaceHandle],
+                            args->PipeID, args->Buffer, args->BufferLength,
+                            (libusb_transfer_cb_fn)transfer_cb, &completed,
+                            get_timeout(args->PipeID));
+
+  ret = libusb_submit_transfer(tr);
+  if (ret < 0) {
+    printf("\nIO error: submit_transfer: %s\n", libusb_error_name(ret));
+    free(args);
+    libusb_free_transfer(tr);
+    return;
+  }
+
+  while (!completed) {
+    ret = libusb_handle_events_completed(NULL, &completed);
+    if (ret < 0) {
+      if (ret == LIBUSB_ERROR_INTERRUPTED)
+        continue;
+      libusb_cancel_transfer(tr);
+      continue;
+    }
+  }
+
+  if (tr->status != 0) {
+    printf("\nIO Error: transfer failed: %s\n", libusb_error_name(tr->status));
+    libusb_free_transfer(tr);
+    free(args);
+    return;
+  }
+
+  *args->LengthTransferred = tr->actual_length;
+  libusb_free_transfer(tr);
+
+  if (debug) {
+    pthread_mutex_lock(&mylock);
+    printf("%s %s %lu bytes on endpoint 0x%02X\n",
+           (args->PipeID & 0x80) ? "Read" : "Write",
+           args->Overlapped ? "Async" : "Normal", args->BufferLength,
+           args->PipeID);
+    print_hex(args->Buffer, *args->LengthTransferred);
+    pthread_mutex_unlock(&mylock);
+  }
+
+  // If Overlapped (async) transfer was completed
+  // signal the event to release the waiting object.
+  if (args->Overlapped) {
+    SetEvent(args->Overlapped->hEvent);
+  }
+
+  // Free the malloced args.
+  free(args);
+}
+
+// WinUsb_ReadPipe/winUsb_WritePipe LibUsb implementation.
+BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
+                               PUCHAR Buffer, ULONG BufferLength,
+                               PUINT LengthTransferred,
+                               LPOVERLAPPED Overlapped) {
+
+  // Check for usb handles
+  if (InterfaceHandle == INVALID_HANDLE_VALUE)
+    return FALSE;
+  if (device_handle[(int)InterfaceHandle] == NULL)
+    return FALSE;
+
+  // Workaround for T76 endpoint 0x83 not used issue
+  if (device_pid == T76_PID && PipeID == 0x83)
+    return TRUE;
+
+  // Workaround for Xgpro read BufferLength issue
+  if ((PipeID > 0x80) && BufferLength < 64) {
+    BufferLength = 64;
+  }
+
+  // Prepare args
+  Args *args = malloc(sizeof(*args));
+  args->InterfaceHandle = InterfaceHandle;
+  args->PipeID = PipeID;
+  args->Buffer = Buffer;
+  args->BufferLength = BufferLength;
+  args->LengthTransferred = LengthTransferred;
+  args->Overlapped = Overlapped;
+
+  // If an overlapped (async) transfer is needed then create a
+  // new thread and return immediately.
+  if (Overlapped != NULL) {
+    ResetEvent(Overlapped->hEvent);
+    CreateThread(NULL, 0, (void *)usb_transfer, args, 0, NULL);
+    return TRUE;
+  } else {
+    // Just a synchronous transfer is needed;
+    usb_transfer(args);
   }
   return TRUE;
 }
 
-BOOL __stdcall WinUsb_AbortPipe(HANDLE InterfaceHandle, UCHAR PipeID) {
+
+// WinUsb_SetPipePolicy LibUsb implementation. 
+// Only setting pipe timeout is supported
+BOOL __stdcall WinUsb_SetPipePolicy(HANDLE InterfaceHandle, UCHAR PipeID,
+                                    ULONG PolicyType, ULONG ValueLength,
+                                    PVOID Value) {
+  if (PolicyType == 0x03) {
+    set_timeout(PipeID, *(int *)Value);
+  }
   return TRUE;
 }
 
+// WinUsb_AbortPipe LibUsb implementation
+BOOL __stdcall WinUsb_AbortPipe(HANDLE InterfaceHandle, UCHAR PipeID) {
+  struct libusb_transfer *tr = get_transfer(PipeID);
+  if (tr) {
+    libusb_cancel_transfer(tr);
+  }
+  return TRUE;
+}
+
+// WinUsb unused but stubbbed functions.
 BOOL __stdcall WinUsb_FlushPipe(HANDLE InterfaceHandle, UCHAR PipeID) {
   return TRUE;
 }
@@ -248,129 +398,56 @@ BOOL __stdcall WinUsb_Initialize(HANDLE DeviceHandle, PVOID *InterfaceHandle) {
 
 BOOL __stdcall WinUsb_Free(HANDLE InterfaceHandle) { return TRUE; }
 
-// Asynchronous transfer for WinUsb_ReadPipe/WinUsb_WritePipe.
-void async_transfer(Args *args) {
-  libusb_bulk_transfer(device_handle[(int)args->InterfaceHandle], args->PipeID,
-                       args->Buffer, args->BufferLength,
-                       args->LengthTransferred, timeout);
-  if (debug) {
-    pthread_mutex_lock(&mylock);
-    printf("%s async %lu bytes on endpoint 0x%02X\n",
-           (args->PipeID & 0x80) ? "Read" : "Write", args->BufferLength,
-           args->PipeID);
-    print_hex(args->Buffer, *args->LengthTransferred);
-    pthread_mutex_unlock(&mylock);
-  }
-  SetEvent(args->Overlapped
-               ->hEvent); // signal the event to release the waiting object.
-  free(args);             // Free the malloced args.
+
+
+/*** Minipro replacement functions ***/
+
+// USB read implementation
+int uread(HANDLE hDevice, unsigned char *data, unsigned int size) {
+  unsigned int transferred = 0;
+  set_timeout(LIBUSB_ENDPOINT_IN | 1, 20000);
+  BOOL ret = WinUsb_Transfer(hDevice, LIBUSB_ENDPOINT_IN | 1, data, size,
+                             &transferred, NULL);
+  return (ret ? transferred : -1);
 }
 
-// WinUsb_ReadPipe/winUsb_WritePipe LibUsb implementation.
-BOOL __stdcall WinUsb_Transfer(HANDLE InterfaceHandle, UCHAR PipeID,
-                               PUCHAR Buffer, ULONG BufferLength,
-                               PUINT LengthTransferred,
-                               LPOVERLAPPED Overlapped) {
-  if (InterfaceHandle == INVALID_HANDLE_VALUE)
-    return FALSE;
-  if (device_handle[(int)InterfaceHandle] == NULL)
-    return FALSE;
-  int ret;
-  
-  if ((PipeID > 0x80) && BufferLength < 64) {
-    BufferLength = 64;
-  }
-  
-  if (Overlapped != NULL) // If an asynchronous transfer is needed then pack
-  // all the arguments to an Arg structure and pass
-  // them to a new thread and return immediately.
-  {
-    ResetEvent(Overlapped->hEvent);
-    Args *args = malloc(sizeof(*args));
-    args->InterfaceHandle = InterfaceHandle;
-    args->PipeID = PipeID;
-    args->Buffer = Buffer;
-    args->BufferLength = BufferLength;
-    args->LengthTransferred = LengthTransferred;
-    args->Overlapped = Overlapped;
-    CreateThread(NULL, 0, (void *)async_transfer, args, 0, NULL);
-    return TRUE;
-  } else // Just an synchronous transfer is needed; just call the
-  // libusb_bulk_transfer.
-  {
-    ret =
-        libusb_bulk_transfer(device_handle[(int)InterfaceHandle], PipeID,
-                             Buffer, BufferLength, LengthTransferred, timeout);
-    if (debug) {
-      pthread_mutex_lock(&mylock);
-      printf("%s normal %u bytes on endpoint 0x%02X\n",
-             (PipeID & 0x80) ? "Read" : "Write", *LengthTransferred, PipeID);
-      print_hex(Buffer, *LengthTransferred);
-      pthread_mutex_unlock(&mylock);
-    }
-  }
-
-  return (ret == LIBUSB_SUCCESS);
-}
-
-/// Minipro replacement functions
-unsigned int uread(HANDLE hDevice, unsigned char *data, size_t size) {
-  if (hDevice == INVALID_HANDLE_VALUE)
-    return 0;
-  if (device_handle[(int)hDevice] == NULL)
-    return 0;
-  size_t bytes_read;
-  int ret =
-      libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_IN | 1,
-                           data, size, &bytes_read, 20000);
-  if (debug) {
-    printf("Read %d bytes\n", bytes_read);
-    print_hex(data, bytes_read);
-  }
-  return (ret == LIBUSB_SUCCESS ? bytes_read : 0xFFFFFFFF);
-}
-
+// USB write implementation
 BOOL uwrite(HANDLE hDevice, unsigned char *data, size_t size) {
-  if (hDevice == INVALID_HANDLE_VALUE)
-    return 0;
-  if (device_handle[(int)hDevice] == NULL)
-    return 0;
-  size_t bytes_writen;
-  int ret =
-      libusb_bulk_transfer(device_handle[(int)hDevice], LIBUSB_ENDPOINT_OUT | 1,
-                           data, size, &bytes_writen, 20000);
-  if (debug) {
-    printf("Write %d bytes\n", bytes_writen);
-    print_hex(data, bytes_writen);
-  }
-  return (ret == LIBUSB_SUCCESS);
+  unsigned int transferred = 0;
+  set_timeout(LIBUSB_ENDPOINT_OUT | 1, 20000);
+  return WinUsb_Transfer(hDevice, LIBUSB_ENDPOINT_OUT | 1, data, size,
+                         &transferred, NULL);
 }
 
+// USB write to device zero
 BOOL usb_write(unsigned char *lpInBuffer, unsigned int nInBufferSize) {
-  BOOL ret = uwrite(0, lpInBuffer, nInBufferSize);
-  return ret;
+  return uwrite(0, lpInBuffer, nInBufferSize);
 }
 
-unsigned int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead,
-                      unsigned int nOutBufferSize) {
-  unsigned int ret = uread(0, lpOutBuffer, nBytesToRead);
-  if (ret == 0xFFFFFFFF)
+// USB read from device zero
+int usb_read(unsigned char *lpOutBuffer, unsigned int nBytesToRead,
+             unsigned int nOutBufferSize) {
+  int ret = uread(0, lpOutBuffer, nBytesToRead);
+  if (ret == -1)
     message_box(get_foreground_window(), "Read error!", "TL866",
                 MB_ICONWARNING);
   return ret;
 }
 
+// USB write to specified device
 BOOL usb_write2(HANDLE hDevice, unsigned char *lpInBuffer,
                 unsigned int nInBufferSize) {
-  BOOL ret = uwrite(hDevice, lpInBuffer, nInBufferSize);
-  return ret;
+  return uwrite(hDevice, lpInBuffer, nInBufferSize);
 }
 
-unsigned int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer,
-                       unsigned int nBytesToRead, unsigned int nOutBufferSize) {
-  unsigned int ret = uread(hDevice, lpOutBuffer, nBytesToRead);
-  return ret;
+// USB read from specified device
+int usb_read2(HANDLE hDevice, unsigned char *lpOutBuffer,
+              unsigned int nBytesToRead, unsigned int nOutBufferSize) {
+  return uread(hDevice, lpOutBuffer, nBytesToRead);
 }
+
+
+/*** Udev functions ***/
 
 // Return the device count
 int get_device_count() {
@@ -406,6 +483,7 @@ int get_device_count() {
   return count;
 }
 
+// Udev monitoring USB plug/unplug events
 void notifier_function() {
   struct udev *udev;
   struct udev_monitor *mon;
@@ -501,7 +579,9 @@ HANDLE __stdcall RegisterDeviceNotifications(HANDLE hRecipient,
   return 0;
 }
 
-/// Patcher functions
+/*** Patcher functions ***/
+
+// Dll redirect patch function
 BOOL patch_function(char *library, char *func, void *funcaddress) {
   DWORD dwOldProtection;
   DWORD func_addr = 0;
@@ -572,7 +652,7 @@ static inline void patch(void *src, void *dest) {
   *((BYTE *)src + 5) = 0xc3;
 }
 
-// Xgpro patcher function. Called from DllMain. Return TRUE if patch was ok and
+// Xgpro patcher function. Called from DllMain. Returns TRUE if patch was ok and
 // continue with program loading or FALSE to exit with error.
 BOOL patch_xgpro() {
   // Get the BaseAddress, NT Header and Image Import Descriptor
@@ -714,7 +794,7 @@ BOOL patch_xgpro() {
   return TRUE;
 }
 
-// Minipro patcher function. Called from DllMain. Return TRUE if patch was ok
+// Minipro patcher function. Called from DllMain. Returns TRUE if patch was ok
 // and continue with program loading or FALSE to exit with error.
 BOOL patch_minipro() {
   // Get the BaseAddress, NT Header and Image Import Descriptor
@@ -865,8 +945,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) {
   return TRUE;
 }
 
-/// SetupApi redirected functions needed for the new wine 4.11+ winex11.drv
-/// calls
+
+/// SetupApi redirected functions needed for the new wine >4.11 winex11.drv
+/// calls. These functions must be specified in setupapi.spec file.
 typedef BOOL(__stdcall *pSetupDiGetDeviceInterfaceDetailW)(HANDLE, HANDLE,
                                                            HANDLE, DWORD,
                                                            PDWORD, LPVOID);
