@@ -1,3 +1,13 @@
+/*
+* setupapi.c
+* Winelib wrapper for Minipro TL866A/CS, TL866II+, XgPro T48, T56 and T76
+* programmers.
+* This library will redirect all USB related functions from Minipro or Xgpro software
+* to the Linux USB subsystem using the standard LibUsb library. 
+* Created: May 5, 2014
+* Author: radiomanV
+*/
+
 #define __WINESRC__
 #define __CYGWIN__
 #define _GNU_SOURCE
