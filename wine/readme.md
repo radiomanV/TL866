@@ -10,7 +10,8 @@ Add the following rule to the udev subsystem:
 1. Install wine and libusb-1.0 packages
 2. Copy the provided setupapi.dll file in the Minipro or Xgpro folder
 3. Run the Minipro.exe or Xgpro.exe using wine
-You should install the 32 bit version of LibUsb and create a 32 bit wone prefix.   
+
+You should install the 32 bit version of LibUsb and create a 32 bit wine prefix.   
 
 
 #### How to compile:
