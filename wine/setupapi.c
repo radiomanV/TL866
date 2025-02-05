@@ -111,22 +111,22 @@ const unsigned char brickbug_pattern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
 // Print given array in hex
 #include <stdio.h>
 
-void print_hex(const unsigned char *buffer, unsigned int size) {
-  unsigned int i, r = 0;
+#include <stdio.h>
 
+void print_hex(const unsigned char *buffer, unsigned int size) {
+  unsigned int i;
   for (i = 0; i < size; i++) {
     printf("%02X ", buffer[i]);
-    r++;
-    if (r == 16 || i + 1 == size) {
-      if (r < 16) {
-        printf("%*c", (16 - r) * 3, ' ');
+    if ((i + 1) % 16 == 0 || i + 1 == size) {
+      unsigned int start = i / 16 * 16;
+      if ((i + 1) % 16 != 0) {
+        printf("%*s", (16 - (i + 1) % 16) * 3, "");
       }
       printf("  ");
-      for (unsigned int k = i - r + 1; k <= i; k++) {
-        printf("%c", (buffer[k] < 32 || buffer[k] > 126) ? '.' : buffer[k]);
+      for (unsigned int j = start; j <= i; j++) {
+        printf("%c", (buffer[j] < 32 || buffer[j] > 126) ? '.' : buffer[j]);
       }
       printf("\n");
-      r = 0;
     }
   }
   printf("\n");
