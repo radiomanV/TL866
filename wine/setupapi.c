@@ -155,6 +155,7 @@ int open_devices() {
     debug = 1;
   else
     debug = 0;
+
   printf("Open devices.\n");
   close_devices();
   
@@ -583,7 +584,7 @@ void notifier_function() {
   printf("Using LibUsb hotplug events.\n\n");
   libusb_hotplug_callback_handle callback_handle;
   int changed = 0;
-  libusb_init_context(NULL, NULL, 0);
+  libusb_init(NULL);
   int rc = libusb_hotplug_register_callback(
       NULL,
       LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0,
