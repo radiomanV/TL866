@@ -109,26 +109,29 @@ const unsigned char brickbug_pattern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
                                           0xF0, 0xC2, 0xC8, 0x75};
 
 // Print given array in hex
-void print_hex(unsigned char *buffer, unsigned int size) {
-  int i, k, r = 0;
+#include <stdio.h>
+
+void print_hex(const unsigned char *buffer, unsigned int size) {
+  unsigned int i, r = 0;
+
   for (i = 0; i < size; i++) {
     printf("%02X ", buffer[i]);
     r++;
-    if ((r == 16) || (i + 1 == size && r < 16)) {
-      if (i + 1 == size && r < 16)
-        printf("%*c", r * 3 - 48, ' ');
-      printf("  ");
-
-      for (k = i - r + 1; k <= i; k++) {
-        printf("%c", (buffer[k] < 32 || buffer[k] > 127) ? '.' : buffer[k]);
+    if (r == 16 || i + 1 == size) {
+      if (r < 16) {
+        printf("%*c", (16 - r) * 3, ' ');
       }
-
-      r = 0;
+      printf("  ");
+      for (unsigned int k = i - r + 1; k <= i; k++) {
+        printf("%c", (buffer[k] < 32 || buffer[k] > 126) ? '.' : buffer[k]);
+      }
       printf("\n");
+      r = 0;
     }
   }
   printf("\n");
 }
+
 
 // USB open/close function replacement
 void close_devices() {
