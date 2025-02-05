@@ -109,10 +109,6 @@ const unsigned char brickbug_pattern[] = {0x83, 0xC4, 0x18, 0x3D, 0x13,
                                           0xF0, 0xC2, 0xC8, 0x75};
 
 // Print given array in hex
-#include <stdio.h>
-
-#include <stdio.h>
-
 void print_hex(const unsigned char *buffer, unsigned int size) {
   unsigned int i;
   for (i = 0; i < size; i++) {
