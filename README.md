@@ -68,9 +68,11 @@ cp -R TL866_Updater.app /Applications
 This utility can dump the `infoic.dll` and `infoic2plus.dll` to an XML format database.   
 More information on this here: [InfoicDump](### InfoicDump utility
 This utility can dump the `infoic.dll` and `infoic2plus.dll` to an XML format database.   
-More information on this here: [InfoicDump](https://github.com/radiomanV/TL866/tree/master/InfoIcDump#infoicdump))
+More information on this here: [InfoicDump](https://github.com/radiomanV/TL866/tree/master/InfoIcDump#infoicdump)
 
 
 ### WineLib wrapper
 This library provide an easy way to make Minipro/Xgpro software work in Linux.      
-More information on this here: [Wine](https://github.com/radiomanV/TL866/tree/master/InfoIcDump#infoicdump)
+More information on this here: [Wine](### InfoicDump utility
+This utility can dump the `infoic.dll` and `infoic2plus.dll` to an XML format database.   
+More information on this here: [Wine](https://github.com/radiomanV/TL866/tree/master/wine#)
