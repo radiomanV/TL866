@@ -24,8 +24,7 @@ If you already have a default 32 bit `wine` prefix located in `$HOME/.wine` you 
 1. Install `wine`, `wine-devel`, `libusb-1.0-0-dev:i386`, `libudev-dev:i386` packages
 
 2. Run `make hotplug=udev` to compile the `setupapi.dll` using `udev` library for hotplug notifications subsystem.      
-Running only `make` will compile the `setupapi.dll` using `libusb` library for hotplug events which is quite   
-unstable at this time.  
+Running only `make` will compile the `setupapi.dll` using `libusb` library for hotplug events if udev is not available.      
 
 4. Rename the compiled `setupapi.dll.so` file as `setupapi.dll` and copy this file in the Minipro/Xgpro folder
 
