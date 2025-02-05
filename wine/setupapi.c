@@ -572,10 +572,9 @@ void notifier_function() {
 int hotplug_cb(struct libusb_context *ctx, struct libusb_device *dev,
                libusb_hotplug_event event, void *user_data) {
 
-  if (event == LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED ||
-      event == LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT) {
-    device_changed();
-  }
+  // Notify the event loop thread
+  // If we call the device_changed(); from here the code will crash.
+  *(int *)user_data = event;
   return 0;
 }
 
@@ -583,21 +582,30 @@ int hotplug_cb(struct libusb_context *ctx, struct libusb_device *dev,
 void notifier_function() {
   printf("Using LibUsb hotplug events.\n\n");
   libusb_hotplug_callback_handle callback_handle;
+  int changed = 0;
+  libusb_init_context(NULL, NULL, 0);
   int rc = libusb_hotplug_register_callback(
       NULL,
       LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, 0,
       device_vid, device_pid, LIBUSB_HOTPLUG_MATCH_ANY,
-      (libusb_hotplug_callback_fn)hotplug_cb, NULL, &callback_handle);
+      (libusb_hotplug_callback_fn)hotplug_cb, &changed, &callback_handle);
   if (LIBUSB_SUCCESS != rc) {
     printf("LibUsb hotplug callback error.\n");
     return;
   }
+  
+  // Wait for cancel and handle hotplug events.
   while (!cancel) {
     libusb_handle_events_completed(NULL, NULL);
     usleep(10000);
+    if (changed) {
+      changed = 0;
+      device_changed();
+    }
   }
 
   libusb_hotplug_deregister_callback(NULL, callback_handle);
+  libusb_exit(NULL);
 }
 #endif
 
