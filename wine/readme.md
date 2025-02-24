@@ -31,11 +31,11 @@ wine ./Xgpro.exe 2>/dev/null
 #### How to compile:
 1. Install `wine`, `wine-devel`, `libusb-1.0-0-dev:i386`, `libudev-dev:i386` packages
 
-2. Run `make hotplug=udev` to compile the `setupapi.dll` using `udev` library for hotplug notifications subsystem.      
-Running only `make` will compile the `setupapi.dll` using `libusb` library for handling hotplug events which can    
-be useful if `udev` subsystem is not available in your OS.      
+2. Run `make` to compile the `setupapi.dll` using `libusb` library for hotplug events.
+You can also use `libudev` to compile the `setupapi.dll` using `libudev` library for handling hotplug events which can    
+be useful if `libusb` hotplug events arenot available in your OS by running `make hotplug=udev`   
 
-4. Rename the compiled `setupapi.dll.so` file as `setupapi.dll` and copy this file in the Minipro/Xgpro folder
+3. Copy the resulted  `setupapi.dll` file in the Minipro/Xgpro folder
 
 
 #### Debugging:
@@ -47,12 +47,17 @@ will dump all usb communication to the console which can be very useful when som
 The `2>/dev/null` will redirect the `stderr` to `/dev/null` thus cancelling the wine debugging messages which can be   
 very annoying sometime.   
 
+You can also use `gdb` GNU debugger for debugging:   
+```nohighlight
+WINEDEBUG=fixme-all,-ALL WINELOADERNOEXEC=1 gdb -q --args wine ./Xgpro.exe
+(gdb) run
+```
 
 ## Issues on some Linux distros
 Some Linux distros will compile its system libraries with [SSE](https://en.wikipedia.org/wiki/Streaming_SIMD_Extensions) instruction set enabled to increase the performance.   
 This is a good thing but, using a `Libusb` compiled with SSE will crash our wine wrapper library because the SSE intruction   
 set requires the memory address to be 16-byte aligned and, our `setupapi.dll` uses 4 bytes stack alignment because   
-the 32bit Windows software also use this 4 byte alignment. See issue [#51](https://github.com/radiomanV/TL866/issues/51).      
+the 32bit Windows software is also using this 4 byte alignment. See issue [#51](https://github.com/radiomanV/TL866/issues/51).      
 
 This is the case for Arch/ManjaroGentoo and its derivatives and perhaps other distros i have not tested yet.   
 In this case we must compile our Libusb and use it to link the `setupapi.dll` against it.   
@@ -76,8 +81,14 @@ Now configure and build the static 32bit `libUsb`:
 ```
 And finally (assuming the wine is installed) compile our `setupapi.dll`  against the static `LibUsb`:
 ```
-make CEXTRA="-m32 -mstackrealign" LIBRARIES="-Wl,--whole-archive lib/libusb-1.0.a -Wl,--no-whole-archive -ludev" && mv setupapi.dll.so setupapi.dll
+make CFLAGS="-Iinclude/ -m32 -mstackrealign" LIBS="-Wl,--whole-archive lib/libusb-1.0.a -Wl,--no-whole-archive -ludev"
 ```
+You can automate this by using the accompanying `build_static.sh` script    
+which will invoke all above commands and build the statically linked `setupapi.dll`   
+```
+./build_static.sh
+```
+
 If all was okay we should have the `setupapi.dll` in the current directory.   
 You can always download the already compiled [setupapi.dll](https://github.com/radiomanV/TL866/raw/refs/heads/master/wine/setupapi.dll) from this git repository, but sometimes depending on your Linux distro   
 and `glib` version it will not work and you must recompile it.   

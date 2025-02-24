@@ -1,49 +1,37 @@
-SRCDIR                    = .
-DLL                       = setupapi.dll
+# Makefile for setupapi.dll
+#
+# By default, invoking make will build the setupapi.dll using LibUsb hotplug events.
+# Using 'make hotplug=udev' will use the udev library for hotplug events.
+# This Makefile will compile the setupapi.dll linking against the system installed
+# libusb shared library. If this is not desired see the accompanying script which
+# will invoke this Makefile using different arguments for static libusb linking.
 
-### Common settings
-CFLAGS                    =
-CEXTRA                    = -m32 -mincoming-stack-boundary=2
-LIBRARIES                 = -lusb-1.0
+# Configuration
+CC          = winegcc
+DLL         = setupapi.dll
+CFLAGS      = -m32 -mincoming-stack-boundary=2
+LDFLAGS     = -shared $(DLL:.dll=.spec)
+LIBS        = -lusb-1.0
 
+# Conditional hotplug settings
 ifeq ($(hotplug),udev)
-CFLAGS                    += -DUDEV
-LIBRARIES                 += -ludev
+    CFLAGS    += -DUDEV
+    LIBS      += -ludev
 endif
 
+# Source files and object files
+SRC         = setupapi.c
 
+# Targets
+.PHONY: all clean
 
-### setupapi.dll sources and settings
-setupapi_dll_MODULE        = $(DLL)
-setupapi_dll_C_SRCS        = setupapi.c
-setupapi_dll_LDFLAGS       = -shared -m32 $(setupapi_dll_MODULE:.dll=.spec)
-setupapi_dll_OBJS          = $(setupapi_dll_C_SRCS:.c=.o)
-
-
-### Tools
-CC = winegcc
-
-
-### Generic targets
 all: $(DLL)
 
+# Compilation & Linking
+$(DLL): $(SRC)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+	mv $(DLL).so $(DLL)
 
-### Build rules
-.PHONY: all clean dummy
-
-
-# Implicit rules
-.c.o:
-	$(CC) -c $(CFLAGS) $(CEXTRA) -o $@ $<
-
-
-# Rules for cleaning
-clean: 
-	$(RM) $(setupapi_dll_C_SRCS:.c=.o) $(DLL).so
-
-
-### Target specific build rules
-$(setupapi_dll_MODULE): $(setupapi_dll_OBJS)
-	$(CC) $(setupapi_dll_LDFLAGS) -o $@ $(setupapi_dll_OBJS) $(LIBRARIES)
-
-
+# Cleanup
+clean:
+	$(RM) $(DLL)
