@@ -1210,6 +1210,8 @@ typedef BOOL(WINAPI *pSetupDiSetDeviceRegistryPropertyW)(HANDLE, LPVOID, DWORD,
 typedef HKEY(WINAPI *pSetupDiCreateDevRegKeyW)(HANDLE, LPVOID, DWORD, DWORD,
                                                DWORD, HANDLE, PCWSTR);
 typedef BOOL(WINAPI *pSetupDiRemoveDevice)(HANDLE, LPVOID);
+typedef void (WINAPI *pInstallHinfSectionA)(HWND, HINSTANCE, PCSTR, INT);
+typedef void (WINAPI *pInstallHinfSectionW)(HWND, HINSTANCE, PCWSTR, INT);
 
 // Helper function to obtain the function address to original setupapi.dll
 FARPROC get_proc_address(LPCSTR lpProcName) {
@@ -1381,4 +1383,18 @@ WINAPI BOOL SetupDiRemoveDevice(HANDLE DeviceInfoSet, LPVOID DeviceInfoData) {
   pSetupDiRemoveDevice pfunc =
       (pSetupDiRemoveDevice)get_proc_address("SetupDiRemoveDevice");
   return pfunc(DeviceInfoSet, DeviceInfoData);
+}
+
+WINAPI void InstallHinfSectionA(HWND Window, HINSTANCE ModuleHandle,
+                                PCSTR CommandLine, INT ShowCommand) {
+  pInstallHinfSectionA pfunc =
+      (pInstallHinfSectionA)get_proc_address("InstallHinfSectionA");
+  return pfunc(Window, ModuleHandle, CommandLine, ShowCommand);
+}
+
+WINAPI void InstallHinfSectionW(HWND Window, HINSTANCE ModuleHandle,
+                                PCWSTR CommandLine, INT ShowCommand) {
+  pInstallHinfSectionW pfunc =
+      (pInstallHinfSectionW)get_proc_address("InstallHinfSectionW");
+  return pfunc(Window, ModuleHandle, CommandLine, ShowCommand);
 }

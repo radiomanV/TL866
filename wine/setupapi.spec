@@ -15,4 +15,5 @@
 @ stdcall -private SetupDiSetDeviceRegistryPropertyW(ptr ptr long ptr long)
 @ stdcall -private SetupDiCreateDevRegKeyW(ptr ptr long long long ptr ptr)
 @ stdcall -private SetupDiRemoveDevice(ptr ptr)
-
+@ stdcall -private InstallHinfSectionA(ptr ptr ptr long)
+@ stdcall -private InstallHinfSectionW(ptr ptr ptr long)
