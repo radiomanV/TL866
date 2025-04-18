@@ -386,7 +386,7 @@ void usb_transfer(Args *args) {
  ***********************************************************************
  * TL866II+; wMaxPacketSize=64 bytes, 6 endpoints; USB 2.0, 12MBit/s   *
  * EP1_OUT=0x01, EP1_IN=0x81, EP2_OUT=0x02, EP2_IN=0x82,               *
- * EP3_OUT=0x03, EP1_IN=0x83; All used                                 *
+ * EP3_OUT=0x03, EP3_IN=0x83; All used                                 *
  ***********************************************************************
  * T48; wMaxPacketSize=512 bytes, 4 endpoints; USB 2.0, 480MBit/s      *
  * EP1_OUT=0x01, EP1_IN=0x81, EP2_OUT=0x02, EP2_IN=0x82; All used      *
@@ -396,9 +396,9 @@ void usb_transfer(Args *args) {
  ***********************************************************************
  * T76 wMaxPacketSize = 1024 bytes, 14 endpoints; USB 3.0, 5000MBit/s  *
  * EP1_OUT=0x01, EP1_IN=0x81, EP2_OUT=0x02, EP2_IN=0x82,               *
- * EP3_OUT=0x03, EP1_IN=0x83, EP3_OUT=0x04, EP1_IN=0x84,               *
- * EP3_OUT=0x05, EP1_IN=0x85, EP3_OUT=0x06, EP1_IN=0x86                *
- * EP3_OUT=0x07, EP1_IN=0x87;                                          *
+ * EP3_OUT=0x03, EP3_IN=0x83, EP4_OUT=0x04, EP4_IN=0x84,               *
+ * EP5_OUT=0x05, EP5_IN=0x85, EP6_OUT=0x06, EP6_IN=0x86                *
+ * EP7_OUT=0x07, EP7_IN=0x87;                                          *
  * Only EP1_OUT, EP1_IN, EP2_IN, EP5_OUT are used in current firmware  *
  ***********************************************************************/
 
