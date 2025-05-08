@@ -1,11 +1,12 @@
 ﻿using System.Runtime.InteropServices;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace InfoIcDump
 {
     internal class Infoic
     {
         //System API
-        [DllImport("kernel32", CharSet = CharSet.Ansi, SetLastError = true)]
+        [DllImport("kernel32", CharSet = CharSet.Auto, SetLastError = true)]
         private static extern IntPtr LoadLibrary(string lpFileName);
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern void FreeLibrary(IntPtr module);
@@ -13,6 +14,12 @@ namespace InfoIcDump
         public static extern IntPtr GetProcAddress(IntPtr module, string proc);
 
         // Function pointers delegates
+        private delegate void DGetMfcStruT76(uint manufacturer, ref MfcStruct mfstruct);
+        private delegate void DGetIcStruT76(uint manufacturer, uint device_index, ref InfoIc2Struct devstruct);
+        private delegate uint DGetIcMFCT76(string search, uint[] manufacturer_array, uint type, uint mask);
+        private delegate uint DGetIcListT76(string search, uint[] ic_array, uint manufacturer, uint type, uint mask);
+        private delegate uint DGetDllInfoT76(ref uint dll_version, ref uint num_mfcs, uint version);
+
         private delegate void DGetMfcStru2(uint manufacturer, ref MfcStruct mfstruct);
         private delegate void DGetIcStru2(uint manufacturer, uint device_index, ref InfoIc2Struct devstruct);
         private delegate uint DGetIcMFC2(string search, uint[] manufacturer_array, uint type, uint mask);
@@ -30,11 +37,18 @@ namespace InfoIcDump
         private readonly DGetIcMFC? GetIcMFC;
         private readonly DGetIcList? GetIcList;
         private readonly DGetDllInfo? GetDllInfo;
+
         private readonly DGetMfcStru2? GetMfcStruct2;
         private readonly DGetIcStru2? GetIcStruct2;
         private readonly DGetIcMFC2? GetIcMFC2;
         private readonly DGetIcList2? GetIcList2;
         private readonly DGetDllInfo2? GetDllInfo2;
+
+        private readonly DGetMfcStruT76? GetMfcStructT76;
+        private readonly DGetIcStruT76? GetIcStructT76;
+        private readonly DGetIcMFCT76? GetIcMFCT76;
+        private readonly DGetIcListT76? GetIcListT76;
+        private readonly DGetDllInfoT76? GetDllInfoT76;
 
 
         public struct DevStruct
@@ -130,31 +144,40 @@ namespace InfoIcDump
             public uint Count;
         }
 
-        public static readonly uint T56_MASK = 0x10000000;
-        public static readonly uint T48_MASK = 0x40000000;
-        public static readonly uint TL866II_MASK = 0x20000000;
+        public static readonly uint T56_FLAG = 0x10000000;
+        public static readonly uint TL866II_FLAG = 0x20000000;
+        public static readonly uint T48_FLAG = 0x40000000;
+        public static readonly uint T76_FLAG = 0x80000000;
+        public static readonly uint PROG_MASK = T56_FLAG | TL866II_FLAG | T48_FLAG | T76_FLAG;
+
 
         public static readonly uint SMT_FLAG = 0x80000000;
         public static readonly uint PLCC_FLAG = 0x40000000;
         public static readonly uint ERASE_FLAG = 0x20;
 
         public enum CHIP_TYPE : uint { MEMORY = 1, MPU, PLD, SRAM, LOGIC, NAND, EMMC, VGA }
-        public enum DB_TYPE { INFOIC, INFOIC2 }
+        public enum DB_TYPE { INFOIC, INFOIC2, INFOICT76 }
 
 
         private readonly IntPtr HInfoIc = IntPtr.Zero;
         private readonly IntPtr HInfoIc2 = IntPtr.Zero;
+        private readonly IntPtr HInfoIcT76 = IntPtr.Zero;
         private readonly uint InfoicDeviceCount;
         private readonly uint Infoic2DeviceCount;
+        private readonly uint InfoicT76DeviceCount;
         private readonly uint InfoicManufCount;
         private readonly uint Infoic2ManufCount;
+        private readonly uint InfoicT76ManufCount;
 
         public bool InfoIcLoaded { get => HInfoIc != IntPtr.Zero; }
         public bool InfoIc2Loaded { get => HInfoIc2 != IntPtr.Zero; }
+        public bool InfoIcT76Loaded { get => HInfoIcT76 != IntPtr.Zero; }
         public uint InfoIcNumDevices { get => InfoicDeviceCount; }
         public uint InfoIc2NumDevices { get => Infoic2DeviceCount; }
+        public uint InfoIcT76NumDevices { get => InfoicT76DeviceCount; }
         public uint InfoIcManufacturers { get => InfoicManufCount; }
         public uint InfoIc2Manufacturers { get => Infoic2ManufCount; }
+        public uint InfoIcT76Manufacturers { get => InfoicT76ManufCount; }
 
 
         private static IntPtr GetProc(ref IntPtr handle, string name)
@@ -169,11 +192,12 @@ namespace InfoIcDump
         }
 
         // Class constructor
-        public Infoic(string InfoicPath, string Infoic2Path)
+        public Infoic(string InfoicPath, string Infoic2Path, string InfoicT76Path)
         {
             // Try to load modules
             if (InfoicPath != string.Empty) { HInfoIc = LoadLibrary(InfoicPath); }
             if (Infoic2Path != string.Empty) { HInfoIc2 = LoadLibrary(Infoic2Path); }
+            if (InfoicT76Path != string.Empty) { HInfoIcT76 = LoadLibrary(InfoicT76Path); }
 
             IntPtr ProcAddress;
 
@@ -236,6 +260,36 @@ namespace InfoIcDump
                     HInfoIc2 = IntPtr.Zero;
                 }
             }
+
+            if (HInfoIcT76 != IntPtr.Zero)
+            {
+                ProcAddress = GetProc(ref HInfoIcT76, "GetMfcStru");
+                if (ProcAddress == IntPtr.Zero) { return; }
+                GetMfcStructT76 = (DGetMfcStruT76)Marshal.GetDelegateForFunctionPointer(ProcAddress, typeof(DGetMfcStruT76));
+
+                ProcAddress = GetProc(ref HInfoIcT76, "GetIcStru");
+                if (ProcAddress == IntPtr.Zero) { return; }
+                GetIcStructT76 = (DGetIcStruT76)Marshal.GetDelegateForFunctionPointer(ProcAddress, typeof(DGetIcStruT76));
+
+                ProcAddress = GetProc(ref HInfoIcT76, "GetIcMFC");
+                if (ProcAddress == IntPtr.Zero) { return; }
+                GetIcMFCT76 = (DGetIcMFCT76)Marshal.GetDelegateForFunctionPointer(ProcAddress, typeof(DGetIcMFCT76));
+
+                ProcAddress = GetProc(ref HInfoIcT76, "GetIcList");
+                if (ProcAddress == IntPtr.Zero) { return; }
+                GetIcListT76 = (DGetIcListT76)Marshal.GetDelegateForFunctionPointer(ProcAddress, typeof(DGetIcListT76));
+
+                ProcAddress = GetProc(ref HInfoIcT76, "GetDllInfo");
+                if (ProcAddress == IntPtr.Zero) { return; }
+                GetDllInfoT76 = (DGetDllInfoT76)Marshal.GetDelegateForFunctionPointer(ProcAddress, typeof(DGetDllInfoT76));
+
+                InfoicT76DeviceCount = GetDeviceCount(ref InfoicT76ManufCount, DB_TYPE.INFOICT76);
+                if (InfoicT76DeviceCount == 0)
+                {
+                    FreeLibrary(HInfoIcT76);
+                    HInfoIcT76 = IntPtr.Zero;
+                }
+            }
         }
 
         private void GetMfc(uint manufacturer, ref MfcStruct mfcstruct, DB_TYPE type)
@@ -247,12 +301,20 @@ namespace InfoIcDump
                     GetMfcStruct(manufacturer, ref mfcstruct);
                 }
             }
-            else
+            else if (type == DB_TYPE.INFOIC2)
             {
                 if (GetMfcStruct2 is not null)
                 {
                     GetMfcStruct2(manufacturer, ref mfcstruct);
                 }
+            }
+            else
+            {
+                if (GetMfcStructT76 is not null)
+                {
+                    GetMfcStructT76(manufacturer, ref mfcstruct);
+                }
+
             }
         }
 
@@ -300,7 +362,7 @@ namespace InfoIcDump
                 devstruct.PackageDetails = device.PackageDetails;
                 devstruct.Opts4 = device.Opts4;
             }
-            else
+            else if (type == DB_TYPE.INFOIC2)
             {
                 if (GetIcStruct2 is null) { return devstruct; }
                 InfoIc2Struct device = new();
@@ -327,11 +389,38 @@ namespace InfoIcDump
                 devstruct.PackageDetails = device.PackageDetails;
                 devstruct.Opts4 = device.Opts4;
             }
+            else
+            {
+                if (GetIcStructT76 is null) { return devstruct; }
+                InfoIc2Struct device = new();
+                device.Name = string.Empty;
+                GetIcStructT76(manufacturer, index, ref device);
+                devstruct.ProtocolId = device.ProtocolId;
+                devstruct.Opts8 = device.Opts8;
+                devstruct.Category = device.Category;
+                devstruct.Name = device.Name;
+                devstruct.Variant = device.Variant;
+                devstruct.CodeMemorySize = device.CodeMemorySize;
+                devstruct.DataMemorySize = device.DataMemorySize;
+                devstruct.DataMemory2Size = device.DataMemory2Size;
+                devstruct.Opts7 = device.Opts7;
+                devstruct.ReadBufferSize = device.ReadBufferSize;
+                devstruct.WriteBufferSize = device.WriteBufferSize;
+                devstruct.Opts1 = device.Opts1;
+                devstruct.Opts2 = device.Opts2;
+                devstruct.Opts3 = device.Opts3;
+                devstruct.ChipId = device.ChipId;
+                devstruct.Opts5 = device.Opts5;
+                devstruct.ChipIdBytesCount = device.ChipIdBytesCount;
+                devstruct.Opts6 = device.Opts6;
+                devstruct.PackageDetails = device.PackageDetails;
+                devstruct.Opts4 = device.Opts4;
+            }
             // Fix bad endiannes in database
             devstruct.ChipId = ToLittleEndian(devstruct.ChipId, devstruct.ChipIdBytesCount);
 
             // Patch opts8 and package_details
-            if (type == DB_TYPE.INFOIC2)
+            if (type != DB_TYPE.INFOIC)
             {
                 PatchDevice(ref devstruct);
             }
@@ -350,11 +439,17 @@ namespace InfoIcDump
                 GetDllInfo(ref dll_version, ref manuf_count);
                 if (manuf_count > 136) { return 0; }
             }
-            else
+            else if (type == DB_TYPE.INFOIC2)
             {
                 if (GetDllInfo2 is null) { return 0; }
                 GetDllInfo2(ref dll_version, ref manuf_count, 0);
                 if (manuf_count < 139) { return 0; }
+            }
+            else
+            {
+                if (GetDllInfoT76 is null) { return 0; }
+                GetDllInfoT76(ref dll_version, ref manuf_count, 0);
+                if (manuf_count < 170) { return 0; }
             }
 
             //Iterate over the entire manufacturers and count all devices
@@ -367,10 +462,15 @@ namespace InfoIcDump
                     if (GetMfcStruct is null) { return 0; }
                     GetMfcStruct(i, ref mfcstruct);
                 }
-                else
+                else if (type == DB_TYPE.INFOIC2)
                 {
                     if (GetMfcStruct2 is null) { return 0; }
                     GetMfcStruct2(i, ref mfcstruct);
+                }
+                else if (type == DB_TYPE.INFOICT76)
+                {
+                    if (GetMfcStructT76 is null) { return 0; }
+                    GetMfcStructT76(i, ref mfcstruct);
                 }
                 count += mfcstruct.Count;
             }

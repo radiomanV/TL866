@@ -22,11 +22,14 @@ namespace InfoIcDump
         {
             public bool DumpInfoic;
             public bool DumpInfoic2;
+            public bool DumpInfoicT76;
             public bool TL866;
             public bool T48;
             public bool T56;
+            public bool T76;
             public string InfoicPath;
             public string Infoic2Path;
+            public string InfoicT76Path;
             public string ConfigsPath;
             public string OutPath;
             public bool Memory;
@@ -45,7 +48,7 @@ namespace InfoIcDump
         private readonly SortedDictionary<string, CSV_STRUCT> config_csv_list;
         private readonly Infoic infoic;
 
-        public Dumper(string InfoicPath, string Infoic2Path, string ConfigsPath)
+        public Dumper(string InfoicPath, string Infoic2Path, string InfoicT76Path, string ConfigsPath)
         {
             // Open the configs.csv file
             config_csv_list = [];
@@ -72,7 +75,7 @@ namespace InfoIcDump
                 Console.WriteLine("configs.csv not found.");
             }
 
-            infoic = new(InfoicPath, Infoic2Path);
+            infoic = new(InfoicPath, Infoic2Path, InfoicT76Path);
 
         }
 
@@ -82,16 +85,19 @@ namespace InfoIcDump
                 "InfoIc Dumper usage:" + Environment.NewLine +
                 "--infoic-path  <file>      Specify infoic.dll path" + Environment.NewLine +
                 "--infoic2-path <file>      Specify infoic2plus.dll path" + Environment.NewLine +
-                "--configs-path <path>      Specify configs.csv file path" + Environment.NewLine +
+                "--infoicT76-path <file>    Specify infoicT76.dll path" + Environment.NewLine +
+                "--configs-path <file>      Specify configs.csv file path" + Environment.NewLine +
                 "--output-dir  <directory>  Specify the dump output directory" + Environment.NewLine +
                 "--keep-duplicates          Don't remove duplicates" + Environment.NewLine +
                 "--no-sorting               Don't sort devices by type" + Environment.NewLine +
                 "--no-group                 Don't group devices" + Environment.NewLine +
                 "--no-infoic                Don't dump infoic.dll" + Environment.NewLine +
-                "--no--infoic2              Don't dump infoic2plus.dll" + Environment.NewLine +
+                "--no-infoic2               Don't dump infoic2plus.dll" + Environment.NewLine +
+                "--no-infoict76             Don't dump infoicT76.dll" + Environment.NewLine +
                 "--no-tl866                 Don't dump TL866II+ entries" + Environment.NewLine +
-                "--no-T48                   Don't dump T48 entries" + Environment.NewLine +
-                "--no-T56                   Don't dump T56 entries" + Environment.NewLine +
+                "--no-t48                   Don't dump T48 entries" + Environment.NewLine +
+                "--no-t56                   Don't dump T56 entries" + Environment.NewLine +
+                "--no-t76                   Don't dump T76 entries" + Environment.NewLine +
                 "--no-memory                Don't dump EPROM/EEPROM/FLASH devices" + Environment.NewLine +
                 "--no-mcu                   Don't dump MCU/MPU devices" + Environment.NewLine +
                 "--no-pld                   Don't dump PLD/CPLD devices" + Environment.NewLine +
@@ -120,6 +126,10 @@ namespace InfoIcDump
                         options.DumpInfoic2 = false;
                         break;
 
+                    case "--no-infoict76":
+                        options.DumpInfoicT76 = false;
+                        break;
+
                     case "--no-tl866":
                         options.TL866 = false;
                         break;
@@ -130,6 +140,10 @@ namespace InfoIcDump
 
                     case "--no-t56":
                         options.T56 = false;
+                        break;
+
+                    case "--no-t76":
+                        options.T76 = false;
                         break;
 
                     case "--no-memory":
@@ -190,6 +204,15 @@ namespace InfoIcDump
                         }
                         return false;
 
+                    case "--infoicT76-path":
+                        if (i + 1 < args.Length)
+                        {
+                            i++;
+                            options.InfoicT76Path = args[i];
+                            continue;
+                        }
+                        return false;
+
                     case "--configs-path":
                         if (i + 1 < args.Length)
                         {
@@ -232,13 +255,16 @@ namespace InfoIcDump
             {
                 DumpInfoic = true,
                 DumpInfoic2 = true,
+                DumpInfoicT76 = true,
                 InfoicPath = StartupPath + "InfoIC.dll",
                 Infoic2Path = StartupPath + "InfoIC2Plus.dll",
+                InfoicT76Path = StartupPath + "InfoICT76.dll",
                 ConfigsPath = StartupPath + "configs.csv",
                 OutPath = StartupPath + "output" + Path.DirectorySeparatorChar,
                 TL866 = true,
                 T48 = true,
                 T56 = true,
+                T76 = true,
                 Memory = true,
                 Mcu = true,
                 Pld = true,
@@ -267,7 +293,7 @@ namespace InfoIcDump
                 return -1;
             }
 
-            if (!options.DumpInfoic && !options.DumpInfoic2)
+            if (!options.DumpInfoic && !options.DumpInfoic2 && !options.DumpInfoicT76)
             {
                 Console.WriteLine("Nothing to dump.");
                 return -1;
@@ -275,8 +301,9 @@ namespace InfoIcDump
 
             if (!options.DumpInfoic) { options.InfoicPath = string.Empty; }
             if (!options.DumpInfoic2) { options.Infoic2Path = string.Empty; }
+            if (!options.DumpInfoicT76) { options.InfoicT76Path = string.Empty; }
 
-            Dumper dumper = new(options.InfoicPath, options.Infoic2Path, options.ConfigsPath);
+            Dumper dumper = new(options.InfoicPath, options.Infoic2Path, options.InfoicT76Path, options.ConfigsPath);
             return (dumper.BeginDump(ref options));
         }
 
@@ -307,7 +334,19 @@ namespace InfoIcDump
                 }
             }
 
-            if (!infoic.InfoIcLoaded && !infoic.InfoIc2Loaded)
+            if (options.DumpInfoicT76)
+            {
+                if (options.DumpInfoicT76 && infoic.InfoIcT76Loaded)
+                {
+                    Console.WriteLine("InfoIcT76.dll loaded. Total devices:{0}", infoic.InfoIcT76NumDevices);
+                }
+                else
+                {
+                    Console.WriteLine("InfoIcT76.dll not found.");
+                }
+            }
+
+            if (!infoic.InfoIcLoaded && !infoic.InfoIc2Loaded && !infoic.InfoIcT76Loaded)
             {
                 Console.WriteLine("{0}No modules to dump, the program will exit now.", Environment.NewLine);
                 return -1;
@@ -338,6 +377,19 @@ namespace InfoIcDump
 
             // Create the root xml
             XElement xml_root = new("infoic");
+
+            // Dump the infoicT76.dll
+            if (infoic.InfoIcT76Loaded && options.DumpInfoicT76)
+            {
+                filter = [];
+                total = [];
+                device_count = 0;
+                XElement[] elements = DumpDatabase(ref options, DB_TYPE.INFOICT76, ref filter, ref total, ref device_count);
+                XElement database = new("database");
+                database.Add(new XAttribute("type", "INFOICT76"), elements);
+                xml_root.Add(database);
+                if (!WriteLogs(options.OutPath, filter, "filterT76.txt", total, "logT76.txt", device_count)) { return -1; }
+            }
 
             // Dump the infoic2plus.dll
             if (infoic.InfoIc2Loaded && options.DumpInfoic2)
@@ -414,7 +466,7 @@ namespace InfoIcDump
             xml_chip.Add(new XAttribute("data_memory_size", "0x" + devstruct.DataMemorySize.ToString("x2")));
             xml_chip.Add(new XAttribute("data_memory2_size", "0x" + devstruct.DataMemory2Size.ToString("x2")));
             xml_chip.Add(new XAttribute("page_size", "0x" + devstruct.Opts2.ToString("x4")));
-            if (type == DB_TYPE.INFOIC2)
+            if (type != DB_TYPE.INFOIC)
             {
                 xml_chip.Add(new XAttribute("pages_per_block", "0x" + devstruct.Opts6.ToString("x4")));
             }
@@ -424,7 +476,7 @@ namespace InfoIcDump
             xml_chip.Add(new XAttribute("pulse_delay", "0x" + devstruct.Opts3.ToString("x4")));
             xml_chip.Add(new XAttribute("flags", "0x" + devstruct.Opts4.ToString("x8")));
             xml_chip.Add(new XAttribute("chip_info", "0x" + ((byte)devstruct.Opts7).ToString("x4")));
-            if (type == DB_TYPE.INFOIC2)
+            if (type != DB_TYPE.INFOIC)
             {
                 xml_chip.Add(new XAttribute("pin_map", "0x" + devstruct.Opts8.ToString("x8")));
             }
@@ -476,16 +528,21 @@ namespace InfoIcDump
                 db_name = "InfoIc.dll";
                 num_mfc = infoic.InfoIcManufacturers;
             }
-            else
+            else if (type == DB_TYPE.INFOIC2)
             {
                 db_name = "InfoIc2plus.dll";
                 num_mfc = infoic.InfoIc2Manufacturers;
+            }
+            else
+            {
+                db_name = "InfoIcT76.dll";
+                num_mfc = infoic.InfoIcT76Manufacturers;
             }
 
             Console.WriteLine("{0}{1} dump started.", Environment.NewLine, db_name);
 
             //Iterate over the entire manufacturers and add devices to list
-            for (uint i = 0; i <= num_mfc; i++)
+            for (uint i = 0; i < num_mfc; i++)
             {
                 //Iterate over the entire devices in the curent manufacturer
                 for (uint k = 0; k < infoic.GetMfcDevices(i, type); k++)
@@ -503,8 +560,14 @@ namespace InfoIcDump
                       (Devstruct.Category == (uint)CHIP_TYPE.SRAM && !options.Sram) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.NAND && !options.Nand) ||
                       (Devstruct.Category == (uint)CHIP_TYPE.EMMC && !options.Emmc) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.VGA && !options.Vga))
-                        continue;
+                      (Devstruct.Category == (uint)CHIP_TYPE.VGA && !options.Vga) ||
+                      ((Devstruct.Opts8 & PROG_MASK) == TL866II_FLAG && !options.TL866) ||
+                      ((Devstruct.Opts8 & PROG_MASK) == T48_FLAG && !options.T48) ||
+                      ((Devstruct.Opts8 & PROG_MASK) == T56_FLAG && !options.T56) ||
+                      ((Devstruct.Opts8 & PROG_MASK) == T76_FLAG && !options.T76)){
+                          Console.WriteLine("{0} removed.{1}", Devstruct.Name, Environment.NewLine);
+                          continue;
+                    }
 
                     //Remove spaces and bad characters
                     Devstruct.Name = Devstruct.Name.Replace(" ", "").Replace(",", ";").
