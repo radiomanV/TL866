@@ -1,10 +1,15 @@
 ﻿/*
- * Infoic.dll and InfoIc2Plus.dll dump utility
- * radioman 2013 -2024
+ * Infoic.dll, InfoIc2Plus.dll and infoict76.dll dump utility
+ * radiomanV 2013 -2025
  */
 using System.Xml;
 using System.Xml.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
+using System.Buffers;
 using static InfoIcDump.Infoic;
 
 
@@ -386,7 +391,7 @@ namespace InfoIcDump
                 device_count = 0;
                 XElement[] elements = DumpDatabase(ref options, DB_TYPE.INFOIC76, ref filter, ref total, ref device_count);
                 XElement database = new("database");
-                database.Add(new XAttribute("type", "INFOIC76"), elements);
+                database.Add(new XAttribute("type", "INFOICT76"), elements);
                 xml_root.Add(database);
                 if (!WriteLogs(options.OutPath, filter, "filter76.txt", total, "log76.txt", device_count)) { return -1; }
             }
@@ -486,28 +491,158 @@ namespace InfoIcDump
         }
 
         // Compare two device profiles
-        private bool CompareDevice(DevStruct d1, DevStruct d2)
+        private static bool CompareDevice(in DevStruct d1, in DevStruct d2) =>
+            (d1.Category, d1.ProtocolId, d1.Variant,
+             d1.ReadBufferSize, d1.WriteBufferSize,
+             d1.CodeMemorySize, d1.DataMemorySize, d1.DataMemory2Size,
+             d1.Opts2, d1.Opts6, d1.ChipId, d1.Opts5, d1.Opts3, d1.Opts4, d1.Opts7, d1.Opts8,
+             d1.PackageDetails, d1.config)
+         ==
+            (d2.Category, d2.ProtocolId, d2.Variant,
+             d2.ReadBufferSize, d2.WriteBufferSize,
+             d2.CodeMemorySize, d2.DataMemorySize, d2.DataMemory2Size,
+             d2.Opts2, d2.Opts6, d2.ChipId, d2.Opts5, d2.Opts3, d2.Opts4, d2.Opts7, d2.Opts8,
+             d2.PackageDetails, d2.config);
+
+
+    private static readonly Regex RxMultiWs = new(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex RxAtTokens = new(@"@[^,]+", RegexOptions.Compiled);
+    private static readonly Regex RxLeadingGarbage = new(@"^[=\s'\""]+", RegexOptions.Compiled);
+    private static readonly Regex RxMultiDash = new(@"-{2,}", RegexOptions.Compiled);
+    private static readonly Regex RxLetterDashDigit = new(@"(?<=\p{L})-(?=\d)", RegexOptions.Compiled);
+    private static readonly Regex RxDashBeforeParen = new(@"-(?=\()", RegexOptions.Compiled);
+    private static readonly Regex RxRecommendAny =
+        new(@"(?i)\s*\(?\s*(?:recommend(?:ed)?|rec\.?|reco|recom)\s*\)?\s*", RegexOptions.Compiled);
+    private static readonly Regex RxCombining = new(@"\p{M}+", RegexOptions.Compiled);
+    private static readonly Regex RxLeadingJunk = new(@"^[^A-Za-z0-9(]+", RegexOptions.Compiled);
+    private const string VoltChoices = @"(?:1\.(?:2|8)|2\.5|3\.(?:0|3|6)|5\.0)"; 
+    private static readonly Regex RxVccList =
+        new($@"(?i)(?:\(|_)?\s*VCC\s*=\s*({VoltChoices})\s*v\s*(?:\)|_)?", RegexOptions.Compiled);
+
+    private static readonly Regex RxVoltList =
+        new($@"(?i)(?:\(|_)?\s*({VoltChoices})\s*v\s*(?:\)|_)?", RegexOptions.Compiled);
+
+
+    // Name cleanup
+    private string NormalizeName(string s)
         {
-            return
-            d1.Category == d2.Category &&
-                d1.ProtocolId == d2.ProtocolId &&
-                d1.Variant == d2.Variant &&
-                d1.ReadBufferSize == d2.ReadBufferSize &&
-                d1.WriteBufferSize == d2.WriteBufferSize &&
-                d1.CodeMemorySize == d2.CodeMemorySize &&
-                d1.DataMemorySize == d2.DataMemorySize &&
-                d1.DataMemory2Size == d2.DataMemory2Size &&
-                d1.Opts2 == d2.Opts2 &&
-                d1.Opts6 == d2.Opts6 &&
-                d1.ChipId == d2.ChipId &&
-                d1.Opts5 == d2.Opts5 &&
-                d1.Opts3 == d2.Opts3 &&
-                d1.Opts4 == d2.Opts4 &&
-                d1.Opts7 == d2.Opts7 &&
-                d1.Opts8 == d2.Opts8 &&
-                d1.PackageDetails == d2.PackageDetails &&
-                d1.config == d2.config;
+            if (string.IsNullOrWhiteSpace(s)) return string.Empty;
+            s = s.Trim();
+            s = s.Normalize(NormalizationForm.FormKC);
+            s = s.Replace('\u00A0', ' ')
+                .Replace('\u2007', ' ')
+                .Replace('\u202F', ' ');
+
+            foreach (var d in new[] { '–', '—', '−', '­', '‒' }) s = s.Replace(d, '-');
+
+            var pairs = new (string bad, string good)[] {
+                ("£¨", "("), ("£©", ")"),
+                ("ï¼ˆ", "("), ("ï¼‰", ")"),
+                ("【","["), ("】","]"), ("《","<"), ("》",">"),
+                ("＂","\""), ("＇","'"), ("，",","), ("．","."),
+                ("：",":"), ("；",";"), ("／","/"), ("＼","\\"), ("－","-"),
+            };
+
+            foreach (var (bad, good) in pairs) s = s.Replace(bad, good);
+            s = s.Replace("£", "(");
+            s = RxCombining.Replace(s, "");
+            s = s.Replace("Â", "");
+            s = RxLeadingJunk.Replace(s, "");
+            s = RxLeadingGarbage.Replace(s, "").Trim();
+            s = s.Replace("*", "").Replace("?", "");
+            s = RxVccList.Replace(s, "($1V)");
+            s = RxVoltList.Replace(s, "($1V)");
+            var atTokens = RxAtTokens.Matches(s).Cast<Match>().Select(m => m.Value).ToList();
+            s = RxAtTokens.Replace(s, " ");
+            s = RxMultiWs.Replace(s, " ").Trim();
+            s = RxRecommendAny.Replace(s, "(preferred)").Trim();
+            s = s.Replace(" ", "-");
+            s = RxMultiDash.Replace(s, "-").Trim('-');
+            s = RxDashBeforeParen.Replace(s, "");
+            s = RxLetterDashDigit.Replace(s, "");
+            var pkgs = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var tok in atTokens)
+            {
+                string pkg = tok.Substring(1);
+                pkg = RxVccList.Replace(pkg, "($1V)");
+                pkg = RxVoltList.Replace(pkg, "($1V)");
+                pkg = RxMultiWs.Replace(pkg, " ").Trim();
+                pkg = RxRecommendAny.Replace(pkg, "(preferred)").Trim();
+                pkg = pkg.Replace(" ", "-");
+                pkg = RxMultiDash.Replace(pkg, "-").Trim('-');
+                pkg = RxDashBeforeParen.Replace(pkg, "");
+                pkg = RxLetterDashDigit.Replace(pkg, "");
+
+                if (pkg.Length == 0) continue;
+                string final = "@" + pkg;
+                if (seen.Add(final)) pkgs.Add(final);
+            }
+
+            string result = s + string.Concat(pkgs);
+            result = result.Replace(" ", "");
+            result = RxMultiDash.Replace(result, "-").Trim('-');
+            result = result.Replace("-@", "@");
+            result = RxDashBeforeParen.Replace(result, "");
+            result = result.Replace("-GSTO", "GSTO");
+            result = result.Replace("@@", "@");
+            result = result.Replace(",", "+");
+            result = result.Replace("ADP:Pin9-to1", "Rotated");
+
+            if (result.IndexOf(',') >= 0)
+                Console.WriteLine("[WARN] Comma remained in single name: " + result);
+
+            return result;
         }
+
+        static int RemoveDuplicates(List<DevStruct> list)
+        {
+            if (list == null || list.Count <= 1) return 0;
+
+            var cmp  = new DevStructAllComparer();
+            var seen = new HashSet<DevStruct>(list.Count, cmp);
+
+            int write = 0;
+            foreach (ref readonly var d in CollectionsMarshal.AsSpan(list))
+            {
+                if (seen.Add(d)) list[write++] = d;
+            }
+
+            int removed = list.Count - write;
+            if (removed > 0) list.RemoveRange(write, removed);
+            return removed;
+        }
+
+        static readonly SearchValues<char> StopChars = SearchValues.Create("@(");
+
+        private string BaseKey(string name)
+        {
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            int cut = name.AsSpan().IndexOfAny(StopChars);
+            return cut <= 0 ? (cut == 0 ? string.Empty : name) : name[..cut];
+        }
+
+        static void LogByProtocolSB(SortedDictionary<uint, StringBuilder> acc, uint pid, string name)
+        {
+            if (!acc.TryGetValue(pid, out var sb))
+                acc[pid] = sb = new StringBuilder(256);
+            sb.AppendLine(name);
+        }
+
+        private (
+            uint Category, uint ProtocolId, uint Variant,
+            uint ReadBufferSize, uint WriteBufferSize,
+            uint CodeMemorySize, uint DataMemorySize, uint DataMemory2Size,
+            uint Opts2, uint Opts6, ulong ChipId, uint Opts5, uint Opts3, uint Opts4, uint Opts7, uint Opts8,
+            uint PackageDetails, string config
+        ) GroupKey(in DevStruct d) => (
+            d.Category, d.ProtocolId, d.Variant,
+            d.ReadBufferSize, d.WriteBufferSize,
+            d.CodeMemorySize, d.DataMemorySize, d.DataMemory2Size,
+            d.Opts2, d.Opts6, d.ChipId, d.Opts5, d.Opts3, d.Opts4, d.Opts7, d.Opts8,
+            d.PackageDetails, d.config ?? string.Empty
+        );
 
         //Perform the actual dump
         private XElement[] DumpDatabase(ref Options options, DB_TYPE type, ref List<string> filter,
@@ -515,7 +650,6 @@ namespace InfoIcDump
         {
             DevStruct Devstruct;
             List<DevStruct> DeviceList = [];
-            List<DevStruct> tmp_list;
 
             total = [];
             filter = [];
@@ -541,125 +675,110 @@ namespace InfoIcDump
 
             Console.WriteLine("{0}{1} dump started.", Environment.NewLine, db_name);
 
-            //Iterate over the entire manufacturers and add devices to list
-            for (uint i = 0; i < num_mfc; i++)
+            bool wantMem  = options.Memory,
+                 wantMcu  = options.Mcu,
+                 wantPld  = options.Pld,
+                 wantSram = options.Sram,
+                 wantNand = options.Nand,
+                 wantEmmc = options.Emmc,
+                 wantVga  = options.Vga;
+
+            var acc = new SortedDictionary<uint, StringBuilder>();
+
+            // Iterate over the entire manufacturers and add devices to list
+            for (int i = 0; i < (int)num_mfc; i++)
             {
-                //Iterate over the entire devices in the curent manufacturer
-                for (uint k = 0; k < infoic.GetMfcDevices(i, type); k++)
+                int devCount = (int)infoic.GetMfcDevices((uint)i, type);
+
+                for (int k = 0; k < devCount; k++)
                 {
-                    //Get the device struct
-                    Devstruct = infoic.GetDevice(i, k, type);
-
-                    // Detecting new devices special flags
-                    if ((Devstruct.Category & 0xFFFFFF00) != 0)
-                    {
-                       Console.WriteLine("Device: {0}, Category: {1}", Devstruct.Name, Devstruct.Category.ToString("X4"));
-                    }
-                    Devstruct.Category &= 0xFF;
-
-                    // Skip logic devices defined in old infoic.dll
-                    if (Devstruct.Category == (uint)CHIP_TYPE.LOGIC) { continue; }
-
-
-                    if ((Devstruct.Category == (uint)CHIP_TYPE.MEMORY && !options.Memory) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.MPU && !options.Mcu) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.PLD && !options.Pld) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.SRAM && !options.Sram) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.NAND && !options.Nand) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.EMMC && !options.Emmc) ||
-                      (Devstruct.Category == (uint)CHIP_TYPE.VGA && !options.Vga))
+                    var d = infoic.GetDevice((uint)i, (uint)k, type);
+                    d.Category &= 0xFFu;
+                    if (d.Category == (uint)CHIP_TYPE.LOGIC) continue;
+                    uint catLow = d.Category;
+                    if ((catLow == (uint)CHIP_TYPE.MEMORY && !wantMem)  ||
+                        (catLow == (uint)CHIP_TYPE.MPU    && !wantMcu)  ||
+                        (catLow == (uint)CHIP_TYPE.PLD    && !wantPld)  ||
+                        (catLow == (uint)CHIP_TYPE.SRAM   && !wantSram) ||
+                        (catLow == (uint)CHIP_TYPE.NAND   && !wantNand) ||
+                        (catLow == (uint)CHIP_TYPE.EMMC   && !wantEmmc) ||
+                        (catLow == (uint)CHIP_TYPE.VGA    && !wantVga))
                         continue;
 
-                    //Remove spaces and bad characters
-                    Devstruct.Name = Devstruct.Name.Replace(" @", "@");
-                    Devstruct.Name = Devstruct.Name.Replace("@BGA24 ", "@BGA24-");
-                    Devstruct.Name = Devstruct.Name.Replace(" ", "").Replace(",", ";").
-                        Replace("*","").Replace("?", "").Replace("Ł¨", "(");
-
-                    // Insert the device manufacturer
-                    Devstruct.Category |= i << 8;
-
-                    // Patch device
-                    string key = Devstruct.Name.Split('@')[0];
-                    key = key.Split('(')[0];
-                    if (config_csv_list.TryGetValue(key, out CSV_STRUCT value))
+                    // Name cleanup
+                    d.Name = NormalizeName(d.Name);
+                    d.Category |= (uint)(i << 8);
+                    string key = BaseKey(d.Name);
+                    if (config_csv_list.TryGetValue(key, out CSV_STRUCT csv))
                     {
-                        Devstruct.ChipId = value.DeviceID;
-                        Devstruct.Opts4 |= ERASE_FLAG;
+                        d.ChipId = csv.DeviceID;
+                        d.Opts4 |= ERASE_FLAG;
                     }
                     else
                     {
-                        switch ((byte)Devstruct.Category)
+                        switch ((byte)catLow)
                         {
                             case (byte)CHIP_TYPE.MPU:
                             case (byte)CHIP_TYPE.PLD:
-                                filter.Add(Devstruct.Name);
+                                filter.Add(d.Name);
                                 break;
                         }
                     }
 
-                    // Patch wrong erase flag in database
-                    if (Devstruct.ChipId != 0 && Devstruct.ChipIdBytesCount != 0)
-                    {
-                        Devstruct.Opts4 |= ERASE_FLAG;
-                    }
+                    // Patch ERASE_FLAG corect
+                    if (d.ChipId != 0 && d.ChipIdBytesCount != 0)
+                        d.Opts4 |= ERASE_FLAG;
                     else
+                        d.Opts4 &= ~ERASE_FLAG;
+
+                    // TL866A/CS PLCC32 mapping fix
+                    if (type == DB_TYPE.INFOIC &&
+                        d.PackageDetails == 0xA0000000 &&
+                        d.ProtocolId == 0x36)
                     {
-                        Devstruct.Opts4 &= ~ERASE_FLAG;
+                        d.PackageDetails = 0xFF000000;
                     }
-
-                    // Reset the SMT flag in package details
-                    // This will allow us to group THT and SMD devices together
-                    //Devstruct.PackageDetails &= ~(SMT_FLAG | PLCC_FLAG);
-                    
-                    // Patch TL866A/CS bad PLCC32 mapping (0xA0 to 0xFF)
-                    if (type == DB_TYPE.INFOIC && Devstruct.PackageDetails == 0xA0000000 &&
-                                Devstruct.ProtocolId == 0x36)
-                    {
-                        Devstruct.PackageDetails = 0xFF000000;
-                        //Console.WriteLine("Patched {0} to PLCC32 package",  Devstruct.Name);
-
-                    }
-                    
-
-                    //Add device to list
-                    DeviceList.Add(Devstruct);
-
-                    //Log the device
-                    if (total.ContainsKey(Devstruct.ProtocolId))
-                        total[Devstruct.ProtocolId] += Devstruct.Name + Environment.NewLine;
-                    else
-                        total.Add(Devstruct.ProtocolId, Devstruct.Name + Environment.NewLine);
+                    DeviceList.Add(d);
+                    LogByProtocolSB(acc, d.ProtocolId, d.Name);
                 }
             }
 
             // Remove duplicates
             if (options.RemoveDuplicates)
             {
-                int count = DeviceList.Count;
                 Console.Write("Removing duplicates.. ");
-                DeviceList = DeviceList.Distinct().ToList();
-                Console.WriteLine("{0} duplicates removed.", count - DeviceList.Count);
+                int removed = RemoveDuplicates(DeviceList);
+                Console.WriteLine("{0} duplicates removed.", removed);
             }
 
             //Sort the list by Category
             if (options.SortByType)
             {
-                tmp_list = [];
                 Console.Write("Sorting by type.. ");
-                for (uint i = 1; i < 9; i++)
+
+                int n = DeviceList.Count;
+                var buckets = new List<DevStruct>[9];
+                for (int t = 1; t <= 8; t++)
+                    buckets[t] = new List<DevStruct>(n / 8 + 1);
+
+                foreach (ref readonly var d in CollectionsMarshal.AsSpan(DeviceList))
                 {
-                    foreach (DevStruct d in DeviceList)
-                    {
-                        if ((byte)d.Category == i)
-                            tmp_list.Add(d);
-                    }
+                    int t = (byte)d.Category;
+                    if ((uint)(t - 1) < 8)
+                        buckets[t]!.Add(d);
                 }
+
+                var tmp = new List<DevStruct>(n);
+                for (int t = 1; t <= 8; t++)
+                    if (buckets[t]!.Count != 0)
+                        tmp.AddRange(buckets[t]!);
+
+                DeviceList = tmp;
+
                 Console.WriteLine("{0} manufacturers sorted.", num_mfc);
-                DeviceList = tmp_list;
             }
 
-            // Get fuse name for each chip before comapcting
+            // Get fuse name for each chip before compacting
             for (int i = 0; i < DeviceList.Count; i++)
             {
                 Devstruct = DeviceList[i];
@@ -671,53 +790,60 @@ namespace InfoIcDump
             device_count = DeviceList.Count;
 
             // Compact database
-            if (options.Group)
-            {
-                Console.Write("Compacting database.. ");
-                tmp_list = [];
-                StringBuilder sb = new();
-                bool flag;
+        if (options.Group)
+        {
+            Console.Write("Compacting database.. ");
 
-                foreach (DevStruct d in DeviceList)
-                {
-                    flag = false;
-                    for (int i = 0; i < tmp_list.Count; i++)
-                    {
-                        if (CompareDevice(d, tmp_list[i]))
-                        {
-                            Devstruct = tmp_list[i];
-                            sb.Clear();
-                            sb.Append(Devstruct.Name).Append(',').Append(d.Name);
-                            Devstruct.Name = sb.ToString();
-                            tmp_list[i] = Devstruct;
-                            flag = true;
-                            break;
-                        }
-                    }
-                    if (tmp_list.Count == 0 || !flag) tmp_list.Add(d);
-                }
-                Console.WriteLine("{0} profiles created.", tmp_list.Count);
-                DeviceList = tmp_list;
-            }
 
-            SortedDictionary<uint, XElement> category = [];
-            foreach (DevStruct device in DeviceList)
+        var indexByKey = new Dictionary<
+            (uint,uint,uint,uint,uint,uint,uint,uint,uint,uint,ulong,uint,uint,
+            uint,uint,uint,uint,string), int >(DeviceList.Count);
+
+            var results = new List<DevStruct>(DeviceList.Count);
+            var nameAcc = new List<StringBuilder>(DeviceList.Count);
+
+            foreach (var d in DeviceList)
             {
-                XElement ic = new("ic");
-                ic.Add(GetIcXml(device, type));
-                if (category.ContainsKey(device.Category >> 8))
+                var key = GroupKey(d);
+
+                if (indexByKey.TryGetValue(key, out int idx))
                 {
-                    category[device.Category >> 8].Add(ic);
+                    var sb = nameAcc[idx];
+                    if (sb.Length > 0) sb.Append(',');
+                    sb.Append(d.Name);
                 }
                 else
                 {
-                    XElement devices = new("manufacturer");
-                    XAttribute manufacturer = new("name", infoic.GetManufName(device.Category >> 8, type));
-                    devices.Add(manufacturer);
-                    devices.Add(ic);
-                    category.Add(device.Category >> 8, devices);
+                    indexByKey[key] = results.Count;
+                    results.Add(d);
+                    nameAcc.Add(new StringBuilder(d.Name.Length + 16).Append(d.Name));
                 }
             }
+
+            var span = CollectionsMarshal.AsSpan(results);
+            for (int i = 0; i < span.Length; i++)
+            {
+                span[i].Name = nameAcc[i].ToString();
+            }
+
+            Console.WriteLine("{0} profiles created.", results.Count);
+            DeviceList = results;
+        }
+
+        SortedDictionary<uint, XElement> category = new();
+        foreach (var device in DeviceList)
+        {
+            uint mId = device.Category >> 8;
+            if (!category.TryGetValue(mId, out var man))
+            {
+                man = new XElement("manufacturer",
+                        new XAttribute("name", infoic.GetManufName(mId, type)));
+                category.Add(mId, man);
+            }
+            var ic = new XElement("ic");
+            ic.Add(GetIcXml(device, type));
+            man.Add(ic);
+        }
 
             Console.WriteLine("{0} devices created.", device_count);
             return [.. category.Values];
@@ -753,5 +879,60 @@ namespace InfoIcDump
             return true;
         }
     }
-}
 
+    internal class DevStructAllComparer : IEqualityComparer<DevStruct>
+    {
+        public bool Equals(DevStruct x, DevStruct y)
+        {
+            return
+                x.ProtocolId       == y.ProtocolId &&
+                x.Opts8            == y.Opts8 &&
+                x.Category         == y.Category &&
+                x.Variant          == y.Variant &&
+                x.CodeMemorySize   == y.CodeMemorySize &&
+                x.DataMemorySize   == y.DataMemorySize &&
+                x.DataMemory2Size  == y.DataMemory2Size &&
+                x.Opts7            == y.Opts7 &&
+                x.ReadBufferSize   == y.ReadBufferSize &&
+                x.WriteBufferSize  == y.WriteBufferSize &&
+                x.Opts1            == y.Opts1 &&
+                x.Opts2            == y.Opts2 &&
+                x.Opts3            == y.Opts3 &&
+                x.ChipId           == y.ChipId &&
+                x.Opts5            == y.Opts5 &&
+                x.ChipIdBytesCount == y.ChipIdBytesCount &&
+                x.Opts6            == y.Opts6 &&
+                x.PackageDetails   == y.PackageDetails &&
+                x.Opts4            == y.Opts4 &&
+                string.Equals(x.Name,   y.Name,   StringComparison.Ordinal) &&
+                string.Equals(x.config, y.config, StringComparison.Ordinal);
+        }
+
+        public int GetHashCode(DevStruct d)
+        {
+            var h = new HashCode();
+            h.Add(d.ProtocolId);
+            h.Add(d.Opts8);
+            h.Add(d.Category);
+            h.Add(d.Variant);
+            h.Add(d.CodeMemorySize);
+            h.Add(d.DataMemorySize);
+            h.Add(d.DataMemory2Size);
+            h.Add(d.Opts7);
+            h.Add(d.ReadBufferSize);
+            h.Add(d.WriteBufferSize);
+            h.Add(d.Opts1);
+            h.Add(d.Opts2);
+            h.Add(d.Opts3);
+            h.Add(d.ChipId);
+            h.Add(d.Opts5);
+            h.Add(d.ChipIdBytesCount);
+            h.Add(d.Opts6);
+            h.Add(d.PackageDetails);
+            h.Add(d.Opts4);
+            h.Add(d.Name,   StringComparer.Ordinal);
+            h.Add(d.config, StringComparer.Ordinal);
+            return h.ToHashCode();
+        }
+    }
+}
