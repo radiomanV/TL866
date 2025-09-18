@@ -90,5 +90,5 @@ which will invoke all above commands and build the statically linked `setupapi.d
 ```
 
 If all was okay we should have the `setupapi.dll` in the current directory.   
-You can always download the already compiled [setupapi.dll](https://github.com/radiomanV/TL866/raw/refs/heads/master/wine/setupapi.dll) from this git repository, but sometimes depending on your Linux distro   
+You can always download the already compiled [setupapi.dll](https://github.com/radiomanV/TL866/raw/refs/heads/master/wine32/setupapi.dll) from this git repository, but sometimes depending on your Linux distro   
 and `glib` version it will not work and you must recompile it.   

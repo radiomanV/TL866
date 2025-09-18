@@ -71,4 +71,4 @@ More information on this here: [InfoicDump](https://github.com/radiomanV/TL866/t
 
 ### WineLib wrapper
 This library provide an easy way to make Minipro/Xgpro software work in Linux.        
-More information on this here: [Wine](https://github.com/radiomanV/TL866/tree/master/wine#)
+More information on this here: [Wine](https://github.com/radiomanV/TL866/tree/master/wine32#)
