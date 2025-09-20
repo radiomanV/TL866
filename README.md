@@ -69,6 +69,11 @@ This utility can dump the `infoic.dll` and `infoic2plus.dll` to an XML format da
 More information on this here: [InfoicDump](https://github.com/radiomanV/TL866/tree/master/InfoIcDump#infoicdump)
 
 
-### WineLib wrapper
-This library provide an easy way to make Minipro/Xgpro software work in Linux.        
-More information on this here: [Wine](https://github.com/radiomanV/TL866/tree/master/wine32#)
+### 32-bit WineLib wrapper (Unmaintained)
+
+This library provides an easy way to run Minipro/Xgpro software on Linux.  
+More information: [WineLib wrapper](https://github.com/radiomanV/TL866/tree/master/wine32#)
+
+**Note:** This 32-bit wrapper is no longer maintained.  
+For the actively maintained wrapper that supports all architectures, see [new wine wrapper](https://github.com/radiomanV/TL866/tree/master/wine64#)
+

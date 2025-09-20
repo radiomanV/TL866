@@ -2,7 +2,7 @@
 >
 > This wrapper is no longer maintained. It targets 32-bit Wine environments and is provided *as-is* for users   
 > on systems/Wine versions that still support 32-bit.   
-> For the actively maintained replacement, see the new wrapper [here](https://github.com/radiomanV/TL866/raw/refs/heads/master/wine64) 
+> For the actively maintained replacement, see the new wrapper [here](https://github.com/radiomanV/TL866/raw/refs/heads/master/wine64#) 
 
 # Simple low level winelib usb wrapper for the Minipro TL866A/CS, TL866II+, Xgecu T48, T56 and T76 programmers.
 

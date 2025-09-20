@@ -1,0 +1,38 @@
+#include <windows.h>
+#include "resource.h"
+
+#define VER_MAJOR 1
+#define VER_MINOR 0
+
+#define STR_HELPER(x) #x
+#define STR(x) STR_HELPER(x)
+
+#define IDI_APP 1
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+IDI_APP ICON "shim.ico"
+
+STRINGTABLE
+BEGIN
+    IDS_SHIM_VERSION, "v" STR(VER_MAJOR) "." STR(VER_MINOR)
+END
+
+
+// About dialog
+IDD_SHIM_ABOUTBOX DIALOGEX 0, 0, 287, 118
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "About USB wrapper"
+FONT 9, "MS Shell Dlg"
+BEGIN
+    LTEXT   "Minipro / Xgpro USB wrapper for Wine.", -1, 10, 10, 200, 10
+    LTEXT   "Version:", -1, 10, 24,  40, 10
+    LTEXT   "", IDS_SHIM_VERSION, 40, 24, 156, 10
+    LTEXT   "(C) 2014-2025 radiomanV", -1, 10, 38, 266, 10
+    CONTROL "", -1, "Static", SS_BLACKFRAME | WS_CHILD | WS_VISIBLE, 10, 56, 270, 1
+    CONTROL "",  IDC_SHIM_LINK, "Static", WS_CHILD | WS_VISIBLE | SS_NOTIFY, 10, 70, 230, 24
+    ICON  IDI_APP, IDC_SHIM_APPICON, 234, 21, 96, 96, WS_CHILD | WS_VISIBLE
+    DEFPUSHBUTTON "OK", IDOK, 228, 95, 50, 14
+END
+
+
