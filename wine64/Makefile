@@ -31,7 +31,7 @@ RES_RES := resource.res
 DLL             := shim.dll
 DLL_SRCS        := shim.c
 DLL_OBJS        := $(DLL_SRCS:.c=.o)
-DLL_CFLAGS      := -O2 -s -DWIN32 -D_WIN32_WINNT=0x0601 -Wall -Wextra -Wno-unused-parameter
+DLL_CFLAGS      := -O2 -DWIN32 -D_WIN32_WINNT=0x0601 -Wall -Wextra -Wno-unused-parameter
 DLL_LDFLAGS     := -shared -Wl,--kill-at -Wl,--enable-stdcall-fixup
 DLL_LIBS        := -lws2_32 -lshlwapi -lgdi32 -luxtheme
 

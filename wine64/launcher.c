@@ -138,14 +138,14 @@ int wmain(int argc, wchar_t **argv)
 
 	// Build the target process command line
 	wchar_t cmdline[4096];
-	int off = snwprintf(cmdline, ARRAYSIZE(cmdline), L"\"%ls\"", exe_path);
+	int off = _snwprintf(cmdline, ARRAYSIZE(cmdline), L"\"%s\"", exe_path);
 	if (off < 0 || off >= (int)ARRAYSIZE(cmdline)) {
 		wprintf(L"[launcher] Command line too long (exe).\n");
 		return EXIT_FAILURE;
 	}
 	if (pf > 0) {
 		for (int i = pf; i < argc; ++i) {
-			int wrote = snwprintf(cmdline + off,
+			int wrote = _snwprintf(cmdline + off,
 					       ARRAYSIZE(cmdline) - off,
 					       L" \"%ls\"", argv[i]);
 			if (wrote < 0 ||

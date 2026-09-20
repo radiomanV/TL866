@@ -555,8 +555,9 @@ int open_devices(void)
 	size_t left = resp_len - sizeof(enum_resp_t);
 	uint32_t count = enum_resp->count;
 	if (left < count * sizeof(dev_info_t)) {
-		printf("ENUM payload too short: count=%u payload=%zu need=%zu\n",
-		       count, left, (size_t)count * sizeof(dev_info_t));
+        printf("ENUM payload too short: count=%u payload=%lu need=%lu\n",
+	       count, (unsigned long)left,
+	       (unsigned long)((size_t)count * sizeof(dev_info_t)));
 		return 0;
 	}
 
@@ -1819,7 +1820,7 @@ void detect_wine_version()
 		printf("Product Name: %s\n", pname);
 
 	IsWow64Process2_t pIsWow64Process2 =
-		GetProcAddress(k32, "IsWow64Process2");
+		(IsWow64Process2_t)GetProcAddress(k32, "IsWow64Process2");
 
 	if (pIsWow64Process2) {
 		USHORT pm = 0, nm = 0;
@@ -1833,7 +1834,7 @@ void detect_wine_version()
 		}
 	} else {
 		IsWow64Process_t pIsWow64Process =
-			GetProcAddress(k32, "IsWow64Process");
+			(IsWow64Process_t)GetProcAddress(k32, "IsWow64Process");
 		GetNativeSystemInfo pGetNativeSystemInfo =
 			(void *)GetProcAddress(k32, "GetNativeSystemInfo");
 
