@@ -54,13 +54,17 @@ static volatile int b_sigint = 0;
 
 #define ERR(fmt, ...) fprintf(stderr, "[broker:ERR] " fmt "\n", ##__VA_ARGS__)
 
+/* Bound allocations from the local RPC socket without limiting reads to 64 KiB. */
+#define MAX_BULK_BYTES (128U * 1024U * 1024U)
+
 // Socket buffer send function
 static int socket_send(int sock, const void *buf, int len)
 {
 	const char *pbuf = (const char *)buf;
 	int done = 0;
 	while (done < len) {
-		int n = send(sock, pbuf + done, len - done, 0);
+		/* A timed-out or closed Wine socket must not kill the broker. */
+		int n = send(sock, pbuf + done, len - done, MSG_NOSIGNAL);
 		if (n <= 0)
 			return RPC_E_SEND_ERR;
 		done += n;
@@ -372,6 +376,10 @@ static void *client_worker(void *arg)
 			ERR("version mismatch: %u", hdr.version);
 			break;
 		}
+		if (hdr.len > MAX_BULK_BYTES + sizeof(bulk_req_t)) {
+			ERR("oversized RPC request: %u bytes", hdr.len);
+			break;
+		}
 
 		uint8_t *request = NULL;
 		if (hdr.len) {
@@ -384,7 +392,6 @@ static void *client_worker(void *arg)
 			}
 		}
 
-		uint8_t buf[1 << 16];
 		uint32_t len = 0;
 		switch (hdr.type) {
 
@@ -455,46 +462,54 @@ static void *client_worker(void *arg)
 
 		// Bulk transfer RPC
 		case MSG_BULK: {
+			bulk_resp_t error = { .status = LIBUSB_ERROR_INVALID_PARAM,
+					      .rx_len = 0 };
+			if (hdr.len < sizeof(bulk_req_t)) {
+				send_reply(sock, MSG_BULK, &error, sizeof(error));
+				break;
+			}
 			const bulk_req_t *rq = (const bulk_req_t *)request;
+			int ep_in = (rq->ep & 0x80) != 0;
+			/* IN has no request data; OUT must contain exactly rq->len bytes. */
+			if (rq->len > MAX_BULK_BYTES ||
+			    hdr.len != sizeof(*rq) + (ep_in ? 0 : rq->len)) {
+				send_reply(sock, MSG_BULK, &error, sizeof(error));
+				break;
+			}
 			handle_entry_t *ent = map_get(rq->handle_id);
+			if (!ent || !ent->h) {
+				error.status = LIBUSB_ERROR_NO_DEVICE;
+				send_reply(sock, MSG_BULK, &error, sizeof(error));
+				break;
+			}
 			LOG("%s %s Bulk transfer: %u bytes", ent->path,
-			    rq->ep & 0x80 ? "IN" : "OUT", rq->len);
+			    ep_in ? "IN" : "OUT", rq->len);
 
-			int ep_in = ((rq->ep & 0x80) != 0);
-			int rc = -1, xfer = 0;
-			uint8_t *payload = NULL;
-			size_t pay_len = 0;
-			size_t hdr_len = sizeof(*rq);
-
-			if (!ep_in) {
-				payload = request + hdr_len;
-				pay_len = (hdr.len > hdr_len) ?
-						  (hdr.len - hdr_len) :
-						  0;
-			} else {
-				payload = buf + sizeof(bulk_resp_t);
-				pay_len = rq->len;
+			/* The USB read length is chosen by Xgpro; it can exceed 64 KiB.
+			 * Allocate the reply (header + data) to fit the requested length. */
+			size_t cap = sizeof(bulk_resp_t) + (ep_in ? rq->len : 0);
+			bulk_resp_t *resp = malloc(cap);
+			if (!resp) {
+				error.status = LIBUSB_ERROR_NO_MEM;
+				send_reply(sock, MSG_BULK, &error, sizeof(error));
+				break;
 			}
-
-			if (ent && ent->h) {
-				if (hdr.type == MSG_BULK) {
-					rc = libusb_bulk_transfer(
-						ent->h, rq->ep, payload,
-						(int)pay_len, &xfer,
-						rq->timeout_ms);
-				} else {
-					rc = libusb_interrupt_transfer(
-						ent->h, rq->ep, payload,
-						(int)pay_len, &xfer,
-						rq->timeout_ms);
-				}
-			}
-
-			bulk_resp_t *resp = (bulk_resp_t *)buf;
+			uint8_t *payload = ep_in ? resp->data : request + sizeof(*rq);
+			int xfer = 0;
+			int rc = libusb_bulk_transfer(ent->h, rq->ep, payload,
+						      (int)rq->len, &xfer,
+						      rq->timeout_ms);
 			resp->status = rc;
-			resp->rx_len = (ep_in && rc == 0) ? (uint32_t)xfer : 0;
+			resp->rx_len = 0;
+			if (rc == LIBUSB_SUCCESS && ep_in) {
+				if (xfer < 0 || (uint32_t)xfer > rq->len)
+					resp->status = LIBUSB_ERROR_OVERFLOW;
+				else
+					resp->rx_len = (uint32_t)xfer;
+			}
 			len = sizeof(*resp) + resp->rx_len;
-			send_reply(sock, hdr.type, buf, len);
+			send_reply(sock, MSG_BULK, resp, len);
+			free(resp);
 		} break;
 
 		// Cancel transfer RPC
